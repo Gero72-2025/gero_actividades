@@ -55,7 +55,7 @@ Sistema web completo para la gestión de actividades, personal, contratos, divis
 #### 1️⃣ Clonar o descargar el proyecto
 ```bash
 # Si usas git
-git clone <tu-repositorio>
+git clone https://github.com/Gero72-2025/gero_actividades.git
 
 # O descargar manualmente
 # Coloca la carpeta en: C:\xampp\htdocs\gero_activities
