@@ -1,0 +1,22 @@
+# Archivo: C:\xampp\htdocs\gero_activities\.htaccess
+
+# 1. Desactivar listado de directorios por seguridad
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    # Activar el motor de reescritura
+    RewriteEngine On
+    
+    # 2. DEFINIR LA BASE DE REESCRITURA
+    # Debe coincidir con la carpeta donde está tu proyecto
+    RewriteBase /gero_activities/
+    
+    # 3. Reglas de reescritura:
+    # Si la solicitud NO es a un archivo físico (-f)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    # Y NO es a un directorio físico (-d)
+    RewriteCond %{REQUEST_FILENAME} !-d
+    
+    # Reenvía TODO lo demás a index.php, pasando la URL como un parámetro 'url'
+    RewriteRule ^(.+)$ index.php?url=$1 [QSA,L]
+</IfModule>

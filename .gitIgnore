@@ -1,0 +1,20 @@
+# Ignore all text files
+/*.txt
+
+# Ignore all markdown files
+/*.md
+
+# Ignore log files in the logs directory
+app/logs/*.log
+
+# Ignore all files in the temp directory
+temp/
+
+# Ignore all files in the fpdf tutorial directory
+app/libraries/fpdf/tutorial/*
+
+# Ignore all SQL scripts in the database_scripts directory
+database_scripts/*.sql
+
+# Ignore all files in the user info directory
+info/*

@@ -1,0 +1,10 @@
+# Bootstrap Icons - MIME types configuration
+AddType application/font-woff2 .woff2
+AddType application/font-woff .woff
+AddType text/css .css
+
+# Cache headers for font files
+<FilesMatch "\.(woff2?|css)$">
+    Header set Cache-Control "max-age=31536000, public"
+    Header set Access-Control-Allow-Origin "*"
+</FilesMatch>

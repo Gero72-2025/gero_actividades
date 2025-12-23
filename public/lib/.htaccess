@@ -1,0 +1,24 @@
+# Enable headers module
+<IfModule mod_headers.c>
+    Header set Cache-Control "max-age=31536000, public"
+</IfModule>
+
+# MIME types for all static files
+AddEncoding gzip .gz
+AddType application/font-woff .woff
+AddType application/font-woff2 .woff2
+AddType application/x-font-ttf .ttf
+AddType application/x-font-otf .otf
+AddType text/css .css
+AddType application/javascript .js
+
+# Force type for specific files
+<FilesMatch "\.(woff|woff2|ttf|otf)$">
+    AddType application/octet-stream .woff
+    AddType application/octet-stream .woff2
+    AddType application/octet-stream .ttf
+    AddType application/octet-stream .otf
+    <IfModule mod_headers.c>
+        Header set Content-Type "application/octet-stream"
+    </IfModule>
+</FilesMatch>

@@ -1,0 +1,17 @@
+# Font Awesome - MIME types configuration
+AddType application/font-woff2 .woff2
+AddType application/x-font-ttf .ttf
+AddType application/x-font-opentype .otf
+AddType application/vnd.ms-fontobject .eot
+AddType application/x-font-woff .woff
+
+# Allow access to webfonts directory
+<Files "webfonts/*">
+    Order allow,deny
+    Allow from all
+</Files>
+
+# Cache headers for font files
+<FilesMatch "\.(woff2?|ttf|otf|eot)$">
+    Header set Cache-Control "max-age=31536000, immutable"
+</FilesMatch>
