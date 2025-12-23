@@ -47,14 +47,14 @@ class DivisionModel {
     public function addDivision($data){
         $this->db->query('
             INSERT INTO division (Nombre, Siglas, Id_personal_jefe) 
-            VALUES (:nombre, :siglas, :id_jefe)
+            VALUES (:nombre, :siglas, :id_personal_jefe)
         ');
         
         // Vincular valores
         $this->db->bind(':nombre', $data['nombre']);
         $this->db->bind(':siglas', $data['siglas']);
         // Maneja el caso de que Id_personal_jefe sea NULL
-        $this->db->bind(':id_jefe', $data['id_jefe'], is_null($data['id_jefe']) ? PDO::PARAM_NULL : PDO::PARAM_INT);
+        $this->db->bind(':id_personal_jefe', $data['id_personal_jefe'], is_null($data['id_personal_jefe']) ? PDO::PARAM_NULL : PDO::PARAM_INT);
 
         // Ejecutar
         if($this->db->execute()){
@@ -65,14 +65,14 @@ class DivisionModel {
     }
 
     public function updateDivision($data){
-        $this->db->query('UPDATE division SET Nombre = :nombre, Siglas = :siglas, Id_personal_jefe = :jefe_id WHERE Id_Division = :id');
+        $this->db->query('UPDATE division SET Nombre = :nombre, Siglas = :siglas, Id_personal_jefe = :id_personal_jefe WHERE Id_Division = :id');
         
         // Bind values
         $this->db->bind(':id', $data['id']);
         $this->db->bind(':nombre', $data['nombre']);
         $this->db->bind(':siglas', $data['siglas']);
-        // Manejo de NULL para jefe_id
-        $this->db->bind(':jefe_id', $data['id_personal_jefe'] ?: null); 
+        // Manejo de NULL para id_personal_jefe
+        $this->db->bind(':id_personal_jefe', $data['id_personal_jefe'] ?: null); 
 
         if($this->db->execute()){
             return true;

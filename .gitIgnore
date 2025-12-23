@@ -2,7 +2,7 @@
 /*.txt
 
 # Ignore all markdown files
-/*.md
+app/info/*.md
 
 # Ignore log files in the logs directory
 app/logs/*.log

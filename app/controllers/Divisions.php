@@ -51,10 +51,11 @@ class Divisions extends Controller {
                 'nombre' => trim($_POST['nombre']),
                 'siglas' => trim($_POST['siglas']),
                 // Nota: Usamos null si el campo está vacío para que SQL acepte el campo 'Id_personal_jefe' (NULL por defecto)
-                'id_jefe' => empty($_POST['id_jefe']) ? null : (int)$_POST['id_jefe'],
+                'id_personal_jefe' => empty($_POST['id_personal_jefe']) ? null : (int)$_POST['id_personal_jefe'],
                 'nombre_err' => '',
                 'siglas_err' => '',
-                'title' => ''
+                'title' => 'Añadir Nueva División',
+                'personal_list' => $this->personalModel->getPersonalForDropdown()
             ];
 
             // 2. Validar los campos obligatorios
@@ -87,7 +88,7 @@ class Divisions extends Controller {
             $data = [
                 'nombre' => '',
                 'siglas' => '',
-                'id_jefe' => null,
+                'id_personal_jefe' => null,
                 'nombre_err' => '',
                 'siglas_err' => '',
                 'title' => 'Añadir Nueva División',
