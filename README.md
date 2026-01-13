@@ -131,9 +131,6 @@ gero_activities/
 │       └── ...
 ├── config/
 │   └── config.php             # Configuración
-├── database_scripts/
-│   ├── 03_roles_permisos.sql  # SQL de roles y permisos
-│   └── 04_permisos_completos.sql
 ├── public/
 │   ├── index.php              # Punto de entrada
 │   ├── css/
@@ -186,13 +183,13 @@ gero_activities/
 
 ### Roles Predeterminados
 
-| Rol | Acceso |
-|-----|--------|
-| **Administrador** | Acceso completo a toda la plataforma |
-| **Gerente** | Reportes, contratos, actividades, personal |
-| **Supervisor** | Actividades y personal asignado a su división |
-| **Personal** | Solo sus propias actividades |
-| **Visualizador** | Solo lectura en reportes |
+| Rol               | Acceso                                        |
+|-------------------|-----------------------------------------------|
+| **Administrador** | Acceso completo a toda la plataforma          |
+| **Gerente**       | Reportes, contratos, actividades, personal    |
+| **Supervisor**    | Actividades y personal asignado a su división |
+| **Personal**      | Solo sus propias actividades                  |
+| **Visualizador**  | Solo lectura en reportes                      |
 
 ### Módulos y Permisos
 
@@ -230,16 +227,16 @@ define('SITENAME', 'Gero Actividades');
 
 ### Tablas Principales
 
-- **usuario** - Usuarios del sistema
-- **roles** - Roles disponibles
-- **permisos** - Permisos del sistema
-- **role_permiso** - Relación roles-permisos
-- **usuario_role** - Relación usuarios-roles
-- **division** - Divisiones organizacionales
-- **personal** - Registros de personal
-- **contratos** - Contratos
-- **alcances** - Alcances de contratos
-- **actividades** - Actividades del sistema
+- **usuario**       - Usuarios del sistema
+- **roles**         - Roles disponibles
+- **permisos**      - Permisos del sistema
+- **role_permiso**  - Relación roles-permisos
+- **usuario_role**  - Relación usuarios-roles
+- **division**      - Divisiones organizacionales
+- **personal**      - Registros de personal
+- **contratos**     - Contratos
+- **alcances**      - Alcances de contratos
+- **actividades**   - Actividades del sistema
 
 ### Diagrama de relaciones
 
