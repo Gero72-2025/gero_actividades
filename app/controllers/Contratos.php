@@ -1,6 +1,8 @@
 <?php
 class Contratos extends Controller {
     private $contratoModel;
+        private $divisionModel;
+        private $personalModel;
 
     public function __construct(){
         if(!isLoggedIn()){
@@ -8,6 +10,8 @@ class Contratos extends Controller {
         }
 
         $this->contratoModel = $this->model('ContratoModel');
+            $this->divisionModel = $this->model('DivisionModel');
+            $this->personalModel = $this->model('PersonalModel');
     }
 
     // Muestra la lista de contratos
@@ -15,7 +19,18 @@ class Contratos extends Controller {
         // Verificar permiso para ver contratos
         $this->verificarAcceso('contratos', 'ver');
         
-        $contratos = $this->contratoModel->getContratos();
+        $divisionIdUsuario = null;
+        $personal = $this->personalModel->getPersonalByUserId($_SESSION['user_id']);
+        if($personal && !empty($personal->Id_division)){
+            $divisionIdUsuario = $personal->Id_division;
+        }
+
+        $contratos = $this->contratoModel->getContratos($divisionIdUsuario);
+
+        // Verificar si cada contrato tiene alcances activos
+        foreach($contratos as $contrato){
+            $contrato->tiene_alcances = $this->contratoModel->hasAlcancesActivos($contrato->Id_contrato);
+        }
 
         $data = [
             'title' => 'Gestión de Contratos',
@@ -40,10 +55,14 @@ class Contratos extends Controller {
                 'inicio_contrato' => trim($_POST['inicio_contrato']),
                 'fin_contrato' => trim($_POST['fin_contrato']),
                 'expediente' => trim($_POST['expediente']),
+                'id_division' => trim($_POST['id_division']),
+                'contrato_activo' => isset($_POST['contrato_activo']) ? trim($_POST['contrato_activo']) : 1,
                 'descripcion_err' => '',
                 'numero_pagos_err' => '',
                 'inicio_contrato_err' => '',
-                'expediente_err' => ''
+                'expediente_err' => '',
+                'id_division_err' => '',
+                'divisiones' => $this->divisionModel->getDivisions()
             ];
 
             // 1. Validar datos
@@ -57,9 +76,12 @@ class Contratos extends Controller {
             if(empty($data['numero_pagos']) || !is_numeric($data['numero_pagos']) || $data['numero_pagos'] < 1){
                 $data['numero_pagos_err'] = 'El número de pagos es requerido y debe ser un número positivo.';
             }
+            if(empty($data['id_division'])){
+                $data['id_division_err'] = 'Seleccione la división del contrato.';
+            }
 
             // 2. Si no hay errores, proceder
-            if(empty($data['descripcion_err']) && empty($data['inicio_contrato_err']) && empty($data['numero_pagos_err'])){
+            if(empty($data['descripcion_err']) && empty($data['inicio_contrato_err']) && empty($data['numero_pagos_err']) && empty($data['id_division_err'])){
                 
                 if($this->contratoModel->addContrato($data)){
                     // Si tienes flash messages, úsalos aquí
@@ -82,9 +104,13 @@ class Contratos extends Controller {
                 'inicio_contrato' => '',
                 'fin_contrato' => '',
                 'expediente' => '',
+                'id_division' => '',
+                'contrato_activo' => 1,
                 'descripcion_err' => '',
                 'numero_pagos_err' => '',
-                'inicio_contrato_err' => ''
+                'inicio_contrato_err' => '',
+                'id_division_err' => '',
+                'divisiones' => $this->divisionModel->getDivisions()
             ];
 
             $this->view('contratos/add', $data);
@@ -107,9 +133,12 @@ class Contratos extends Controller {
                 'inicio_contrato' => trim($_POST['inicio_contrato']),
                 'fin_contrato' => trim($_POST['fin_contrato']),
                 'expediente' => trim($_POST['expediente']),
+                'id_division' => trim($_POST['id_division']),
+                'contrato_activo' => isset($_POST['contrato_activo']) ? trim($_POST['contrato_activo']) : 1,
                 'descripcion_err' => '',
                 'numero_pagos_err' => '',
                 'inicio_contrato_err' => '',
+                'id_division_err' => '',
                 'title' => 'Editar Contrato'
             ];
             
@@ -119,15 +148,19 @@ class Contratos extends Controller {
             if(empty($data['numero_pagos']) || !is_numeric($data['numero_pagos']) || $data['numero_pagos'] < 1){
                 $data['numero_pagos_err'] = 'El número de pagos es requerido y debe ser un número positivo.';
             }
+            if(empty($data['id_division'])){
+                $data['id_division_err'] = 'Seleccione la división del contrato.';
+            }
             
             // 2. Si no hay errores
-            if(empty($data['descripcion_err']) && empty($data['inicio_contrato_err']) && empty($data['numero_pagos_err'])){
+            if(empty($data['descripcion_err']) && empty($data['inicio_contrato_err']) && empty($data['numero_pagos_err']) && empty($data['id_division_err'])){
                 if($this->contratoModel->updateContrato($data)){
                     redirect('contratos/index');
                 } else {
                     die('Algo salió mal al intentar actualizar.');
                 }
             } else {
+                $data['divisiones'] = $this->divisionModel->getDivisions();
                 $this->view('contratos/edit', $data);
             }
 
@@ -143,9 +176,13 @@ class Contratos extends Controller {
                 'expediente' => $contrato->Expediente,
                 'inicio_contrato' => $contrato->Inicio_contrato,
                 'fin_contrato' => $contrato->Fin_contrato,
+                'id_division' => $contrato->Id_division,
+                'contrato_activo' => $contrato->Contrato_activo,
                 'descripcion_err' => '',
                 'numero_pagos_err' => '',
-                'inicio_contrato_err' => ''
+                'inicio_contrato_err' => '',
+                'id_division_err' => '',
+                'divisiones' => $this->divisionModel->getDivisions()
             ];
             
             $this->view('contratos/edit', $data);

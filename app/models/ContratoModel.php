@@ -9,8 +9,28 @@ class ContratoModel {
     /**
      * Obtiene todos los contratos activos (Estado = 1).
      */
-    public function getContratos(){
-        $this->db->query('SELECT * FROM contratos WHERE Estado = 1 ORDER BY Inicio_contrato DESC');
+    public function getContratos($divisionId = null){
+        $sql = '
+            SELECT 
+                c.*, 
+                d.Nombre AS Division_nombre
+            FROM contratos c
+            LEFT JOIN division d ON c.Id_division = d.Id_Division
+            WHERE c.Estado = 1
+        ';
+
+        if($divisionId !== null){
+            $sql .= ' AND c.Id_division = :division_id';
+        }
+
+        $sql .= ' ORDER BY c.Inicio_contrato DESC';
+
+        $this->db->query($sql);
+
+        if($divisionId !== null){
+            $this->db->bind(':division_id', $divisionId);
+        }
+
         return $this->db->resultSet();
     }
     
@@ -28,14 +48,16 @@ class ContratoModel {
      * Agrega un nuevo contrato.
      */
     public function addContrato($data){
-        $this->db->query('INSERT INTO contratos (Descripcion, Numero_pagos, Inicio_contrato, Fin_contrato, Expediente) 
-                          VALUES (:descripcion, :pagos, :inicio, :fin, :expediente)');
+        $this->db->query('INSERT INTO contratos (Descripcion, Numero_pagos, Inicio_contrato, Fin_contrato, Expediente, Contrato_activo, Id_division) 
+                  VALUES (:descripcion, :pagos, :inicio, :fin, :expediente, :contrato_activo, :id_division)');
         
         $this->db->bind(':descripcion', $data['descripcion']);
         $this->db->bind(':pagos', $data['numero_pagos']);
         $this->db->bind(':inicio', $data['inicio_contrato']);
         $this->db->bind(':fin', $data['fin_contrato']);
         $this->db->bind(':expediente', $data['expediente'] ?: null);
+        $this->db->bind(':contrato_activo', $data['contrato_activo']);
+        $this->db->bind(':id_division', $data['id_division'] ?: null);
 
         return $this->db->execute();
     }
@@ -44,7 +66,7 @@ class ContratoModel {
      * Actualiza un registro de contrato.
      */
     public function updateContrato($data){
-        $this->db->query('UPDATE contratos SET Descripcion = :descripcion, Numero_pagos = :pagos, Inicio_contrato = :inicio, Fin_contrato = :fin, Expediente = :expediente WHERE Id_contrato = :id');
+        $this->db->query('UPDATE contratos SET Descripcion = :descripcion, Numero_pagos = :pagos, Inicio_contrato = :inicio, Fin_contrato = :fin, Expediente = :expediente, Contrato_activo = :contrato_activo, Id_division = :id_division WHERE Id_contrato = :id');
         
         $this->db->bind(':id', $data['id']);
         $this->db->bind(':descripcion', $data['descripcion']);
@@ -52,6 +74,8 @@ class ContratoModel {
         $this->db->bind(':inicio', $data['inicio_contrato']);
         $this->db->bind(':fin', $data['fin_contrato']);
         $this->db->bind(':expediente', $data['expediente'] ?: null);
+        $this->db->bind(':contrato_activo', $data['contrato_activo']);
+        $this->db->bind(':id_division', $data['id_division'] ?: null);
 
         return $this->db->execute();
     }
@@ -102,5 +126,15 @@ class ContratoModel {
             ');
         }
         return $this->db->resultSet();
+    }
+
+    /**
+     * Verifica si un contrato tiene alcances activos relacionados.
+     */
+    public function hasAlcancesActivos($idContrato){
+        $this->db->query('SELECT COUNT(*) as count FROM alcances WHERE Id_contrato = :id_contrato AND Estado = 1');
+        $this->db->bind(':id_contrato', $idContrato);
+        $result = $this->db->single();
+        return $result->count > 0;
     }
 }

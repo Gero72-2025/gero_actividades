@@ -28,6 +28,8 @@
                             <th class="hide-on-mobile">Expediente</th>
                             <th class="hide-on-mobile">Inicio</th>
                             <th class="hide-on-mobile">Fin</th>
+                            <th class="hide-on-mobile">División</th>
+                            <th class="hide-on-mobile">Estado</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -40,22 +42,44 @@
                                 <td class="hide-on-mobile" data-label="Expediente"><?php echo $contrato->Expediente ?? 'N/A'; ?></td>
                                 <td class="hide-on-mobile" data-label="Inicio"><?php echo date('d/m/Y', strtotime($contrato->Inicio_contrato)); ?></td>
                                 <td class="hide-on-mobile" data-label="Fin"><?php echo date('d/m/Y', strtotime($contrato->Fin_contrato)); ?></td>
+                                <td class="hide-on-mobile" data-label="División"><?php echo $contrato->Division_nombre ?? 'N/A'; ?></td>
+                                <td class="hide-on-mobile" data-label="Estado">
+                                    <?php if($contrato->Contrato_activo == 1): ?>
+                                        <span class="badge badge-success">Activo</span>
+                                    <?php else: ?>
+                                        <span class="badge badge-danger">Vencido</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td data-label="Acciones" class="text-nowrap">
                                     <a href="<?php echo URLROOT; ?>/contratos/edit/<?php echo $contrato->Id_contrato; ?>" class="btn btn-sm btn-info mr-1" title="Editar">
                                         <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">Editar</span>
                                     </a>
                                     
-                                    <button 
-                                        type="button" 
-                                        class="btn btn-sm btn-danger" 
-                                        data-toggle="modal" 
-                                        data-target="#deleteContratoModal"
-                                        data-id="<?php echo $contrato->Id_contrato; ?>" 
-                                        data-nombre="<?php echo substr($contrato->Descripcion, 0, 30); ?>"
-                                        title="Eliminar"
-                                    >
-                                        <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
-                                    </button>
+                                    <?php if($contrato->tiene_alcances): ?>
+                                        <button 
+                                            type="button" 
+                                            class="btn btn-sm btn-danger disabled" 
+                                            disabled
+                                            title="No se puede eliminar: Contrato tiene alcances activos"
+                                        >
+                                            <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
+                                        </button>
+                                        <small class="d-block text-danger mt-1">
+                                            <i class="bi bi-info-circle"></i> Tiene alcances activos
+                                        </small>
+                                    <?php else: ?>
+                                        <button 
+                                            type="button" 
+                                            class="btn btn-sm btn-danger" 
+                                            data-toggle="modal" 
+                                            data-target="#deleteContratoModal"
+                                            data-id="<?php echo $contrato->Id_contrato; ?>" 
+                                            data-nombre="<?php echo substr($contrato->Descripcion, 0, 30); ?>"
+                                            title="Eliminar"
+                                        >
+                                            <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
+                                        </button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
