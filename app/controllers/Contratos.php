@@ -39,6 +39,7 @@ class Contratos extends Controller {
                 'numero_pagos' => trim($_POST['numero_pagos']),
                 'inicio_contrato' => trim($_POST['inicio_contrato']),
                 'fin_contrato' => trim($_POST['fin_contrato']),
+                'expediente' => trim($_POST['expediente']),
                 'descripcion_err' => '',
                 'numero_pagos_err' => '',
                 'inicio_contrato_err' => '',
