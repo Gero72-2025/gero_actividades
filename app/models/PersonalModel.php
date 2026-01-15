@@ -16,6 +16,7 @@ class PersonalModel {
                 p.Nombre_Completo,
                 p.Apellido_Completo,
                 p.Puesto,
+                p.Tipo_servicio,
                 d.Nombre AS division_nombre,
                 u.Email AS usuario_email
             FROM 
@@ -73,12 +74,13 @@ class PersonalModel {
      * Agrega un nuevo registro de Personal (asumiendo que Id_usuario es requerido).
      */
     public function addPersonal($data){
-        $this->db->query('INSERT INTO personal (Nombre_Completo, Apellido_Completo, Puesto, Id_division, Id_usuario, Id_contrato) 
-                          VALUES (:nombre, :apellido, :puesto, :id_division, :id_usuario, :id_contrato)');
+        $this->db->query('INSERT INTO personal (Nombre_Completo, Apellido_Completo, Puesto, Tipo_servicio, Id_division, Id_usuario, Id_contrato) 
+                  VALUES (:nombre, :apellido, :puesto, :tipo_servicio, :id_division, :id_usuario, :id_contrato)');
         
         $this->db->bind(':nombre', $data['nombre']);
         $this->db->bind(':apellido', $data['apellido']);
         $this->db->bind(':puesto', $data['puesto']);
+        $this->db->bind(':tipo_servicio', $data['tipo_servicio']);
         $this->db->bind(':id_division', $data['id_division'] ?: null); 
         $this->db->bind(':id_contrato', $data['id_contrato'] ?: null);
         $this->db->bind(':id_usuario', $data['id_usuario']); 
@@ -90,12 +92,13 @@ class PersonalModel {
      * Actualiza un registro de Personal.
      */
     public function updatePersonal($data){
-        $this->db->query('UPDATE personal SET Nombre_Completo = :nombre, Apellido_Completo = :apellido, Puesto = :puesto, Id_division = :id_division, Id_contrato = :id_contrato WHERE Id_personal = :id');
+        $this->db->query('UPDATE personal SET Nombre_Completo = :nombre, Apellido_Completo = :apellido, Puesto = :puesto, Tipo_servicio = :tipo_servicio, Id_division = :id_division, Id_contrato = :id_contrato WHERE Id_personal = :id');
         
         $this->db->bind(':id', $data['id']);
         $this->db->bind(':nombre', $data['nombre']);
         $this->db->bind(':apellido', $data['apellido']);
         $this->db->bind(':puesto', $data['puesto']);
+        $this->db->bind(':tipo_servicio', $data['tipo_servicio']);
         $this->db->bind(':id_division', $data['id_division'] ?: null); 
         $this->db->bind(':id_contrato', $data['id_contrato'] ?: null); 
 

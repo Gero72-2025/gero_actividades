@@ -25,6 +25,16 @@
                     <input type="text" name="puesto" class="form-control form-control-lg <?php echo (!empty($data['puesto_err'])) ? 'is-invalid' : ''; ?>" value="<?php echo $data['puesto']; ?>">
                     <span class="invalid-feedback"><?php echo $data['puesto_err']; ?></span>
                 </div>
+
+                <div class="form-group">
+                    <label for="tipo_servicio">Tipo de Servicio: <sup>*</sup></label>
+                    <select name="tipo_servicio" class="form-control form-control-lg <?php echo (!empty($data['tipo_servicio_err'])) ? 'is-invalid' : ''; ?>">
+                        <option value="">Seleccione una opción</option>
+                        <option value="1" <?php echo ($data['tipo_servicio'] === '1') ? 'selected' : ''; ?>>Servicios Profesionales</option>
+                        <option value="0" <?php echo ($data['tipo_servicio'] === '0') ? 'selected' : ''; ?>>Servicios Técnicos</option>
+                    </select>
+                    <span class="invalid-feedback"><?php echo $data['tipo_servicio_err']; ?></span>
+                </div>
                 
                 <div class="row">
                     <div class="form-group col-md-6">

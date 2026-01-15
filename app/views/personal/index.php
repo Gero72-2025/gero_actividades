@@ -25,6 +25,7 @@
                             <th class="hide-on-mobile">ID</th>
                             <th>Nombre</th>
                             <th class="hide-on-mobile">Puesto</th>
+                            <th class="hide-on-mobile">Tipo Servicio</th>
                             <th class="hide-on-mobile">División</th>
                             <th class="hide-on-mobile">Email</th>
                             <th>Acciones</th>
@@ -36,6 +37,13 @@
                                 <td class="hide-on-mobile" data-label="ID"><?php echo $p->Id_personal; ?></td>
                                 <td data-label="Nombre"><?php echo $p->Nombre_Completo . ' ' . $p->Apellido_Completo; ?></td>
                                 <td class="hide-on-mobile" data-label="Puesto"><?php echo $p->Puesto; ?></td>
+                                <td class="hide-on-mobile" data-label="Tipo Servicio">
+                                    <?php if($p->Tipo_servicio == 1): ?>
+                                        <span class="badge badge-primary">Profesionales</span>
+                                    <?php else: ?>
+                                        <span class="badge badge-info">Técnicos</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td class="hide-on-mobile" data-label="División"><?php echo $p->division_nombre ?? 'N/A'; ?></td> 
                                 <td class="hide-on-mobile" data-label="Email"><?php echo $p->usuario_email ?? 'N/A'; ?></td> 
                                 <td data-label="Acciones" class="text-nowrap">

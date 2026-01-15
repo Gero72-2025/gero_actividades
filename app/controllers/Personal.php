@@ -51,6 +51,7 @@ class Personal extends Controller {
                 'nombre' => trim($_POST['nombre']),
                 'apellido' => trim($_POST['apellido']),
                 'puesto' => trim($_POST['puesto']),
+                'tipo_servicio' => isset($_POST['tipo_servicio']) ? trim($_POST['tipo_servicio']) : '',
                 'id_division' => trim($_POST['id_division']),
                 'id_contrato' => trim($_POST['id_contrato']),
                 'id_usuario' => trim($_POST['id_usuario']), 
@@ -58,6 +59,7 @@ class Personal extends Controller {
                 'nombre_err' => '',
                 'apellido_err' => '',
                 'puesto_err' => '',
+                'tipo_servicio_err' => '',
                 'id_usuario_err' => '',
                 'divisiones' => $divisiones,
                 'contratos' => $contratos,
@@ -71,13 +73,16 @@ class Personal extends Controller {
             if(empty($data['apellido'])){
                 $data['apellido_err'] = 'El apellido es obligatorio.';
             }
+            if($data['tipo_servicio'] === '' || !in_array($data['tipo_servicio'], ['0','1'], true)){
+                $data['tipo_servicio_err'] = 'Seleccione el tipo de servicio.';
+            }
             if(empty($data['id_usuario'])){
                 $data['id_usuario_err'] = 'Debe seleccionar un usuario para vincular.';
             }
             // NOTA: 'puesto', 'id_division' e 'id_contrato' son opcionales (NULL en la BD)
 
             // 3. Comprobar errores
-            if(empty($data['nombre_err']) && empty($data['apellido_err']) && empty($data['id_usuario_err'])){
+            if(empty($data['nombre_err']) && empty($data['apellido_err']) && empty($data['id_usuario_err']) && empty($data['tipo_servicio_err'])){
                 
                 // Sin errores: Guardar
                 if($this->personalModel->addPersonal($data)){
@@ -98,12 +103,14 @@ class Personal extends Controller {
                 'nombre' => '',
                 'apellido' => '',
                 'puesto' => '',
+                'tipo_servicio' => '1',
                 'id_division' => '',
                 'id_contrato' => '',
                 'id_usuario' => '', 
                 'nombre_err' => '',
                 'apellido_err' => '',
                 'puesto_err' => '',
+                'tipo_servicio_err' => '',
                 'id_usuario_err' => '',
                 'divisiones' => $divisiones,
                 'contratos' => $contratos,
@@ -145,6 +152,7 @@ class Personal extends Controller {
                 'nombre' => trim($_POST['nombre']),
                 'apellido' => trim($_POST['apellido']),
                 'puesto' => trim($_POST['puesto']),
+                'tipo_servicio' => isset($_POST['tipo_servicio']) ? trim($_POST['tipo_servicio']) : '',
                 'id_division' => trim($_POST['id_division']),
                 'id_contrato' => trim($_POST['id_contrato']),
                 'id_usuario' => trim($_POST['id_usuario']), 
@@ -152,6 +160,7 @@ class Personal extends Controller {
                 'nombre_err' => '',
                 'apellido_err' => '',
                 'puesto_err' => '',
+                'tipo_servicio_err' => '',
                 'id_usuario_err' => '',
                 'divisiones' => $divisiones,
                 'contratos' => $contratos,
@@ -165,12 +174,15 @@ class Personal extends Controller {
             if(empty($data['apellido'])){
                 $data['apellido_err'] = 'El apellido es obligatorio.';
             }
+            if($data['tipo_servicio'] === '' || !in_array($data['tipo_servicio'], ['0','1'], true)){
+                $data['tipo_servicio_err'] = 'Seleccione el tipo de servicio.';
+            }
             if(empty($data['id_usuario'])){
                 $data['id_usuario_err'] = 'El usuario vinculado no puede estar vacío.';
             }
 
             // 3. Comprobar errores
-            if(empty($data['nombre_err']) && empty($data['apellido_err']) && empty($data['id_usuario_err'])){
+            if(empty($data['nombre_err']) && empty($data['apellido_err']) && empty($data['id_usuario_err']) && empty($data['tipo_servicio_err'])){
                 
                 // Sin errores: Actualizar (Lógica existente)
                 if($this->personalModel->updatePersonal($data)){
@@ -247,12 +259,14 @@ class Personal extends Controller {
                 'nombre' => $personal->Nombre_Completo,
                 'apellido' => $personal->Apellido_Completo,
                 'puesto' => $personal->Puesto,
+                'tipo_servicio' => $personal->Tipo_servicio,
                 'id_division' => $personal->Id_division,
                 'id_contrato' => $personal->Id_contrato,
                 'id_usuario' => $personal->Id_usuario, 
                 'nombre_err' => '',
                 'apellido_err' => '',
                 'puesto_err' => '',
+                'tipo_servicio_err' => '',
                 'id_usuario_err' => '',
                 'divisiones' => $divisiones,
                 'contratos' => $contratos,
