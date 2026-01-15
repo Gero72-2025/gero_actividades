@@ -2,6 +2,7 @@
 class Alcances extends Controller {
     private $alcanceModel;
     private $contratoModel; // Necesario para el dropdown
+    private $personalModel;
 
     public function __construct(){
         if(!isLoggedIn()){
@@ -11,18 +12,60 @@ class Alcances extends Controller {
         $this->alcanceModel = $this->model('AlcanceModel');
         // Necesitas el modelo de Contratos para poblar el dropdown de selección
         $this->contratoModel = $this->model('ContratoModel'); 
+        $this->personalModel = $this->model('PersonalModel');
     }
 
     // Muestra la lista de alcances
-    public function index(){
+    public function index($page = 1){
         // Verificar permiso para ver alcances
         $this->verificarAcceso('alcances', 'ver');
         
-        $alcances = $this->alcanceModel->getAlcances();
+        $divisionIdUsuario = null;
+        $personal = $this->personalModel->getPersonalByUserId($_SESSION['user_id']);
+        if($personal && !empty($personal->Id_division)){
+            $divisionIdUsuario = $personal->Id_division;
+        }
+
+        $alcances = $this->alcanceModel->getAlcances($divisionIdUsuario);
+
+        // Agrupar por contrato
+        $agrupados = [];
+        foreach($alcances as $alcance){
+            $idContrato = $alcance->Id_contrato;
+            if(!isset($agrupados[$idContrato])){
+                $agrupados[$idContrato] = [
+                    'contrato' => [
+                        'Id_contrato' => $idContrato,
+                        'Expediente' => $alcance->Expediente,
+                        'Descripcion' => $alcance->Contrato_Descripcion,
+                        'Contrato_activo' => $alcance->Contrato_activo,
+                        'Inicio_contrato' => $alcance->Inicio_contrato,
+                        'Fin_contrato' => $alcance->Fin_contrato,
+                    ],
+                    'alcances' => []
+                ];
+            }
+            $alcance->tiene_actividades = $alcance->actividades_count > 0;
+            $agrupados[$idContrato]['alcances'][] = $alcance;
+        }
+
+        // Paginación
+        $itemsPerPage = 10;
+        $totalContratos = count($agrupados);
+        $totalPages = ceil($totalContratos / $itemsPerPage);
+        $currentPage = max(1, min($page, $totalPages ?: 1));
+        $offset = ($currentPage - 1) * $itemsPerPage;
+
+        // Obtener solo los contratos de la página actual
+        $agrupadosPaginados = array_slice($agrupados, $offset, $itemsPerPage, true);
 
         $data = [
             'title' => 'Gestión de Alcances de Contrato',
-            'alcances' => $alcances
+            'agrupados' => $agrupadosPaginados,
+            'alcances' => $alcances,
+            'currentPage' => $currentPage,
+            'totalPages' => $totalPages,
+            'totalContratos' => $totalContratos
         ];
 
         $this->view('alcances/index', $data);
@@ -34,7 +77,12 @@ class Alcances extends Controller {
         $this->verificarAcceso('alcances', 'crear');
         
         // Cargar datos de contratos para el dropdown
-        $contratos = $this->contratoModel->getContratos();
+        $divisionIdUsuario = null;
+        $personal = $this->personalModel->getPersonalByUserId($_SESSION['user_id']);
+        if($personal && !empty($personal->Id_division)){
+            $divisionIdUsuario = $personal->Id_division;
+        }
+        $contratos = $this->contratoModel->getContratos($divisionIdUsuario);
         
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
             
@@ -91,7 +139,12 @@ class Alcances extends Controller {
         $this->verificarAcceso('alcances', 'editar');
         
         // Cargar datos de contratos para el dropdown
-        $contratos = $this->contratoModel->getContratos();
+        $divisionIdUsuario = null;
+        $personal = $this->personalModel->getPersonalByUserId($_SESSION['user_id']);
+        if($personal && !empty($personal->Id_division)){
+            $divisionIdUsuario = $personal->Id_division;
+        }
+        $contratos = $this->contratoModel->getContratos($divisionIdUsuario);
 
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
             // Lógica de POST y actualización

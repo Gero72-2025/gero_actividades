@@ -9,21 +9,38 @@ class AlcanceModel {
     /**
      * Obtiene todos los alcances activos, uniendo con la descripción del contrato.
      */
-    public function getAlcances(){
-        $this->db->query('
+    public function getAlcances($divisionId = null){
+        $sql = '
             SELECT 
                 a.*, 
                 c.Descripcion AS Contrato_Descripcion,
-                c.Expediente 
+                c.Expediente,
+                c.Contrato_activo,
+                c.Id_division,
+                c.Inicio_contrato,
+                c.Fin_contrato,
+                (SELECT COUNT(*) FROM actividades act WHERE act.Id_alcance = a.Id_alcance AND act.Estado = 1) AS actividades_count
             FROM 
                 alcances a
             JOIN 
                 contratos c ON a.Id_contrato = c.Id_contrato
             WHERE 
-                a.Estado = 1 
-            ORDER BY 
-                a.Fecha_creacion DESC
-        ');
+                a.Estado = 1
+                AND c.Estado = 1
+        ';
+
+        if($divisionId !== null){
+            $sql .= ' AND c.Id_division = :division_id';
+        }
+
+        $sql .= ' ORDER BY c.Inicio_contrato DESC, a.Fecha_creacion DESC';
+
+        $this->db->query($sql);
+
+        if($divisionId !== null){
+            $this->db->bind(':division_id', $divisionId);
+        }
+
         return $this->db->resultSet();
     }
     
@@ -43,6 +60,16 @@ class AlcanceModel {
         $this->db->query('SELECT * FROM alcances WHERE Id_contrato = :id_contrato AND Estado = 1 ORDER BY Fecha_creacion DESC');
         $this->db->bind(':id_contrato', $idContrato);
         return $this->db->resultSet();
+    }
+
+    /**
+     * Verifica si un alcance tiene actividades activas.
+     */
+    public function hasActividadesActivas($idAlcance){
+        $this->db->query('SELECT COUNT(*) as count FROM actividades WHERE Id_alcance = :id_alcance AND Estado = 1');
+        $this->db->bind(':id_alcance', $idAlcance);
+        $result = $this->db->single();
+        return $result && $result->count > 0;
     }
 
     /**
