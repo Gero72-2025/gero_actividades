@@ -21,7 +21,20 @@ class Personal extends Controller {
         // Verificar permiso para ver personal
         $this->verificarAcceso('personal', 'ver');
         
-        $personal = $this->personalModel->getPersonal();
+        // Si el usuario es jefe de división, solo mostrar su personal activo
+        $idUsuario = $_SESSION['user_id'];
+        if ($this->personalModel->isJefeDivision($idUsuario)) {
+            $division = $this->personalModel->getDivisionWhereChief($idUsuario);
+            if ($division) {
+                $personal = $this->personalModel->getPersonalByDivision($division->Id_Division);
+            } else {
+                // Fallback: si no se encuentra división, no mostrar registros
+                $personal = [];
+            }
+        } else {
+            // Resto de usuarios (admin, etc.) ven todo el personal activo
+            $personal = $this->personalModel->getPersonal();
+        }
 
         $data = [
             'title' => 'Gestión de Personal',
@@ -132,6 +145,14 @@ class Personal extends Controller {
             redirect('personal/index');
         }
         
+        // Obtener información del contrato actual si existe
+        $contrato_actual = null;
+        $contrato_tiene_actividades = false;
+        if($personal_actual->Id_contrato){
+            $contrato_actual = $this->contratoModel->getContratoById($personal_actual->Id_contrato);
+            $contrato_tiene_actividades = $this->contratoModel->hasActividadesEnAlcances($personal_actual->Id_contrato);
+        }
+        
         // Cargar datos para dropdowns (Necesarios tanto en GET como en POST si hay errores)
         $divisiones = $this->divisionModel->getDivisions();
         // Obtener contratos disponibles, excluyendo el que ya está asignado a este personal
@@ -162,8 +183,11 @@ class Personal extends Controller {
                 'puesto_err' => '',
                 'tipo_servicio_err' => '',
                 'id_usuario_err' => '',
+                'id_contrato_err' => '',
                 'divisiones' => $divisiones,
                 'contratos' => $contratos,
+                'contrato_actual' => $contrato_actual,
+                'contrato_tiene_actividades' => $contrato_tiene_actividades,
                 // 'usuarios' se define al final
             ];
 
@@ -179,6 +203,24 @@ class Personal extends Controller {
             }
             if(empty($data['id_usuario'])){
                 $data['id_usuario_err'] = 'El usuario vinculado no puede estar vacío.';
+            }
+            
+            // Validación: Lógica para cambio de contrato
+            // Se intenta cambiar el contrato si el valor es diferente al actual
+            if($data['id_contrato'] != $personal_actual->Id_contrato && $contrato_actual){
+                // 1. Verificar si el contrato actual tiene actividades en sus alcances
+                $tiene_actividades = $this->contratoModel->hasActividadesEnAlcances($personal_actual->Id_contrato);
+                
+                if($tiene_actividades){
+                    // Si tiene actividades, verificar si el contrato está activo
+                    if($contrato_actual->Contrato_activo == 1){
+                        $data['id_contrato_err'] = 'No puede cambiar el contrato mientras esté activo y tenga actividades registradas. Debe finalizar el contrato primero.';
+                        // Revertir al contrato original
+                        $data['id_contrato'] = $personal_actual->Id_contrato;
+                    }
+                    // Si tiene actividades pero no está activo, se permite el cambio
+                }
+                // Si no tiene actividades, se permite el cambio sin importar si está activo
             }
 
             // 3. Comprobar errores
@@ -268,8 +310,11 @@ class Personal extends Controller {
                 'puesto_err' => '',
                 'tipo_servicio_err' => '',
                 'id_usuario_err' => '',
+                'id_contrato_err' => '',
                 'divisiones' => $divisiones,
                 'contratos' => $contratos,
+                'contrato_actual' => $contrato_actual,
+                'contrato_tiene_actividades' => $contrato_tiene_actividades,
                 'usuarios' => $usuarios_dropdown, // Usar la lista combinada
             ];
 

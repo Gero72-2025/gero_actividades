@@ -63,6 +63,38 @@ class AlcanceModel {
     }
 
     /**
+     * Obtiene alcances del contrato activo de un usuario específico.
+     * Filtra alcances donde el contrato está activo (Contrato_activo = 1)
+     */
+    public function getAlcancesByActiveContract($idPersonal){
+        $this->db->query('
+            SELECT 
+                a.*, 
+                c.Descripcion AS Contrato_Descripcion,
+                c.Expediente,
+                c.Contrato_activo,
+                c.Id_division,
+                c.Inicio_contrato,
+                c.Fin_contrato
+            FROM 
+                alcances a
+            JOIN 
+                contratos c ON a.Id_contrato = c.Id_contrato
+            JOIN
+                personal p ON c.Id_contrato = p.Id_contrato
+            WHERE 
+                a.Estado = 1
+                AND c.Estado = 1
+                AND c.Contrato_activo = 1
+                AND p.Id_personal = :id_personal
+            ORDER BY 
+                a.Fecha_creacion DESC
+        ');
+        $this->db->bind(':id_personal', $idPersonal);
+        return $this->db->resultSet();
+    }
+
+    /**
      * Verifica si un alcance tiene actividades activas.
      */
     public function hasActividadesActivas($idAlcance){

@@ -1,13 +1,24 @@
 <?php require APPROOT . '/views/layouts/header.php'; ?>
+<?php 
+$canCreate = tienePermiso('personal.crear');
+$canEdit   = tienePermiso('personal.editar');
+$canDelete = tienePermiso('personal.eliminar');
+?>
 
 <div class="row mb-4">
     <div class="col-12 col-md-6 mb-3 mb-md-0">
         <h1><?php echo $data['title']; ?></h1>
     </div>
     <div class="col-12 col-md-6">
-        <a href="<?php echo URLROOT; ?>/personal/add" class="btn btn-success w-100">
-            <i class="bi bi-plus"></i> Añadir Personal
-        </a>
+        <?php if($canCreate): ?>
+            <a href="<?php echo URLROOT; ?>/personal/add" class="btn btn-success w-100">
+                <i class="bi bi-plus"></i> Añadir Personal
+            </a>
+        <?php else: ?>
+            <button class="btn btn-success w-100" disabled title="Sin permiso para crear">
+                <i class="bi bi-plus"></i> Añadir Personal
+            </button>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -27,6 +38,7 @@
                             <th class="hide-on-mobile">Puesto</th>
                             <th class="hide-on-mobile">Tipo Servicio</th>
                             <th class="hide-on-mobile">División</th>
+                            <th class="hide-on-mobile">Contrato</th>
                             <th class="hide-on-mobile">Email</th>
                             <th>Acciones</th>
                         </tr>
@@ -44,24 +56,37 @@
                                         <span class="badge badge-info">Técnicos</span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="hide-on-mobile" data-label="División"><?php echo $p->division_nombre ?? 'N/A'; ?></td> 
+                                <td class="hide-on-mobile" data-label="División"><?php echo $p->division_nombre ?? 'N/A'; ?></td>
+                                <td class="hide-on-mobile" data-label="Contrato">
+                                    <?php if($p->contrato_expediente): ?>
+                                        <span class="badge <?php echo ($p->Contrato_activo == 1) ? 'badge-success' : 'badge-secondary'; ?>">
+                                            <?php echo $p->contrato_expediente; ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="text-muted">N/A</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td class="hide-on-mobile" data-label="Email"><?php echo $p->usuario_email ?? 'N/A'; ?></td> 
                                 <td data-label="Acciones" class="text-nowrap">
-                                    <a href="<?php echo URLROOT; ?>/personal/edit/<?php echo $p->Id_personal; ?>" class="btn btn-sm btn-info mr-1" title="Editar">
-                                        <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">Editar</span>
-                                    </a>
+                                    <?php if($canEdit): ?>
+                                        <a href="<?php echo URLROOT; ?>/personal/edit/<?php echo $p->Id_personal; ?>" class="btn btn-sm btn-info mr-1" title="Editar">
+                                            <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">Editar</span>
+                                        </a>
+                                    <?php endif; ?>
                                     
-                                    <button 
-                                        type="button" 
-                                        class="btn btn-sm btn-danger" 
-                                        data-toggle="modal" 
-                                        data-target="#deletePersonalModal"
-                                        data-id="<?php echo $p->Id_personal; ?>" 
-                                        data-nombre="<?php echo $p->Nombre_Completo . ' ' . $p->Apellido_Completo; ?>"
-                                        title="Eliminar"
-                                    >
-                                        <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
-                                    </button>
+                                    <?php if($canDelete): ?>
+                                        <button 
+                                            type="button" 
+                                            class="btn btn-sm btn-danger" 
+                                            data-toggle="modal" 
+                                            data-target="#deletePersonalModal"
+                                            data-id="<?php echo $p->Id_personal; ?>" 
+                                            data-nombre="<?php echo $p->Nombre_Completo . ' ' . $p->Apellido_Completo; ?>"
+                                            title="Eliminar"
+                                        >
+                                            <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
+                                        </button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

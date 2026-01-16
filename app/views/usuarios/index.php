@@ -1,13 +1,24 @@
 <?php require APPROOT . '/views/layouts/header.php'; ?>
+<?php 
+$canCreate = tienePermiso('usuarios.crear');
+$canEdit   = tienePermiso('usuarios.editar');
+$canDelete = tienePermiso('usuarios.eliminar');
+?>
 
 <div class="row mb-4">
     <div class="col-12 col-md-6 mb-3 mb-md-0">
         <h1><?php echo $data['title']; ?></h1>
     </div>
     <div class="col-12 col-md-6">
-        <a href="<?php echo URLROOT; ?>/usuarios/add" class="btn btn-success w-100">
-            <i class="bi bi-plus"></i> Añadir Usuario
-        </a>
+        <?php if($canCreate): ?>
+            <a href="<?php echo URLROOT; ?>/usuarios/add" class="btn btn-success w-100">
+                <i class="bi bi-plus"></i> Añadir Usuario
+            </a>
+        <?php else: ?>
+            <button class="btn btn-success w-100" disabled title="Sin permiso para crear">
+                <i class="bi bi-plus"></i> Añadir Usuario
+            </button>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -43,21 +54,24 @@
                                 </td>
                                 <td class="hide-on-mobile" data-label="Creación"><?php echo date('d/m/Y', strtotime($usuario->Fecha_creacion)); ?></td>
                                 <td data-label="Acciones" class="text-nowrap">
-                                    <a href="<?php echo URLROOT; ?>/usuarios/edit/<?php echo $usuario->Id_usuario; ?>" class="btn btn-sm btn-info mr-1" title="Editar">
-                                        <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">Editar</span>
-                                    </a>
-                                    
-                                    <button 
-                                        type="button" 
-                                        class="btn btn-sm btn-danger" 
-                                        data-toggle="modal" 
-                                        data-target="#deleteUsuarioModal"
-                                        data-id="<?php echo $usuario->Id_usuario; ?>" 
-                                        data-nombre="<?php echo $usuario->email; ?>"
-                                        title="Eliminar"
-                                    >
-                                        <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
-                                    </button>
+                                    <?php if($canEdit): ?>
+                                        <a href="<?php echo URLROOT; ?>/usuarios/edit/<?php echo $usuario->Id_usuario; ?>" class="btn btn-sm btn-info mr-1" title="Editar">
+                                            <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">Editar</span>
+                                        </a>
+                                    <?php endif; ?>
+                                    <?php if($canDelete): ?>
+                                        <button 
+                                            type="button" 
+                                            class="btn btn-sm btn-danger" 
+                                            data-toggle="modal" 
+                                            data-target="#deleteUsuarioModal"
+                                            data-id="<?php echo $usuario->Id_usuario; ?>" 
+                                            data-nombre="<?php echo $usuario->email; ?>"
+                                            title="Eliminar"
+                                        >
+                                            <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
+                                        </button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

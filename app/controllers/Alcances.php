@@ -226,8 +226,18 @@ class Alcances extends Controller {
             return;
         }
         
-        // Asume que AlcanceModel::getAlcances() obtiene una lista de objetos
-        $alcances = $this->alcanceModel->getAlcances(); 
+        // Obtener el usuario logueado y su información de personal
+        $userId = $_SESSION['user_id'];
+        $personal = $this->personalModel->getPersonalByUserId($userId);
+        
+        // Si el usuario tiene un registro de personal, obtener solo alcances de su contrato activo
+        if($personal && $personal->Id_contrato){
+            $alcances = $this->alcanceModel->getAlcancesByActiveContract($personal->Id_personal);
+        } else {
+            // Si no tiene personal asignado, devolver lista vacía
+            $alcances = [];
+        }
+        
         echo json_encode($alcances);
     }
 }

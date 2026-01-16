@@ -1,13 +1,24 @@
 <?php require APPROOT . '/views/layouts/header.php'; ?>
+<?php 
+$canCreate = tienePermiso('contratos.crear');
+$canEdit   = tienePermiso('contratos.editar');
+$canDelete = tienePermiso('contratos.eliminar');
+?>
 
 <div class="row mb-4">
     <div class="col-12 col-md-6 mb-3 mb-md-0">
         <h1><?php echo $data['title']; ?></h1>
     </div>
     <div class="col-12 col-md-6">
-        <a href="<?php echo URLROOT; ?>/contratos/add" class="btn btn-success w-100">
-            <i class="bi bi-plus"></i> Añadir Contrato
-        </a>
+        <?php if($canCreate): ?>
+            <a href="<?php echo URLROOT; ?>/contratos/add" class="btn btn-success w-100">
+                <i class="bi bi-plus"></i> Añadir Contrato
+            </a>
+        <?php else: ?>
+            <button class="btn btn-success w-100" disabled title="Sin permiso para crear">
+                <i class="bi bi-plus"></i> Añadir Contrato
+            </button>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -51,34 +62,38 @@
                                     <?php endif; ?>
                                 </td>
                                 <td data-label="Acciones" class="text-nowrap">
-                                    <a href="<?php echo URLROOT; ?>/contratos/edit/<?php echo $contrato->Id_contrato; ?>" class="btn btn-sm btn-info mr-1" title="Editar">
-                                        <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">Editar</span>
-                                    </a>
+                                    <?php if($canEdit): ?>
+                                        <a href="<?php echo URLROOT; ?>/contratos/edit/<?php echo $contrato->Id_contrato; ?>" class="btn btn-sm btn-info mr-1" title="Editar">
+                                            <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">Editar</span>
+                                        </a>
+                                    <?php endif; ?>
                                     
-                                    <?php if($contrato->tiene_alcances): ?>
-                                        <button 
-                                            type="button" 
-                                            class="btn btn-sm btn-danger disabled" 
-                                            disabled
-                                            title="No se puede eliminar: Contrato tiene alcances activos"
-                                        >
-                                            <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
-                                        </button>
-                                        <small class="d-block text-danger mt-1">
-                                            <i class="bi bi-info-circle"></i> Tiene alcances activos
-                                        </small>
-                                    <?php else: ?>
-                                        <button 
-                                            type="button" 
-                                            class="btn btn-sm btn-danger" 
-                                            data-toggle="modal" 
-                                            data-target="#deleteContratoModal"
-                                            data-id="<?php echo $contrato->Id_contrato; ?>" 
-                                            data-nombre="<?php echo substr($contrato->Descripcion, 0, 30); ?>"
-                                            title="Eliminar"
-                                        >
-                                            <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
-                                        </button>
+                                    <?php if($canDelete): ?>
+                                        <?php if($contrato->tiene_alcances): ?>
+                                            <button 
+                                                type="button" 
+                                                class="btn btn-sm btn-danger disabled" 
+                                                disabled
+                                                title="No se puede eliminar: Contrato tiene alcances activos"
+                                            >
+                                                <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
+                                            </button>
+                                            <small class="d-block text-danger mt-1">
+                                                <i class="bi bi-info-circle"></i> Tiene alcances activos
+                                            </small>
+                                        <?php else: ?>
+                                            <button 
+                                                type="button" 
+                                                class="btn btn-sm btn-danger" 
+                                                data-toggle="modal" 
+                                                data-target="#deleteContratoModal"
+                                                data-id="<?php echo $contrato->Id_contrato; ?>" 
+                                                data-nombre="<?php echo substr($contrato->Descripcion, 0, 30); ?>"
+                                                title="Eliminar"
+                                            >
+                                                <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
+                                            </button>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </td>
                             </tr>

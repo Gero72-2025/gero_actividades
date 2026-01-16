@@ -122,7 +122,7 @@ class ReporteActividadesPdf extends FPDF {
     }
 
 
-    public function generar(array $actividades, string $fechaInicio, string $fechaFin, object $personal, array $contrato, array $alcance, int $numeroPagoSeleccionado = 0, int $mesSeleccionado = 0, int $anioSeleccionado = 0): void {
+    public function generar(array $actividades, string $fechaInicio, string $fechaFin, object $personal, array $contrato, array $alcance, int $numeroPagoSeleccionado = 0, int $mesSeleccionado = 0, int $anioSeleccionado = 0, ?object $jefeDivision = null): void {
         
         $this->AddPage();
         
@@ -154,9 +154,14 @@ class ReporteActividadesPdf extends FPDF {
         
         // Obtener expediente del contrato
         $expediente = $contrato[0]->Expediente ?? 'NO ESPECIFICADO';
+        
+        // Obtener tipo de servicio del personal (1 = Servicios Profesionales, 0 = Servicios Técnicos)
+        $tipoServicio = ($personal->Tipo_servicio == 1) 
+            ? 'SERVICIOS PROFESIONALES' 
+            : 'SERVICIOS TÉCNICOS';
 
         // --- 1. ENCABEZADO LARGO (USANDO MULTICELL) ---
-        $textEncabezado = 'INFORME DE SERVICIOS TÉCNICOS A LA GERENCIA DE ELECTRIFICACIÓN RURAL Y OBRAS -GERO- CORRESPONDIENTE AL '. $NumeroPago. ' PAGO DE LA ORDEN DE COMPRA Y PAGO MATRIZ No. '. $expediente;
+        $textEncabezado = 'INFORME DE '.$tipoServicio.' A LA GERENCIA DE ELECTRIFICACIÓN RURAL Y OBRAS -GERO- CORRESPONDIENTE AL '. $NumeroPago. ' PAGO DE LA ORDEN DE COMPRA Y PAGO MATRIZ No. '. $expediente;
 
         $this->SetFont('Arial', 'B', 12); // Fuente un poco más pequeña
         $encodedText = mb_convert_encoding($textEncabezado, 'ISO-8859-1', 'UTF-8');
@@ -290,7 +295,89 @@ class ReporteActividadesPdf extends FPDF {
             $this->Cell(0, 10, 'No se encontraron alcances para este contrato.', 1, 1, 'C');
         }
 
-        // 5. Output
+        // --- 5. UNIDAD RESPONSABLE Y FIRMAS ---
+        $this->Ln(10);
+        
+        // Texto "UNIDAD RESPONSABLE"
+        $this->SetFont('Arial', 'B', 10);
+        $unidadResponsable = 'UNIDAD RESPONSABLE: ' . ($personal->division_nombre ?? 'NO ESPECIFICADA');
+        $this->Cell(0, 5, mb_convert_encoding($unidadResponsable, 'ISO-8859-1', 'UTF-8'), 0, 1, 'L');
+        $this->Ln(15);
+        
+        // Configuración para las firmas
+        $firmaWidth = 60;
+        $firmaSpacing = 5;
+        $lineaFirmaY = $this->GetY();
+        
+        // Calcular posiciones X para centrar las 3 firmas
+        $pageWidth = $this->w - $this->lMargin - $this->rMargin;
+        $totalWidth = ($firmaWidth * 3) + ($firmaSpacing * 2);
+        $startX = $this->lMargin + (($pageWidth - $totalWidth) / 2);
+        
+        // PRIMERA FIRMA: Personal que genera el reporte
+        $this->SetXY($startX, $lineaFirmaY);
+        // Línea para firma
+        $this->Cell($firmaWidth, 0, '', 'T', 0, 'C');
+        $this->SetXY($startX, $lineaFirmaY + 2);
+        $this->SetFont('Arial', '', 9);
+        $nombrePersonal = mb_convert_encoding(
+            $personal->Nombre_Completo . ' ' . $personal->Apellido_Completo,
+            'ISO-8859-1',
+            'UTF-8'
+        );
+        $this->MultiCell($firmaWidth, 4, $nombrePersonal, 0, 'C');
+        $yAfterNombre = $this->GetY();
+        $this->SetXY($startX, $yAfterNombre);
+        $puestoPersonal = mb_convert_encoding(
+            $personal->Puesto ?? 'Personal',
+            'ISO-8859-1',
+            'UTF-8'
+        );
+        $this->SetFont('Arial', 'B', 9);
+        $this->MultiCell($firmaWidth, 4, $puestoPersonal, 0, 'C');
+        
+        // SEGUNDA FIRMA: Jefe de División
+        $x2 = $startX + $firmaWidth + $firmaSpacing;
+        $this->SetXY($x2, $lineaFirmaY);
+        $this->Cell($firmaWidth, 0, '', 'T', 0, 'C');
+        $this->SetXY($x2, $lineaFirmaY + 2);
+        $this->SetFont('Arial', '', 9);
+        if($jefeDivision){
+            $nombreJefe = mb_convert_encoding(
+                $jefeDivision->Nombre_Completo . ' ' . $jefeDivision->Apellido_Completo,
+                'ISO-8859-1',
+                'UTF-8'
+            );
+            $this->MultiCell($firmaWidth, 4, $nombreJefe, 0, 'C');
+            $yAfterNombreJefe = $this->GetY();
+            $this->SetXY($x2, $yAfterNombreJefe);
+            $puestoJefe = mb_convert_encoding(
+                $jefeDivision->Puesto ?? 'Jefe de División',
+                'ISO-8859-1',
+                'UTF-8'
+            );
+            $this->SetFont('Arial', 'B', 9);
+            $this->MultiCell($firmaWidth, 4, $puestoJefe, 0, 'C');
+        } else {
+            $this->MultiCell($firmaWidth, 4, 'Jefe de Division', 0, 'C');
+            $this->SetXY($x2, $this->GetY());
+            $this->SetFont('Arial', 'B', 9);
+            $this->MultiCell($firmaWidth, 4, mb_convert_encoding('Jefe de División', 'ISO-8859-1', 'UTF-8'), 0, 'C');
+        }
+        
+        // TERCERA FIRMA: Gerente de Electrificación Rural y Obras (Fijo)
+        $x3 = $x2 + $firmaWidth + $firmaSpacing;
+        $this->SetXY($x3, $lineaFirmaY);
+        $this->Cell($firmaWidth, 0, '', 'T', 0, 'C');
+        $this->SetXY($x3, $lineaFirmaY + 2);
+        $this->SetFont('Arial', '', 9);
+        $this->MultiCell($firmaWidth, 4, mb_convert_encoding('Ing. Armando Roberto Martínez Aguilar', 'ISO-8859-1', 'UTF-8'), 0, 'C');
+        $yAfterNombreGerente = $this->GetY();
+        $this->SetXY($x3, $yAfterNombreGerente);
+        $this->SetFont('Arial', 'B', 9);
+        $this->MultiCell($firmaWidth, 4, mb_convert_encoding('Gerente de Electrificación Rural y Obras', 'ISO-8859-1', 'UTF-8'), 0, 'C');
+
+        // 6. Output
         $pdfFileName = 'Reporte_Actividades_' . date('Ymd', strtotime($fechaInicio)) . '_' . date('Ymd', strtotime($fechaFin)) . '.pdf';
         $this->Output('D', $pdfFileName);
         exit;

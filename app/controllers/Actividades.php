@@ -29,8 +29,30 @@ class Actividades extends Controller {
         $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
         $searchTerm = isset($_GET['search']) ? trim(filter_var($_GET['search'], FILTER_SANITIZE_SPECIAL_CHARS)) : '';
         
-        // 1. Obtener el total de registros (con filtro si existe)
-        $totalActivities = $this->actividadModel->getTotalActividadesCount($searchTerm);
+        // Obtener el usuario actual y su información
+        $id_usuario_logueado = $_SESSION['user_id'];
+        $personal_logueado = $this->personalModel->getPersonalByUserId($id_usuario_logueado);
+        
+        // Determinar el filtro a aplicar según el rol del usuario
+        $totalActivities = 0;
+        $actividades = [];
+        $filter_type = 'all'; // Tipo de filtro aplicado (para referencia en la vista)
+        
+        // FILTRO 1: Si el usuario es Personal, mostrar solo sus actividades
+        if($personal_logueado && $this->esRolPersonal($id_usuario_logueado)){
+            $filter_type = 'personal';
+            $totalActivities = $this->actividadModel->getTotalActividadesCountByPersonal($personal_logueado->Id_personal, $searchTerm);
+        }
+        // FILTRO 2: Si el usuario es Jefe de División, mostrar actividades de su equipo
+        else if($personal_logueado && $this->esJefeDivision($id_usuario_logueado)){
+            $filter_type = 'division';
+            $totalActivities = $this->actividadModel->getTotalActividadesCountByDivision($personal_logueado->Id_division, $searchTerm);
+        }
+        // FILTRO 3: De lo contrario, mostrar todas las actividades (admin o sin rol específico)
+        else {
+            $filter_type = 'all';
+            $totalActivities = $this->actividadModel->getTotalActividadesCount($searchTerm);
+        }
         
         // 2. Calcular variables de paginación
         $totalPages = ceil($totalActivities / $limit);
@@ -42,12 +64,22 @@ class Actividades extends Controller {
             $page = $totalPages;
         }
 
-        // 3. Obtener los datos paginados y filtrados
-        $actividades = $this->actividadModel->getPaginatedActividades($page, $limit, $searchTerm); 
+        // 3. Obtener los datos paginados y filtrados según el tipo de filtro
+        if($filter_type === 'personal'){
+            $actividades = $this->actividadModel->getPaginatedActividadesByPersonal($page, $limit, $personal_logueado->Id_personal, $searchTerm);
+        }
+        else if($filter_type === 'division'){
+            $actividades = $this->actividadModel->getPaginatedActividadesByDivision($page, $limit, $personal_logueado->Id_division, $searchTerm);
+        }
+        else {
+            $actividades = $this->actividadModel->getPaginatedActividades($page, $limit, $searchTerm);
+        }
 
         $data = [
             'title' => 'Gestión de Actividades Diarias',
             'actividades' => $actividades,
+            'filter_type' => $filter_type,
+            'es_jefe_division' => $this->esJefeDivision($id_usuario_logueado),
             'pagination' => [
                 'total_records' => $totalActivities,
                 'total_pages' => $totalPages,
@@ -59,18 +91,42 @@ class Actividades extends Controller {
 
         $this->view('actividades/index', $data);
     }
+    
+    /**
+     * Verifica si el usuario actual tiene el rol de "Personal"
+     * Retorna true si tiene ese rol, false en caso contrario
+     */
+    private function esRolPersonal($id_usuario){
+        $permisoModel = $this->model('PermisoModel');
+        $rol = $permisoModel->getRolUsuario($id_usuario);
+        return $rol && strtolower($rol->Nombre) === 'personal';
+    }
+    
+    /**
+     * Verifica si el usuario actual es jefe de una división
+     * Retorna true si es jefe de división, false en caso contrario
+     */
+    private function esJefeDivision($id_usuario){
+        return $this->personalModel->isJefeDivision($id_usuario);
+    }
 
     // Añadir Actividad
     public function add(){
         // Verificar permiso para crear actividades
         $this->verificarAcceso('actividades', 'crear');
         
-        // Cargar datos para dropdowns
-        $alcances = $this->alcanceModel->getAlcances();
-        // --- MODIFICACIÓN CLAVE: Restringir Personal al usuario logueado ---
+        // Obtener el usuario actual
         $id_usuario_logueado = $_SESSION['user_id'];
         $personal_logueado = $this->personalModel->getPersonalByUserId($id_usuario_logueado);
 
+        // Cargar datos para dropdowns
+        // Filtrar alcances solo del contrato activo del usuario si tiene un registro de personal
+        if($personal_logueado){
+            $alcances = $this->alcanceModel->getAlcancesByActiveContract($personal_logueado->Id_personal);
+        } else {
+            $alcances = $this->alcanceModel->getAlcances();
+        }
+        
         // Si el usuario logueado tiene un registro de personal, se crea un array con solo él.
         $personal_para_dropdown = $personal_logueado ? [$personal_logueado] : [];
         // ------------------------------------------------------------------
@@ -166,12 +222,18 @@ class Actividades extends Controller {
         // Verificar permiso para editar actividades
         $this->verificarAcceso('actividades', 'editar');
         
-        // Cargar datos para dropdowns
-        $alcances = $this->alcanceModel->getAlcances();
-
-        // --- MODIFICACIÓN CLAVE: Restringir Personal al usuario logueado ---
+        // Obtener el usuario actual
         $id_usuario_logueado = $_SESSION['user_id'];
         $personal_logueado = $this->personalModel->getPersonalByUserId($id_usuario_logueado);
+
+        // Cargar datos para dropdowns
+        // Filtrar alcances solo del contrato activo del usuario si tiene un registro de personal
+        if($personal_logueado){
+            $alcances = $this->alcanceModel->getAlcancesByActiveContract($personal_logueado->Id_personal);
+        } else {
+            $alcances = $this->alcanceModel->getAlcances();
+        }
+        
         $personal_para_dropdown = $personal_logueado ? [$personal_logueado] : [];
         // ------------------------------------------------------------------
 
@@ -237,11 +299,24 @@ class Actividades extends Controller {
             $actividad = $this->actividadModel->getActividadById($id);
 
             if(!$actividad){ redirect('actividades/index'); }
-            // --- REGLA DE NEGOCIO: Solo el personal responsable puede editar ---
-            if ($personal_logueado && $actividad->Id_personal != $personal_logueado->Id_personal) {
-                 // Puedes usar flash message aquí
-                 redirect('actividades/index');
+            
+            // --- REGLA DE NEGOCIO: Validar acceso según el rol del usuario ---
+            // 1. Si es un usuario con rol "Personal", solo puede editar sus propias actividades
+            if($personal_logueado && $this->esRolPersonal($id_usuario_logueado)){
+                if($actividad->Id_personal != $personal_logueado->Id_personal){
+                    redirect('actividades/index');
+                }
             }
+            // 2. Si es un jefe de división, puede editar actividades del personal de su división
+            else if($personal_logueado && $this->esJefeDivision($id_usuario_logueado)){
+                // Obtener el personal responsable de la actividad
+                $personal_actividad = $this->personalModel->getPersonalById($actividad->Id_personal);
+                // Verificar que el personal pertenezca a la misma división
+                if(!$personal_actividad || $personal_actividad->Id_division != $personal_logueado->Id_division){
+                    redirect('actividades/index');
+                }
+            }
+            // 3. Si no es ninguno de los anteriores, se asume que es admin y puede editar todas
 
             $data = [
                 'id' => $id,
@@ -273,6 +348,29 @@ class Actividades extends Controller {
         $this->verificarAcceso('actividades', 'eliminar');
         
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
+            // Obtener información del usuario y la actividad
+            $id_usuario_logueado = $_SESSION['user_id'];
+            $personal_logueado = $this->personalModel->getPersonalByUserId($id_usuario_logueado);
+            $actividad = $this->actividadModel->getActividadById($id);
+            
+            // Validar acceso antes de eliminar
+            if($actividad){
+                // 1. Si es un usuario con rol "Personal", solo puede eliminar sus propias actividades
+                if($personal_logueado && $this->esRolPersonal($id_usuario_logueado)){
+                    if($actividad->Id_personal != $personal_logueado->Id_personal){
+                        redirect('actividades/index');
+                    }
+                }
+                // 2. Si es un jefe de división, puede eliminar actividades del personal de su división
+                else if($personal_logueado && $this->esJefeDivision($id_usuario_logueado)){
+                    $personal_actividad = $this->personalModel->getPersonalById($actividad->Id_personal);
+                    if(!$personal_actividad || $personal_actividad->Id_division != $personal_logueado->Id_division){
+                        redirect('actividades/index');
+                    }
+                }
+                // 3. Si no es ninguno de los anteriores, se asume que es admin y puede eliminar todas
+            }
+            
             if($this->actividadModel->deleteActividad($id)){
                 redirect('actividades/index');
             } else {
@@ -656,6 +754,13 @@ class Actividades extends Controller {
         $contrato = $this->contratoModel->getContratoByIdUsuario($id_personal);
         $alcance = $this->alcanceModel->getAlcancesByIdContrato($contrato[0]->Id_contrato);
 
+        // Obtener información del jefe de división
+        $jefeDivision = null;
+        if(!empty($personal_logueado->Id_Division)){
+            $divisionModel = $this->model('DivisionModel');
+            $jefeDivision = $divisionModel->getJefeDivision($personal_logueado->Id_Division);
+        }
+
         // 5. Obtener actividades del modelo
         $actividades = $this->actividadModel->getCompletedActivitiesByDateRange(
             $id_personal, 
@@ -682,7 +787,95 @@ class Actividades extends Controller {
             $alcance,
             $data['numero_pago'],  // Pasar el número de pago seleccionado
             $data['mes_reporte'],  // Pasar el mes seleccionado
-            $data['anio_reporte']  // Pasar el año seleccionado
+            $data['anio_reporte'], // Pasar el año seleccionado
+            $jefeDivision          // Pasar información del jefe de división
+        );
+        // Nota: El método 'generar' contiene 'exit', por lo que no se requiere nada más aquí.
+    }
+
+    /**
+     * Genera un reporte en formato Excel (.xls) con todas las actividades de la división.
+     * Solo accesible para usuarios que son jefes de división.
+     */
+    public function generar_reporte_excel(){
+        // Verificar autenticación y método POST
+        if(!isLoggedIn() || $_SERVER['REQUEST_METHOD'] != 'POST'){
+            redirect('actividades');
+            return;
+        }
+
+        // Limpiar cualquier salida previa
+        if (ob_get_level()) {
+            ob_clean(); 
+        }
+
+        // Obtener y validar datos del formulario
+        $data = [
+            'fecha_inicio' => trim($_POST['fecha_inicio']),
+            'fecha_fin'    => trim($_POST['fecha_fin'])
+        ];
+
+        // Validar fechas
+        if(empty($data['fecha_inicio']) || empty($data['fecha_fin'])){
+            flash('reporte_error', 'Debe proporcionar ambas fechas.', 'alert-danger');
+            redirect('actividades');
+            return;
+        }
+
+        if(strtotime($data['fecha_inicio']) > strtotime($data['fecha_fin'])){
+            flash('reporte_error', 'La fecha de inicio no puede ser mayor que la fecha de fin.', 'alert-danger');
+            redirect('actividades');
+            return;
+        }
+
+        // Verificar que el usuario sea jefe de división
+        $id_usuario_logueado = $_SESSION['user_id'];
+        
+        if(!$this->esJefeDivision($id_usuario_logueado)){
+            flash('reporte_error', 'No tiene permisos para generar este reporte.', 'alert-danger');
+            redirect('actividades');
+            return;
+        }
+
+        // Obtener información del personal y su división
+        $personal_logueado = $this->personalModel->getPersonalByUserId($id_usuario_logueado);
+        
+        if (!$personal_logueado || empty($personal_logueado->Id_Division)) {
+            flash('reporte_error', 'No se pudo obtener la información de la división.', 'alert-danger');
+            redirect('actividades');
+            return;
+        }
+
+        // Obtener información de la división
+        $divisionModel = $this->model('DivisionModel');
+        $division = $divisionModel->getDivisionById($personal_logueado->Id_Division);
+        
+        if (!$division) {
+            flash('reporte_error', 'División no encontrada.', 'alert-danger');
+            redirect('actividades');
+            return;
+        }
+
+        // Obtener información del jefe de división
+        $jefeDivision = $divisionModel->getJefeDivision($personal_logueado->Id_Division);
+
+        // Obtener actividades de la división en el rango de fechas
+        $actividades = $this->actividadModel->getActividadesByDivisionForExport(
+            $personal_logueado->Id_Division,
+            $data['fecha_inicio'], 
+            $data['fecha_fin']
+        );
+
+        // Cargar y generar el Excel
+        require_once APPROOT . '/libraries/ReporteActividadesExcel.php'; 
+
+        $excelGenerator = new ReporteActividadesExcel();
+        $excelGenerator->generar(
+            $actividades, 
+            $division,
+            $jefeDivision,
+            $data['fecha_inicio'], 
+            $data['fecha_fin']
         );
         // Nota: El método 'generar' contiene 'exit', por lo que no se requiere nada más aquí.
     }

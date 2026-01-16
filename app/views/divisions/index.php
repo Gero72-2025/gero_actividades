@@ -1,13 +1,24 @@
 <?php require APPROOT . '/views/layouts/header.php'; ?>
+<?php 
+$canCreate = tienePermiso('divisions.crear');
+$canEdit   = tienePermiso('divisions.editar');
+$canDelete = tienePermiso('divisions.eliminar');
+?>
 
 <div class="row mb-4">
     <div class="col-12 col-md-6 mb-3 mb-md-0">
         <h1><?php echo $data['title']; ?></h1>
     </div>
     <div class="col-12 col-md-6">
-        <a href="<?php echo URLROOT; ?>/divisions/add" class="btn btn-success w-100">
-            <i class="bi bi-plus"></i> Añadir División
-        </a>
+        <?php if($canCreate): ?>
+            <a href="<?php echo URLROOT; ?>/divisions/add" class="btn btn-success w-100">
+                <i class="bi bi-plus"></i> Añadir División
+            </a>
+        <?php else: ?>
+            <button class="btn btn-success w-100" disabled title="Sin permiso para crear">
+                <i class="bi bi-plus"></i> Añadir División
+            </button>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -37,20 +48,24 @@
                                 <td class="hide-on-mobile" data-label="Siglas"><?php echo $division->Siglas; ?></td>
                                 <td class="hide-on-mobile" data-label="Jefe"><?php echo $division->jefe_nombre ?? 'N/A'; ?></td> 
                                 <td data-label="Acciones" class="text-nowrap">
-                                    <a href="<?php echo URLROOT; ?>/divisions/edit/<?php echo $division->Id_Division; ?>" class="btn btn-sm btn-info mr-1" title="Editar">
-                                        <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">Editar</span>
-                                    </a>
-                                    <button 
-                                        type="button" 
-                                        class="btn btn-sm btn-danger" 
-                                        data-toggle="modal" 
-                                        data-target="#deleteDivisionModal"
-                                        data-id="<?php echo $division->Id_Division; ?>" 
-                                        data-nombre="<?php echo $division->Nombre; ?>"
-                                        title="Eliminar"
-                                    >
-                                        <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
-                                    </button>
+                                    <?php if($canEdit): ?>
+                                        <a href="<?php echo URLROOT; ?>/divisions/edit/<?php echo $division->Id_Division; ?>" class="btn btn-sm btn-info mr-1" title="Editar">
+                                            <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">Editar</span>
+                                        </a>
+                                    <?php endif; ?>
+                                    <?php if($canDelete): ?>
+                                        <button 
+                                            type="button" 
+                                            class="btn btn-sm btn-danger" 
+                                            data-toggle="modal" 
+                                            data-target="#deleteDivisionModal"
+                                            data-id="<?php echo $division->Id_Division; ?>" 
+                                            data-nombre="<?php echo $division->Nombre; ?>"
+                                            title="Eliminar"
+                                        >
+                                            <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
+                                        </button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

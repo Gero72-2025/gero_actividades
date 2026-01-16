@@ -242,16 +242,24 @@ class ActividadModel {
 
         $this->db->query('
             SELECT 
-                Id_actividad,                     
-                Fecha_ingreso,
-                Estado_actividad,
-                Descripcion_realizada             
+                a.Id_actividad,                     
+                a.Fecha_ingreso,
+                a.Estado_actividad,
+                a.Descripcion_realizada             
             FROM 
-                actividades 
+                actividades a
+            JOIN 
+                alcances al ON a.Id_alcance = al.Id_alcance
+            JOIN 
+                contratos c ON al.Id_contrato = c.Id_contrato
+            JOIN 
+                personal p ON a.Id_personal = p.Id_personal
             WHERE 
-                Id_personal = :id_personal AND
-                Fecha_ingreso BETWEEN :start_date AND :end_date AND
-                Estado = 1
+                a.Id_personal = :id_personal AND
+                a.Fecha_ingreso BETWEEN :start_date AND :end_date AND
+                a.Estado = 1 AND
+                c.Contrato_activo = 1 AND
+                p.Id_contrato = c.Id_contrato
         ');
 
         $this->db->bind(':id_personal', $idPersonal);
@@ -403,6 +411,346 @@ class ActividadModel {
         ');
         $this->db->bind(':division_id', $divisionId);
         return $this->db->single();
+    }
+
+    /**
+     * Obtiene actividades paginadas para un personal específico y su contrato activo.
+     * Filtra por el personal del usuario logueado y los alcances del contrato activo.
+     * 
+     * @param int $page - Página actual
+     * @param int $limit - Límite de registros por página
+     * @param int $idPersonal - ID del personal (usuario logueado)
+     * @param string $searchTerm - Término de búsqueda opcional
+     * @return array Actividades filtradas
+     */
+    public function getPaginatedActividadesByPersonal($page, $limit, $idPersonal, $searchTerm = ''){
+        $offset = ($page - 1) * $limit;
+
+        $query = '
+            SELECT 
+                a.*, 
+                al.Descripcion AS Alcance_Descripcion,
+                p.Nombre_Completo AS Personal_Nombre,
+                p.Apellido_Completo AS Personal_Apellido
+            FROM 
+                actividades a
+            JOIN 
+                alcances al ON a.Id_alcance = al.Id_alcance
+            JOIN 
+                personal p ON a.Id_personal = p.Id_personal
+            JOIN
+                contratos c ON al.Id_contrato = c.Id_contrato
+            WHERE 
+                a.Estado = 1
+                AND a.Id_personal = :id_personal
+                AND c.Contrato_activo = 1';
+        
+        $binds = [':id_personal' => $idPersonal];
+        
+        // Agregar filtro de búsqueda
+        if (!empty($searchTerm)) {
+            $query .= ' AND (
+                al.Descripcion LIKE :search_term OR
+                p.Nombre_Completo LIKE :search_term OR
+                p.Apellido_Completo LIKE :search_term OR
+                a.Descripcion_realizada LIKE :search_term
+            )';
+            $binds[':search_term'] = '%' . $searchTerm . '%';
+        }
+        
+        $query .= ' 
+            ORDER BY 
+                a.Fecha_ingreso DESC, a.Fecha_creacion DESC
+            LIMIT :limit OFFSET :offset
+        ';
+
+        $this->db->query($query);
+        
+        foreach ($binds as $key => $value) {
+            $this->db->bind($key, $value);
+        }
+
+        $this->db->bind(':limit', $limit);
+        $this->db->bind(':offset', $offset);
+        
+        return $this->db->resultSet();
+    }
+
+    /**
+     * Obtiene el conteo total de actividades para un personal específico.
+     * Filtra por el personal del usuario logueado y el contrato activo.
+     * 
+     * @param int $idPersonal - ID del personal
+     * @param string $searchTerm - Término de búsqueda opcional
+     * @return int Total de actividades
+     */
+    public function getTotalActividadesCountByPersonal($idPersonal, $searchTerm = ''){
+        $query = '
+            SELECT 
+                COUNT(*) as total_count
+            FROM 
+                actividades a
+            JOIN 
+                alcances al ON a.Id_alcance = al.Id_alcance
+            JOIN 
+                personal p ON a.Id_personal = p.Id_personal
+            JOIN
+                contratos c ON al.Id_contrato = c.Id_contrato
+            WHERE 
+                a.Estado = 1
+                AND a.Id_personal = :id_personal
+                AND c.Contrato_activo = 1';
+        
+        $binds = [':id_personal' => $idPersonal];
+
+        if (!empty($searchTerm)) {
+            $query .= ' AND (
+                al.Descripcion LIKE :search_term OR
+                p.Nombre_Completo LIKE :search_term OR
+                p.Apellido_Completo LIKE :search_term OR
+                a.Descripcion_realizada LIKE :search_term
+            )';
+            $binds[':search_term'] = '%' . $searchTerm . '%';
+        }
+
+        $this->db->query($query);
+        foreach ($binds as $key => $value) {
+            $this->db->bind($key, $value);
+        }
+        
+        $row = $this->db->single();
+        return $row->total_count;
+    }
+
+    /**
+     * Obtiene actividades paginadas para todos los usuarios de una división específica.
+     * Utilizado cuando el usuario logueado es jefe de división.
+     * 
+     * @param int $page - Página actual
+     * @param int $limit - Límite de registros por página
+     * @param int $divisionId - ID de la división
+     * @param string $searchTerm - Término de búsqueda opcional
+     * @return array Actividades filtradas
+     */
+    public function getPaginatedActividadesByDivision($page, $limit, $divisionId, $searchTerm = ''){
+        $offset = ($page - 1) * $limit;
+
+        $query = '
+            SELECT 
+                a.*, 
+                al.Descripcion AS Alcance_Descripcion,
+                p.Nombre_Completo AS Personal_Nombre,
+                p.Apellido_Completo AS Personal_Apellido
+            FROM 
+                actividades a
+            JOIN 
+                alcances al ON a.Id_alcance = al.Id_alcance
+            JOIN 
+                personal p ON a.Id_personal = p.Id_personal
+            JOIN
+                contratos c ON al.Id_contrato = c.Id_contrato
+            WHERE 
+                a.Estado = 1
+                AND p.Id_division = :division_id
+                AND c.Contrato_activo = 1';
+        
+        $binds = [':division_id' => $divisionId];
+        
+        // Agregar filtro de búsqueda
+        if (!empty($searchTerm)) {
+            $query .= ' AND (
+                al.Descripcion LIKE :search_term OR
+                p.Nombre_Completo LIKE :search_term OR
+                p.Apellido_Completo LIKE :search_term OR
+                a.Descripcion_realizada LIKE :search_term
+            )';
+            $binds[':search_term'] = '%' . $searchTerm . '%';
+        }
+        
+        $query .= ' 
+            ORDER BY 
+                a.Fecha_ingreso DESC, a.Fecha_creacion DESC
+            LIMIT :limit OFFSET :offset
+        ';
+
+        $this->db->query($query);
+        
+        foreach ($binds as $key => $value) {
+            $this->db->bind($key, $value);
+        }
+
+        $this->db->bind(':limit', $limit);
+        $this->db->bind(':offset', $offset);
+        
+        return $this->db->resultSet();
+    }
+
+    /**
+     * Obtiene el conteo total de actividades para una división específica.
+     * Utilizado para jefes de división.
+     * 
+     * @param int $divisionId - ID de la división
+     * @param string $searchTerm - Término de búsqueda opcional
+     * @return int Total de actividades
+     */
+    public function getTotalActividadesCountByDivision($divisionId, $searchTerm = ''){
+        $query = '
+            SELECT 
+                COUNT(*) as total_count
+            FROM 
+                actividades a
+            JOIN 
+                alcances al ON a.Id_alcance = al.Id_alcance
+            JOIN 
+                personal p ON a.Id_personal = p.Id_personal
+            JOIN
+                contratos c ON al.Id_contrato = c.Id_contrato
+            WHERE 
+                a.Estado = 1
+                AND p.Id_division = :division_id
+                AND c.Contrato_activo = 1';
+        
+        $binds = [':division_id' => $divisionId];
+
+        if (!empty($searchTerm)) {
+            $query .= ' AND (
+                al.Descripcion LIKE :search_term OR
+                p.Nombre_Completo LIKE :search_term OR
+                p.Apellido_Completo LIKE :search_term OR
+                a.Descripcion_realizada LIKE :search_term
+            )';
+            $binds[':search_term'] = '%' . $searchTerm . '%';
+        }
+
+        $this->db->query($query);
+        foreach ($binds as $key => $value) {
+            $this->db->bind($key, $value);
+        }
+        
+        $row = $this->db->single();
+        return $row->total_count;
+    }
+
+    /**
+     * Obtiene todas las actividades de una división para exportar a Excel.
+     * Incluye información completa del personal, contrato, alcance y estado.
+     */
+    public function getActividadesByDivisionForExport($divisionId, $fechaInicio, $fechaFin){
+        $this->db->query('
+            SELECT 
+                a.Id_actividad,
+                a.Fecha_ingreso,
+                a.Estado_actividad,
+                a.Descripcion_realizada,
+                p.Nombre_Completo AS personal_nombre,
+                p.Apellido_Completo AS personal_apellido,
+                c.Expediente AS contrato_expediente,
+                al.Descripcion AS alcance_descripcion
+            FROM 
+                actividades a
+            JOIN 
+                alcances al ON a.Id_alcance = al.Id_alcance
+            JOIN 
+                personal p ON a.Id_personal = p.Id_personal
+            JOIN
+                contratos c ON al.Id_contrato = c.Id_contrato
+            WHERE 
+                a.Estado = 1
+                AND p.Id_division = :division_id
+                AND c.Contrato_activo = 1
+                AND a.Fecha_ingreso BETWEEN :fecha_inicio AND :fecha_fin
+            ORDER BY 
+                a.Fecha_ingreso ASC, p.Apellido_Completo, p.Nombre_Completo
+        ');
+        
+        $this->db->bind(':division_id', $divisionId);
+        $this->db->bind(':fecha_inicio', $fechaInicio);
+        $this->db->bind(':fecha_fin', $fechaFin);
+        
+        return $this->db->resultSet();
+    }
+
+    /**
+     * Obtiene resumen de estadísticas de TODAS las divisiones (para Gerentes)
+     */
+    public function getSummaryStatsAllDivisions(){
+        $this->db->query('
+            SELECT 
+                d.Id_Division,
+                d.Nombre AS Division_Nombre,
+                COUNT(a.Id_actividad) AS total,
+                SUM(CASE WHEN a.Estado_actividad = "Completada" THEN 1 ELSE 0 END) AS completadas,
+                SUM(CASE WHEN a.Estado_actividad = "En Progreso" THEN 1 ELSE 0 END) AS en_progreso,
+                SUM(CASE WHEN a.Estado_actividad = "Pendiente" THEN 1 ELSE 0 END) AS pendientes,
+                COUNT(DISTINCT p.Id_personal) AS cantidad_personal
+            FROM 
+                division d
+            LEFT JOIN 
+                personal p ON d.Id_Division = p.Id_division AND p.Estado = 1
+            LEFT JOIN 
+                actividades a ON p.Id_personal = a.Id_personal AND a.Estado_actividad IN ("Completada", "En Progreso", "Pendiente")
+            WHERE 
+                d.Estado_division = 1
+            GROUP BY 
+                d.Id_Division, d.Nombre
+            ORDER BY 
+                d.Nombre ASC
+        ');
+        return $this->db->resultSet();
+    }
+
+    /**
+     * Obtiene actividades por semana para TODAS las divisiones
+     */
+    public function getActividadesByWeekAllDivisions($weeksBack = 4){
+        $this->db->query('
+            SELECT 
+                WEEK(a.Fecha_creacion) AS semana,
+                YEAR(a.Fecha_creacion) AS anio,
+                d.Nombre AS Division_Nombre,
+                d.Id_Division,
+                COUNT(a.Id_actividad) AS cantidad
+            FROM 
+                actividades a
+            JOIN 
+                personal p ON a.Id_personal = p.Id_personal
+            JOIN 
+                division d ON p.Id_division = d.Id_Division
+            WHERE 
+                a.Fecha_creacion >= DATE_SUB(NOW(), INTERVAL :weeks WEEK)
+                AND d.Estado_division = 1
+            GROUP BY 
+                WEEK(a.Fecha_creacion), YEAR(a.Fecha_creacion), d.Id_Division, d.Nombre
+            ORDER BY 
+                a.Fecha_creacion DESC
+        ');
+        $this->db->bind(':weeks', $weeksBack);
+        return $this->db->resultSet();
+    }
+
+    /**
+     * Obtiene lista de todas las divisiones activas
+     */
+    public function getAllDivisions(){
+        $this->db->query('
+            SELECT 
+                d.Id_Division,
+                d.Nombre,
+                d.Siglas,
+                COUNT(DISTINCT p.Id_personal) AS cantidad_personal,
+                d.Estado_division
+            FROM 
+                division d
+            LEFT JOIN 
+                personal p ON d.Id_Division = p.Id_division AND p.Estado = 1
+            WHERE 
+                d.Estado_division = 1
+            GROUP BY 
+                d.Id_Division, d.Nombre, d.Siglas
+            ORDER BY 
+                d.Nombre ASC
+        ');
+        return $this->db->resultSet();
     }
 
 }

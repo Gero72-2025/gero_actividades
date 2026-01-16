@@ -58,7 +58,7 @@
 
                     <div class="form-group col-md-6">
                         <label for="id_contrato">Contrato:</label>
-                        <select name="id_contrato" class="form-control form-control-lg">
+                        <select name="id_contrato" id="id_contrato" class="form-control form-control-lg <?php echo (!empty($data['id_contrato_err'])) ? 'is-invalid' : ''; ?>">
                             <option value="">Seleccione un contrato (Opcional)</option>
                             <?php 
                             // Asume que $data['contratos'] tiene objetos con Id_contrato y Nombre_Contrato
@@ -73,6 +73,7 @@
                                 <?php endforeach; 
                             endif; ?>
                         </select>
+                        <span class="invalid-feedback"><?php echo $data['id_contrato_err']; ?></span>
                     </div>
                 </div>
 
@@ -113,4 +114,58 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de advertencia para contrato activo -->
+<div class="modal fade" id="modalContratoActivo" tabindex="-1" role="dialog" aria-labelledby="modalContratoActivoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-white">
+        <h5 class="modal-title" id="modalContratoActivoLabel">
+            <i class="bi bi-exclamation-triangle-fill"></i> No se puede cambiar el contrato
+        </h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p><strong>No puede cambiar el contrato en este momento.</strong></p>
+        <p>El contrato actual tiene actividades registradas y aún se encuentra activo.</p>
+        <p>Debe finalizar el contrato primero para poder asignar uno nuevo al personal.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Entendido</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const contratoSelect = document.getElementById('id_contrato');
+    const contratoOriginal = '<?php echo isset($data['id_contrato']) ? $data['id_contrato'] : ''; ?>';
+    const contratoActivo = <?php echo (isset($data['contrato_actual']) && $data['contrato_actual'] && $data['contrato_actual']->Contrato_activo == 1) ? 'true' : 'false'; ?>;
+    const contratoTieneActividades = <?php echo (isset($data['contrato_tiene_actividades']) && $data['contrato_tiene_actividades']) ? 'true' : 'false'; ?>;
+    
+    if(contratoSelect) {
+        contratoSelect.addEventListener('change', function(e) {
+            // Si se intenta cambiar el contrato
+            if(this.value !== contratoOriginal && contratoOriginal !== '') {
+                // Verificar si tiene actividades
+                if(contratoTieneActividades) {
+                    // Si tiene actividades, verificar si está activo
+                    if(contratoActivo) {
+                        // No permitir el cambio: tiene actividades Y está activo
+                        $('#modalContratoActivo').modal('show');
+                        // Revertir al valor original
+                        this.value = contratoOriginal;
+                    }
+                    // Si tiene actividades pero NO está activo, permitir el cambio
+                }
+                // Si NO tiene actividades, permitir el cambio sin restricciones
+            }
+        });
+    }
+});
+</script>
+
 <?php require APPROOT . '/views/layouts/footer.php'; ?>

@@ -44,9 +44,21 @@ class Users extends Controller {
                 // Chequear y establecer el usuario logueado
                 $loggedInUser = $this->userModel->login($data['email'], $data['password']);
                 if($loggedInUser){
+                    // Obtener nombre del personal asociado
+                    $personalInfo = $this->userModel->getNombrePersonal($loggedInUser->Id_usuario);
+                    
                     // Crear Sesión
                     $_SESSION['user_id'] = $loggedInUser->Id_usuario;
                     $_SESSION['user_email'] = $loggedInUser->email;
+                    
+                    // Guardar nombre completo si existe registro de personal
+                    if($personalInfo){
+                        $_SESSION['user_name'] = trim($personalInfo->Nombre_Completo . ' ' . $personalInfo->Apellido_Completo);
+                    } else {
+                        // Si no tiene personal asignado, usar el email como fallback
+                        $_SESSION['user_name'] = $loggedInUser->email;
+                    }
+                    
                     redirect('pages/index');
                 } else {
                     $data['password_err'] = 'Contraseña incorrecta';
@@ -71,16 +83,39 @@ class Users extends Controller {
     }
 
     public function logout(){
-        // 1. Destruir las variables de sesión específicas
+        // 1. Prevenir caché del navegador
+        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+        header("Cache-Control: post-check=0, pre-check=0", false);
+        header("Pragma: no-cache");
+        header("Expires: 0");
+        
+        // 2. Destruir las variables de sesión específicas
         unset($_SESSION['user_id']);
         unset($_SESSION['user_email']);
         
-        // 2. Destruir la sesión por completo (si es necesario)
+        // 3. Destruir la sesión por completo
         session_destroy();
 
-        // 3. Redirigir al usuario al login
+        // 4. Redirigir al usuario al login
         // La función redirect() está definida en helpers.php
         redirect('users/login'); 
+    }
+
+    /**
+     * Endpoint AJAX para verificar si hay sesión activa
+     * Retorna JSON con el estado de la sesión
+     */
+    public function checksession(){
+        // Indicar que es una respuesta JSON
+        header('Content-Type: application/json');
+        
+        // Verificar si el usuario está logueado
+        if(isLoggedIn()){
+            echo json_encode(['logged_in' => true]);
+        } else {
+            echo json_encode(['logged_in' => false]);
+        }
+        exit;
     }
     // Otras funciones como register, logout, etc. irían aquí
 }

@@ -7,7 +7,7 @@ class PersonalModel {
     }
 
     /**
-     * Obtiene todo el personal ACTIVO (Estado = 1) con nombres de división y usuario (Email).
+     * Obtiene todo el personal ACTIVO (Estado = 1) con nombres de división, usuario (Email) y contrato.
      */
     public function getPersonal(){
         $this->db->query('
@@ -18,13 +18,18 @@ class PersonalModel {
                 p.Puesto,
                 p.Tipo_servicio,
                 d.Nombre AS division_nombre,
-                u.Email AS usuario_email
+                u.Email AS usuario_email,
+                c.Expediente AS contrato_expediente,
+                c.Descripcion AS contrato_descripcion,
+                c.Contrato_activo
             FROM 
                 personal p
             LEFT JOIN 
                 division d ON p.Id_division = d.Id_Division
             LEFT JOIN
                 usuario u ON p.Id_usuario = u.Id_usuario
+            LEFT JOIN
+                contratos c ON p.Id_contrato = c.Id_contrato
             WHERE 
                 p.Estado = 1
             ORDER BY 
@@ -64,7 +69,18 @@ class PersonalModel {
      * Obtiene el registro de Personal asociado a un ID de Usuario (Id_usuario).
      */
     public function getPersonalByUserId($userId){
-        $this->db->query('SELECT * FROM personal WHERE Id_usuario = :user_id AND Estado = 1');
+        $this->db->query('
+            SELECT 
+                p.*,
+                d.Nombre AS division_nombre,
+                d.Id_Division
+            FROM 
+                personal p
+            LEFT JOIN 
+                division d ON p.Id_division = d.Id_Division
+            WHERE 
+                p.Id_usuario = :user_id AND p.Estado = 1
+        ');
         $this->db->bind(':user_id', $userId);
         return $this->db->single(); 
     }
@@ -158,15 +174,21 @@ class PersonalModel {
                 p.Nombre_Completo,
                 p.Apellido_Completo,
                 p.Puesto,
+                p.Tipo_servicio,
                 p.Id_usuario,
                 d.Nombre AS division_nombre,
-                u.Email AS usuario_email
+                u.Email AS usuario_email,
+                c.Expediente AS contrato_expediente,
+                c.Descripcion AS contrato_descripcion,
+                c.Contrato_activo
             FROM 
                 personal p
             LEFT JOIN 
                 division d ON p.Id_division = d.Id_Division
             LEFT JOIN
                 usuario u ON p.Id_usuario = u.Id_usuario
+            LEFT JOIN
+                contratos c ON p.Id_contrato = c.Id_contrato
             WHERE 
                 p.Id_division = :division_id AND p.Estado = 1
             ORDER BY 

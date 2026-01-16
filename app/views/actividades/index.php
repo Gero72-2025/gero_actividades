@@ -1,16 +1,33 @@
 <?php require APPROOT . '/views/layouts/header.php'; ?>
+<?php 
+$canCreate = tienePermiso('actividades.crear');
+$canEdit   = tienePermiso('actividades.editar');
+$canDelete = tienePermiso('actividades.eliminar');
+?>
 
 <div class="row mb-4">
     <div class="col-12 col-md-7 mb-3 mb-md-0">
         <h1><?php echo $data['title']; ?></h1>
     </div>
     <div class="col-12 col-md-5 d-flex flex-column flex-md-row gap-2">
-        <a href="<?php echo URLROOT; ?>/actividades/add" class="btn btn-success flex-grow-1">
-            <i class="bi bi-plus"></i> <span class="d-none d-sm-inline">Añadir</span> Actividad
-        </a>
-        <button type="button" class="btn btn-primary flex-grow-1" data-toggle="modal" data-target="#reporteActividadesModal">
-            <i class="bi bi-file-pdf"></i> <span class="d-none d-sm-inline">Generar</span> PDF
-        </button>
+        <?php if($canCreate): ?>
+            <a href="<?php echo URLROOT; ?>/actividades/add" class="btn btn-success flex-grow-1">
+                <i class="bi bi-plus"></i> <span class="d-none d-sm-inline">Añadir</span> Actividad
+            </a>
+        <?php else: ?>
+            <button class="btn btn-success flex-grow-1" disabled title="Sin permiso para crear">
+                <i class="bi bi-plus"></i> <span class="d-none d-sm-inline">Añadir</span> Actividad
+            </button>
+        <?php endif; ?>
+        <?php if(isset($data['es_jefe_division']) && $data['es_jefe_division']): ?>
+            <button type="button" class="btn btn-success flex-grow-1" data-toggle="modal" data-target="#reporteExcelModal">
+                <i class="bi bi-file-earmark-excel"></i> <span class="d-none d-sm-inline">Generar</span> Excel
+            </button>
+        <?php else: ?>
+            <button type="button" class="btn btn-primary flex-grow-1" data-toggle="modal" data-target="#reporteActividadesModal">
+                <i class="bi bi-file-pdf"></i> <span class="d-none d-sm-inline">Generar</span> PDF
+            </button>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -85,20 +102,25 @@
                                     <span class="badge <?php echo $badge_class; ?>"><?php echo $actividad->Estado_actividad; ?></span>
                                 </td>
                                 <td data-label="Acciones" class="text-nowrap">
-                                    <a href="<?php echo URLROOT; ?>/actividades/edit/<?php echo $actividad->Id_actividad; ?>" class="btn btn-sm btn-info" title="Editar">
-                                        <i class="bi bi-pencil-square"></i>
-                                    </a>
-                                    <button 
-                                        type="button" 
-                                        class="btn btn-sm btn-danger" 
-                                        data-toggle="modal" 
-                                        data-target="#deleteActividadModal"
-                                        data-id="<?php echo $actividad->Id_actividad; ?>" 
-                                        data-descripcion="<?php echo $actividad->Alcance_Descripcion; ?>"
-                                        title="Eliminar"
-                                    >
-                                        <i class="bi bi-trash"></i>
-                                    </button>
+                                        <?php if($canEdit): ?>
+                                            <a href="<?php echo URLROOT; ?>/actividades/edit/<?php echo $actividad->Id_actividad; ?>" class="btn btn-sm btn-info" title="Editar">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </a>
+                                        <?php endif; ?>
+                                    
+                                        <?php if($canDelete): ?>
+                                            <button 
+                                                type="button" 
+                                                class="btn btn-sm btn-danger" 
+                                                data-toggle="modal" 
+                                                data-target="#deleteActividadModal"
+                                                data-id="<?php echo $actividad->Id_actividad; ?>"
+                                                data-nombre="<?php echo htmlspecialchars($actividad->Descripcion_realizada); ?>"
+                                                title="Eliminar"
+                                            >
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        <?php endif; ?>
                                 </td>
                             </tr>
                 <?php endforeach; ?>
@@ -230,6 +252,43 @@
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary" id="btnGenerarReporte">
                         <i class="bi bi-download"></i> Generar PDF
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Reporte Excel para Jefes de División -->
+<div class="modal fade" id="reporteExcelModal" tabindex="-1" aria-labelledby="reporteExcelModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="reporteExcelModalLabel">Generar Reporte Excel - Actividades de División</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            
+            <form id="reporteExcelForm" action="<?php echo URLROOT; ?>/actividades/generar_reporte_excel" method="post" target="_blank">
+                <div class="modal-body">
+                    <p>Seleccione el rango de fechas para generar el reporte de actividades de todo el personal de su división.</p>
+                    
+                    <div class="form-group">
+                        <label for="fecha_inicio_excel">Fecha de Inicio:</label>
+                        <input type="date" class="form-control" id="fecha_inicio_excel" name="fecha_inicio" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fecha_fin_excel">Fecha de Fin:</label>
+                        <input type="date" class="form-control" id="fecha_fin_excel" name="fecha_fin" required>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success" id="btnGenerarExcel">
+                        <i class="bi bi-file-earmark-excel"></i> Generar Excel
                     </button>
                 </div>
             </form>

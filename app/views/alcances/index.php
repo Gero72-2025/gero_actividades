@@ -1,13 +1,24 @@
 <?php require APPROOT . '/views/layouts/header.php'; ?>
+<?php 
+$canCreate = tienePermiso('alcances.crear');
+$canEdit   = tienePermiso('alcances.editar');
+$canDelete = tienePermiso('alcances.eliminar');
+?>
 
 <div class="row mb-4">
     <div class="col-12 col-md-6 mb-3 mb-md-0">
         <h1><?php echo $data['title']; ?></h1>
     </div>
     <div class="col-12 col-md-6">
-        <a href="<?php echo URLROOT; ?>/alcances/add" class="btn btn-success w-100">
-            <i class="bi bi-plus"></i> Añadir Alcance
-        </a>
+        <?php if($canCreate): ?>
+            <a href="<?php echo URLROOT; ?>/alcances/add" class="btn btn-success w-100">
+                <i class="bi bi-plus"></i> Añadir Alcance
+            </a>
+        <?php else: ?>
+            <button class="btn btn-success w-100" disabled title="Sin permiso para crear">
+                <i class="bi bi-plus"></i> Añadir Alcance
+            </button>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -62,26 +73,30 @@
                                                         <td data-label="Descripción"><?php echo substr($alcance->Descripcion, 0, 80) . (strlen($alcance->Descripcion) > 80 ? '...' : ''); ?></td>
                                                         <td class="hide-on-mobile" data-label="Creación"><?php echo date('d/m/Y', strtotime($alcance->Fecha_creacion)); ?></td>
                                                         <td data-label="Acciones" class="text-nowrap">
-                                                            <a href="<?php echo URLROOT; ?>/alcances/edit/<?php echo $alcance->Id_alcance; ?>" class="btn btn-sm btn-info mr-1" title="Editar">
-                                                                <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">Editar</span>
-                                                            </a>
-                                                            <?php if($alcance->tiene_actividades): ?>
-                                                                <button type="button" class="btn btn-sm btn-danger disabled" disabled title="No se puede eliminar: tiene actividades">
-                                                                    <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
-                                                                </button>
-                                                                <small class="d-block text-danger"><i class="bi bi-info-circle"></i> Tiene actividades</small>
-                                                            <?php else: ?>
-                                                                <button 
-                                                                    type="button" 
-                                                                    class="btn btn-sm btn-danger" 
-                                                                    data-toggle="modal" 
-                                                                    data-target="#deleteAlcanceModal"
-                                                                    data-id="<?php echo $alcance->Id_alcance; ?>" 
-                                                                    data-nombre="<?php echo $contrato['Descripcion']; ?>"
-                                                                    title="Eliminar"
-                                                                >
-                                                                    <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
-                                                                </button>
+                                                            <?php if($canEdit): ?>
+                                                                <a href="<?php echo URLROOT; ?>/alcances/edit/<?php echo $alcance->Id_alcance; ?>" class="btn btn-sm btn-info mr-1" title="Editar">
+                                                                    <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">Editar</span>
+                                                                </a>
+                                                            <?php endif; ?>
+                                                            <?php if($canDelete): ?>
+                                                                <?php if($alcance->tiene_actividades): ?>
+                                                                    <button type="button" class="btn btn-sm btn-danger disabled" disabled title="No se puede eliminar: tiene actividades">
+                                                                        <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
+                                                                    </button>
+                                                                    <small class="d-block text-danger"><i class="bi bi-info-circle"></i> Tiene actividades</small>
+                                                                <?php else: ?>
+                                                                    <button 
+                                                                        type="button" 
+                                                                        class="btn btn-sm btn-danger" 
+                                                                        data-toggle="modal" 
+                                                                        data-target="#deleteAlcanceModal"
+                                                                        data-id="<?php echo $alcance->Id_alcance; ?>" 
+                                                                        data-nombre="<?php echo $contrato['Descripcion']; ?>"
+                                                                        title="Eliminar"
+                                                                    >
+                                                                        <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
+                                                                    </button>
+                                                                <?php endif; ?>
                                                             <?php endif; ?>
                                                         </td>
                                                     </tr>

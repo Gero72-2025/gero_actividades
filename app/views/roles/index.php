@@ -1,4 +1,10 @@
 <?php require APPROOT . '/views/layouts/header.php'; ?>
+<?php 
+$canCreate = tienePermiso('roles.crear');
+$canEdit   = tienePermiso('roles.editar');
+$canDelete = tienePermiso('roles.eliminar');
+$canPerms  = tienePermiso('roles.permisos');
+?>
 
 <?php 
     // Mostrar mensaje flash si existe
@@ -16,9 +22,15 @@
         <h1><?php echo $data['title']; ?></h1>
     </div>
     <div class="col-12 col-md-6">
-        <a href="<?php echo URLROOT; ?>/roles/add" class="btn btn-success w-100">
-            <i class="bi bi-plus"></i> Crear Nuevo Role
-        </a>
+        <?php if($canCreate): ?>
+            <a href="<?php echo URLROOT; ?>/roles/add" class="btn btn-success w-100">
+                <i class="bi bi-plus"></i> Crear Nuevo Role
+            </a>
+        <?php else: ?>
+            <button class="btn btn-success w-100" disabled title="Sin permiso para crear">
+                <i class="bi bi-plus"></i> Crear Nuevo Role
+            </button>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -74,23 +86,29 @@
                                     <span class="badge badge-primary"><?php echo $role->cantidad_permisos; ?></span>
                                 </td>
                                 <td data-label="Acciones" class="text-nowrap">
-                                    <a href="<?php echo URLROOT; ?>/roles/permisos/<?php echo $role->Id_role; ?>" class="btn btn-sm btn-warning mr-1" title="Permisos">
-                                        <i class="bi bi-lock"></i> <span class="d-none d-sm-inline">Permisos</span>
-                                    </a>
-                                    <a href="<?php echo URLROOT; ?>/roles/edit/<?php echo $role->Id_role; ?>" class="btn btn-sm btn-info mr-1" title="Editar">
-                                        <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">Editar</span>
-                                    </a>
-                                    <button 
-                                        type="button" 
-                                        class="btn btn-sm btn-danger" 
-                                        data-toggle="modal" 
-                                        data-target="#deleteRoleModal"
-                                        data-id="<?php echo $role->Id_role; ?>" 
-                                        data-nombre="<?php echo $role->Nombre; ?>"
-                                        title="Eliminar"
-                                    >
-                                        <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
-                                    </button>
+                                    <?php if($canPerms): ?>
+                                        <a href="<?php echo URLROOT; ?>/roles/permisos/<?php echo $role->Id_role; ?>" class="btn btn-sm btn-warning mr-1" title="Permisos">
+                                            <i class="bi bi-lock"></i> <span class="d-none d-sm-inline">Permisos</span>
+                                        </a>
+                                    <?php endif; ?>
+                                    <?php if($canEdit): ?>
+                                        <a href="<?php echo URLROOT; ?>/roles/edit/<?php echo $role->Id_role; ?>" class="btn btn-sm btn-info mr-1" title="Editar">
+                                            <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">Editar</span>
+                                        </a>
+                                    <?php endif; ?>
+                                    <?php if($canDelete): ?>
+                                        <button 
+                                            type="button" 
+                                            class="btn btn-sm btn-danger" 
+                                            data-toggle="modal" 
+                                            data-target="#deleteRoleModal"
+                                            data-id="<?php echo $role->Id_role; ?>" 
+                                            data-nombre="<?php echo $role->Nombre; ?>"
+                                            title="Eliminar"
+                                        >
+                                            <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
+                                        </button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

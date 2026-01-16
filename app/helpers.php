@@ -13,6 +13,36 @@ function isLoggedIn(){
     }
 }
 
+/**
+ * Obtiene el nombre de usuario para mostrar en la UI
+ * @return string Nombre completo o email si no existe
+ */
+function getUserDisplayName(){
+    return isset($_SESSION['user_name']) ? $_SESSION['user_name'] : (isset($_SESSION['user_email']) ? $_SESSION['user_email'] : 'Usuario');
+}
+
+/**
+ * Verifica si el usuario actual es Gerente o Administrador
+ * @return bool True si es gerente o admin, false si no
+ */
+function isGerenteOrAdmin(){
+    if(!isLoggedIn()) return false;
+    
+    require_once APPROOT . '/models/RoleModel.php';
+    $roleModel = new RoleModel();
+    $userRoles = $roleModel->getRolesByUser($_SESSION['user_id']);
+    
+    if(!$userRoles) return false;
+    
+    foreach($userRoles as $role){
+        if($role->Nombre === 'Gerente' || $role->Nombre === 'Administrador'){
+            return true;
+        }
+    }
+    
+    return false;
+}
+
 // Variable estática para cachear la instancia de PermisoModel
 static $permisoModelCache = null;
 

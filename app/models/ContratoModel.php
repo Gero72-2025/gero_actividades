@@ -137,4 +137,21 @@ class ContratoModel {
         $result = $this->db->single();
         return $result->count > 0;
     }
+
+    /**
+     * Verifica si un contrato tiene actividades registradas en sus alcances.
+     * Retorna true si existen actividades, false si no.
+     */
+    public function hasActividadesEnAlcances($idContrato){
+        $this->db->query('
+            SELECT COUNT(*) as count 
+            FROM actividades a
+            JOIN alcances al ON a.Id_alcance = al.Id_alcance
+            WHERE al.Id_contrato = :id_contrato 
+            AND a.Estado = 1
+        ');
+        $this->db->bind(':id_contrato', $idContrato);
+        $result = $this->db->single();
+        return $result && $result->count > 0;
+    }
 }
