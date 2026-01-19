@@ -107,6 +107,20 @@
                     <span class="invalid-feedback"><?php echo $data['descripcion_realizada_err']; ?></span>
                 </div>
 
+                <!-- Campo para cantidad si es recurrente -->
+                <div id="cantidad_container" class="form-group" style="display: none;">
+                    <label for="cantidad_realizada">Cantidad Realizada: <sup>*</sup></label>
+                    <input 
+                        type="number" 
+                        name="cantidad_realizada" 
+                        class="form-control form-control-lg" 
+                        min="1"
+                        value="<?php echo $data['cantidad_realizada'] ?? ''; ?>"
+                        placeholder="Ingrese la cantidad de repeticiones (ej: número de escaneos, impresiones, etc.)"
+                    >
+                    <small class="form-text text-muted">Este campo solo es necesario si el alcance es recurrente.</small>
+                </div>
+
                 <div class="row mt-4 g-2">
                     <div class="col-12 col-md-6">
                         <input type="submit" value="Crear Actividad" class="btn btn-success btn-block w-100">
@@ -119,4 +133,37 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const alcanceSelect = document.querySelector('select[name="id_alcance"]');
+    const cantidadContainer = document.getElementById('cantidad_container');
+    const cantidadInput = document.querySelector('input[name="cantidad_realizada"]');
+    
+    // Datos de alcances con información de recurrencia
+    const alcancesData = <?php echo json_encode(array_map(function($a) { 
+        return ['id' => $a->Id_alcance, 'es_recurrente' => $a->es_recurrente ?? 0]; 
+    }, $data['alcances'] ?? [])); ?>;
+    
+    function checkAlcanceRecurrence() {
+        const selectedId = parseInt(alcanceSelect.value);
+        const alcance = alcancesData.find(a => a.id === selectedId);
+        
+        if (alcance && alcance.es_recurrente) {
+            cantidadContainer.style.display = 'block';
+            cantidadInput.required = true;
+        } else {
+            cantidadContainer.style.display = 'none';
+            cantidadInput.required = false;
+            cantidadInput.value = '';
+        }
+    }
+    
+    alcanceSelect.addEventListener('change', checkAlcanceRecurrence);
+    
+    // Verificar al cargar si hay un alcance seleccionado
+    checkAlcanceRecurrence();
+});
+</script>
+
 <?php require APPROOT . '/views/layouts/footer.php'; ?>

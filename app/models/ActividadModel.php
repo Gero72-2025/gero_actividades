@@ -159,14 +159,15 @@ class ActividadModel {
      * Agrega una nueva actividad.
      */
     public function addActividad($data){
-        $this->db->query('INSERT INTO actividades (Id_alcance, Id_personal, Fecha_ingreso, Descripcion_realizada, Estado_actividad) 
-                          VALUES (:id_alcance, :id_personal, :fecha_ingreso, :descripcion_realizada, :estado_actividad)');
+        $this->db->query('INSERT INTO actividades (Id_alcance, Id_personal, Fecha_ingreso, Descripcion_realizada, Estado_actividad, cantidad_realizada) 
+                          VALUES (:id_alcance, :id_personal, :fecha_ingreso, :descripcion_realizada, :estado_actividad, :cantidad_realizada)');
         
         $this->db->bind(':id_alcance', $data['id_alcance']);
         $this->db->bind(':id_personal', $data['id_personal']);
         $this->db->bind(':fecha_ingreso', $data['fecha_ingreso']);
         $this->db->bind(':descripcion_realizada', $data['descripcion_realizada']);
         $this->db->bind(':estado_actividad', $data['estado_actividad']);
+        $this->db->bind(':cantidad_realizada', isset($data['cantidad_realizada']) && !empty($data['cantidad_realizada']) ? $data['cantidad_realizada'] : null);
 
         return $this->db->execute();
     }
@@ -180,7 +181,8 @@ class ActividadModel {
                           Id_personal = :id_personal, 
                           Fecha_ingreso = :fecha_ingreso, 
                           Descripcion_realizada = :descripcion_realizada, 
-                          Estado_actividad = :estado_actividad
+                          Estado_actividad = :estado_actividad,
+                          cantidad_realizada = :cantidad_realizada
                           WHERE Id_actividad = :id');
         
         $this->db->bind(':id', $data['id']);
@@ -189,6 +191,7 @@ class ActividadModel {
         $this->db->bind(':fecha_ingreso', $data['fecha_ingreso']);
         $this->db->bind(':descripcion_realizada', $data['descripcion_realizada']);
         $this->db->bind(':estado_actividad', $data['estado_actividad']);
+        $this->db->bind(':cantidad_realizada', isset($data['cantidad_realizada']) && !empty($data['cantidad_realizada']) ? $data['cantidad_realizada'] : null);
 
         return $this->db->execute();
     }

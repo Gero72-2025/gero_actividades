@@ -12,7 +12,12 @@ class AlcanceModel {
     public function getAlcances($divisionId = null){
         $sql = '
             SELECT 
-                a.*, 
+                a.Id_alcance,
+                a.Id_contrato,
+                a.Descripcion,
+                a.es_recurrente,
+                a.Estado,
+                a.Fecha_creacion,
                 c.Descripcion AS Contrato_Descripcion,
                 c.Expediente,
                 c.Contrato_activo,
@@ -57,7 +62,7 @@ class AlcanceModel {
      * Obtiene todos los alcances activos para un contrato específico.
      */
     public function getAlcancesByIdContrato($idContrato){
-        $this->db->query('SELECT * FROM alcances WHERE Id_contrato = :id_contrato AND Estado = 1 ORDER BY Fecha_creacion DESC');
+        $this->db->query('SELECT Id_alcance, Id_contrato, Descripcion, es_recurrente, Estado, Fecha_creacion FROM alcances WHERE Id_contrato = :id_contrato AND Estado = 1 ORDER BY Fecha_creacion DESC');
         $this->db->bind(':id_contrato', $idContrato);
         return $this->db->resultSet();
     }
@@ -69,7 +74,12 @@ class AlcanceModel {
     public function getAlcancesByActiveContract($idPersonal){
         $this->db->query('
             SELECT 
-                a.*, 
+                a.Id_alcance, 
+                a.Id_contrato, 
+                a.Descripcion, 
+                a.es_recurrente, 
+                a.Estado, 
+                a.Fecha_creacion,
                 c.Descripcion AS Contrato_Descripcion,
                 c.Expediente,
                 c.Contrato_activo,
@@ -108,11 +118,12 @@ class AlcanceModel {
      * Agrega un nuevo alcance.
      */
     public function addAlcance($data){
-        $this->db->query('INSERT INTO alcances (Id_contrato, Descripcion) 
-                          VALUES (:id_contrato, :descripcion)');
+        $this->db->query('INSERT INTO alcances (Id_contrato, Descripcion, es_recurrente) 
+                          VALUES (:id_contrato, :descripcion, :es_recurrente)');
         
         $this->db->bind(':id_contrato', $data['id_contrato']);
         $this->db->bind(':descripcion', $data['descripcion']);
+        $this->db->bind(':es_recurrente', isset($data['es_recurrente']) ? 1 : 0);
 
         return $this->db->execute();
     }
@@ -121,11 +132,12 @@ class AlcanceModel {
      * Actualiza un registro de alcance.
      */
     public function updateAlcance($data){
-        $this->db->query('UPDATE alcances SET Id_contrato = :id_contrato, Descripcion = :descripcion WHERE Id_alcance = :id');
+        $this->db->query('UPDATE alcances SET Id_contrato = :id_contrato, Descripcion = :descripcion, es_recurrente = :es_recurrente WHERE Id_alcance = :id');
         
         $this->db->bind(':id', $data['id']);
         $this->db->bind(':id_contrato', $data['id_contrato']);
         $this->db->bind(':descripcion', $data['descripcion']);
+        $this->db->bind(':es_recurrente', isset($data['es_recurrente']) ? 1 : 0);
 
         return $this->db->execute();
     }

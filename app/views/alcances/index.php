@@ -62,6 +62,7 @@ $canDelete = tienePermiso('alcances.eliminar');
                                                 <tr>
                                                     <th class="hide-on-mobile">ID</th>
                                                     <th>Descripción</th>
+                                                    <th class="hide-on-mobile">Tipo</th>
                                                     <th class="hide-on-mobile">Creación</th>
                                                     <th>Acciones</th>
                                                 </tr>
@@ -71,6 +72,13 @@ $canDelete = tienePermiso('alcances.eliminar');
                                                     <tr>
                                                         <td class="hide-on-mobile" data-label="ID"><?php echo $alcance->Id_alcance; ?></td>
                                                         <td data-label="Descripción"><?php echo substr($alcance->Descripcion, 0, 80) . (strlen($alcance->Descripcion) > 80 ? '...' : ''); ?></td>
+                                                        <td class="hide-on-mobile" data-label="Tipo">
+                                                            <?php if($alcance->es_recurrente): ?>
+                                                                <span class="badge badge-info"><i class="bi bi-arrow-repeat"></i> Recurrente</span>
+                                                            <?php else: ?>
+                                                                <span class="badge badge-secondary">Normal</span>
+                                                            <?php endif; ?>
+                                                        </td>
                                                         <td class="hide-on-mobile" data-label="Creación"><?php echo date('d/m/Y', strtotime($alcance->Fecha_creacion)); ?></td>
                                                         <td data-label="Acciones" class="text-nowrap">
                                                             <?php if($canEdit): ?>

@@ -417,6 +417,7 @@ try {
             `Nombre_Completo` VARCHAR(100) NOT NULL,
             `Apellido_Completo` VARCHAR(100) NOT NULL,
             `Puesto` VARCHAR(100),
+            `Tipo_servicio` TINYINT(1) DEFAULT 1 COMMENT '1=Profesionales, 0=Técnicos',
             `Id_division` INT NULL,
             `Id_usuario` INT NOT NULL,
             `Id_contrato` INT NULL,
@@ -425,7 +426,8 @@ try {
             UNIQUE KEY unique_usuario (Id_usuario),
             FOREIGN KEY (`Id_usuario`) REFERENCES `usuario`(`Id_usuario`) ON DELETE CASCADE,
             FOREIGN KEY (`Id_division`) REFERENCES `division`(`Id_Division`) ON DELETE SET NULL,
-            INDEX idx_estado (Estado)
+            INDEX idx_estado (Estado),
+            INDEX idx_tipo_servicio (Tipo_servicio)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ";
     
@@ -447,10 +449,15 @@ try {
             `Inicio_contrato` DATE NOT NULL,
             `Fin_contrato` DATE NOT NULL,
             `Expediente` VARCHAR(50),
+            `Contrato_activo` TINYINT(1) DEFAULT 1 COMMENT '1=Contrato Activo, 0=Contrato Vencido',
+            `Id_division` INT NULL,
             `Estado` TINYINT(1) DEFAULT 1 COMMENT '1=Activo, 0=Inactivo',
             `Fecha_creacion` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (`Id_division`) REFERENCES `division`(`Id_Division`) ON DELETE SET NULL,
             INDEX idx_estado (Estado),
-            INDEX idx_expediente (Expediente)
+            INDEX idx_expediente (Expediente),
+            INDEX idx_contrato_activo (Contrato_activo),
+            INDEX idx_id_division (Id_division)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ";
     
@@ -469,11 +476,13 @@ try {
             `Id_alcance` INT AUTO_INCREMENT PRIMARY KEY,
             `Id_contrato` INT NOT NULL,
             `Descripcion` TEXT NOT NULL,
+            `es_recurrente` TINYINT(1) DEFAULT 0 COMMENT '1=Recurrente (diario), 0=No recurrente',
             `Estado` TINYINT(1) DEFAULT 1 COMMENT '1=Activo, 0=Inactivo',
             `Fecha_creacion` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (`Id_contrato`) REFERENCES `contratos`(`Id_contrato`) ON DELETE CASCADE,
             INDEX idx_estado (Estado),
-            INDEX idx_contrato (Id_contrato)
+            INDEX idx_contrato (Id_contrato),
+            INDEX idx_recurrente (es_recurrente)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ";
     
@@ -493,6 +502,7 @@ try {
             `Id_personal` INT NOT NULL,
             `Id_alcance` INT NOT NULL,
             `Descripcion` TEXT,
+            `cantidad_realizada` INT DEFAULT NULL COMMENT 'Cantidad de repeticiones si el alcance es recurrente',
             `Estado_actividad` VARCHAR(50) DEFAULT 'Pendiente' COMMENT 'Pendiente, En Progreso, Completada, Cancelada',
             `Numero_orden` INT DEFAULT 1,
             `Fecha_inicio` DATE,
@@ -502,7 +512,8 @@ try {
             FOREIGN KEY (`Id_alcance`) REFERENCES `alcances`(`Id_alcance`) ON DELETE CASCADE,
             INDEX idx_estado (Estado_actividad),
             INDEX idx_personal (Id_personal),
-            INDEX idx_fecha (Fecha_fin)
+            INDEX idx_fecha (Fecha_fin),
+            INDEX idx_cantidad (cantidad_realizada)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ";
     

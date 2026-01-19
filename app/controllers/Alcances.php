@@ -91,6 +91,7 @@ class Alcances extends Controller {
             $data = [
                 'id_contrato' => trim($_POST['id_contrato']),
                 'descripcion' => trim($_POST['descripcion']),
+                'es_recurrente' => isset($_POST['es_recurrente']) ? 1 : 0,
                 'id_contrato_err' => '',
                 'descripcion_err' => '',
                 'title' => 'Añadir Alcance',
@@ -124,6 +125,7 @@ class Alcances extends Controller {
                 'title' => 'Añadir Alcance',
                 'id_contrato' => '',
                 'descripcion' => '',
+                'es_recurrente' => 0,
                 'id_contrato_err' => '',
                 'descripcion_err' => '',
                 'contratos' => $contratos
@@ -154,6 +156,7 @@ class Alcances extends Controller {
                 'id' => $id,
                 'id_contrato' => trim($_POST['id_contrato']),
                 'descripcion' => trim($_POST['descripcion']),
+                'es_recurrente' => isset($_POST['es_recurrente']) ? 1 : 0,
                 'id_contrato_err' => '',
                 'descripcion_err' => '',
                 'title' => 'Editar Alcance',
@@ -190,6 +193,7 @@ class Alcances extends Controller {
                 'title' => 'Editar Alcance',
                 'id_contrato' => $alcance->Id_contrato,
                 'descripcion' => $alcance->Descripcion,
+                'es_recurrente' => $alcance->es_recurrente ?? 0,
                 'id_contrato_err' => '',
                 'descripcion_err' => '',
                 'contratos' => $contratos
