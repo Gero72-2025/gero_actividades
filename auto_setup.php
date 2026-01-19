@@ -558,8 +558,9 @@ try {
     $roles = [
         ['Administrador', 'Acceso completo a toda la plataforma'],
         ['Gerente', 'Acceso a reportes, contratos y actividades'],
+        ['Jefe', 'Acceso a personal y actividades de su división'],
         ['Supervisor', 'Acceso a actividades y personal asignado'],
-        ['Personal', 'Acceso limitado a sus propias actividades'],
+        ['Personal', 'Acceso limitado a sus propias actividades'],        
         ['Visualizador', 'Acceso de solo lectura a reportes']
     ];
     

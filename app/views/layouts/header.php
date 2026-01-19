@@ -23,4 +23,7 @@
         ?>
         
         <main class="content-scrollable">
-            <div class="container"> 
+            <div class="container">
+                <!-- Breadcrumb Navigation -->
+                <?php echo generarBreadcrumb(); ?>
+                

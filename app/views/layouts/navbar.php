@@ -11,60 +11,98 @@
                 <li class="nav-item">
                     <a class="nav-link <?php echo (strpos($_SERVER['REQUEST_URI'], '/pages/index') !== false) ? 'active shadow-sm' : ''; ?>" href="<?php echo URLROOT; ?>/pages/index">Inicio</a>
                 </li>
-                <?php if(isLoggedIn()): ?>
-                    <!-- Divisiones -->
-                    <?php if(tieneAcceso('divisions', 'ver')): ?>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo (strpos($_SERVER['REQUEST_URI'], '/divisions') !== false) ? 'active shadow-sm' : ''; ?>" href="<?php echo URLROOT; ?>/divisions/index">Divisiones</a>
+                
+                <?php if(isLoggedIn()): 
+                    // Validar que el usuario tenga acceso a al menos un item del menú GERO
+                    $tieneAccesoGERO = tieneAcceso('divisions', 'ver') || 
+                                      tieneAcceso('personal', 'ver') || 
+                                      tieneAcceso('contratos', 'ver') || 
+                                      tieneAcceso('alcances', 'ver') || 
+                                      tieneAcceso('actividades', 'ver');
+                    
+                    // Validar que el usuario tenga acceso a al menos un item del menú Configuraciones
+                    $tieneAccesoConfig = tieneAcceso('usuarios', 'ver') || 
+                                        tieneAcceso('roles', 'ver') || 
+                                        tieneAcceso('permisos', 'ver');
+                ?>
+                    <!-- GERO Menu Dropdown -->
+                    <?php if($tieneAccesoGERO): ?>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarGERO" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="bi bi-folder-check"></i> GERO
+                            </a>
+                            <div class="dropdown-menu" aria-labelledby="navbarGERO">
+                                <!-- Divisiones -->
+                                <?php if(tieneAcceso('divisions', 'ver')): ?>
+                                    <a class="dropdown-item <?php echo (strpos($_SERVER['REQUEST_URI'], '/divisions') !== false) ? 'active' : ''; ?>" href="<?php echo URLROOT; ?>/divisions/index">
+                                        <i class="bi bi-diagram-3"></i> Divisiones
+                                    </a>
+                                <?php endif; ?>
+                                
+                                <!-- Personal -->
+                                <?php if(tieneAcceso('personal', 'ver')): ?>
+                                    <a class="dropdown-item <?php echo (strpos($_SERVER['REQUEST_URI'], '/personal') !== false) ? 'active' : ''; ?>" href="<?php echo URLROOT; ?>/personal/index">
+                                        <i class="bi bi-people"></i> Personal
+                                    </a>
+                                <?php endif; ?>
+                                
+                                <!-- Contratos -->
+                                <?php if(tieneAcceso('contratos', 'ver')): ?>
+                                    <a class="dropdown-item <?php echo (strpos($_SERVER['REQUEST_URI'], '/contratos') !== false) ? 'active' : ''; ?>" href="<?php echo URLROOT; ?>/contratos/index">
+                                        <i class="bi bi-file-earmark-text"></i> Contratos
+                                    </a>
+                                <?php endif; ?>
+                                
+                                <!-- Alcances -->
+                                <?php if(tieneAcceso('alcances', 'ver')): ?>
+                                    <a class="dropdown-item <?php echo (strpos($_SERVER['REQUEST_URI'], '/alcances') !== false) ? 'active' : ''; ?>" href="<?php echo URLROOT; ?>/alcances/index">
+                                        <i class="bi bi-bullseye"></i> Alcances
+                                    </a>
+                                <?php endif; ?>
+                                
+                                <!-- Separador -->
+                                <?php if((tieneAcceso('actividades', 'ver'))): ?>
+                                    <div class="dropdown-divider"></div>
+                                <?php endif; ?>
+                                
+                                <!-- Actividades -->
+                                <?php if(tieneAcceso('actividades', 'ver')): ?>
+                                    <a class="dropdown-item <?php echo (strpos($_SERVER['REQUEST_URI'], '/actividades') !== false) ? 'active' : ''; ?>" href="<?php echo URLROOT; ?>/actividades/index">
+                                        <i class="bi bi-check-square"></i> Actividades
+                                    </a>
+                                <?php endif; ?>
+                            </div>
                         </li>
                     <?php endif; ?>
                     
-                    <!-- Personal -->
-                    <?php if(tieneAcceso('personal', 'ver')): ?>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo (strpos($_SERVER['REQUEST_URI'], '/personal') !== false) ? 'active shadow-sm' : ''; ?>" href="<?php echo URLROOT; ?>/personal/index">Personal</a>
-                        </li>
-                    <?php endif; ?>
-                    
-                    <!-- Contratos -->
-                    <?php if(tieneAcceso('contratos', 'ver')): ?>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo (strpos($_SERVER['REQUEST_URI'], '/contratos') !== false) ? 'active shadow-sm' : ''; ?>" href="<?php echo URLROOT; ?>/contratos/index">Contratos</a> 
-                        </li>
-                    <?php endif; ?>
-                    
-                    <!-- Usuarios -->
-                    <?php if(tieneAcceso('usuarios', 'ver')): ?>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo (strpos($_SERVER['REQUEST_URI'], '/usuarios') !== false) ? 'active shadow-sm' : ''; ?>" href="<?php echo URLROOT; ?>/usuarios/index">Usuarios</a> 
-                        </li>
-                    <?php endif; ?>
-                    
-                    <!-- Roles -->
-                    <?php if(tieneAcceso('roles', 'ver')): ?>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo (strpos($_SERVER['REQUEST_URI'], '/roles') !== false) ? 'active shadow-sm' : ''; ?>" href="<?php echo URLROOT; ?>/roles/index">Roles</a>
-                        </li>
-                    <?php endif; ?>
-                    
-                    <!-- Permisos -->
-                    <?php if(tieneAcceso('permisos', 'ver')): ?>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo (strpos($_SERVER['REQUEST_URI'], '/permisos') !== false) ? 'active shadow-sm' : ''; ?>" href="<?php echo URLROOT; ?>/permisos/index">Permisos</a>
-                        </li>
-                    <?php endif; ?>
-                    
-                    <!-- Alcances -->
-                    <?php if(tieneAcceso('alcances', 'ver')): ?>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo (strpos($_SERVER['REQUEST_URI'], '/alcances') !== false) ? 'active shadow-sm' : ''; ?>" href="<?php echo URLROOT; ?>/alcances/index">Alcances</a>
-                        </li>
-                    <?php endif; ?>
-                    
-                    <!-- Actividades -->
-                    <?php if(tieneAcceso('actividades', 'ver')): ?>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo (strpos($_SERVER['REQUEST_URI'], '/actividades') !== false) ? 'active shadow-sm' : ''; ?>" href="<?php echo URLROOT; ?>/actividades/index">Actividades</a>
+                    <!-- Configuraciones Menu Dropdown -->
+                    <?php if($tieneAccesoConfig): ?>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarConfig" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="bi bi-gear"></i> Configuraciones
+                            </a>
+                            <div class="dropdown-menu" aria-labelledby="navbarConfig">
+                                <!-- Usuarios -->
+                                <?php if(tieneAcceso('usuarios', 'ver')): ?>
+                                    <a class="dropdown-item <?php echo (strpos($_SERVER['REQUEST_URI'], '/usuarios') !== false) ? 'active' : ''; ?>" href="<?php echo URLROOT; ?>/usuarios/index">
+                                        <i class="bi bi-person-badge"></i> Usuarios
+                                    </a>
+                                <?php endif; ?>
+                                
+                                <!-- Roles -->
+                                <?php if(tieneAcceso('roles', 'ver')): ?>
+                                    <a class="dropdown-item <?php echo (strpos($_SERVER['REQUEST_URI'], '/roles') !== false) ? 'active' : ''; ?>" href="<?php echo URLROOT; ?>/roles/index">
+                                        <i class="bi bi-shield-lock"></i> Roles
+                                    </a>
+                                <?php endif; ?>
+                                
+                                <!-- Permisos -->
+                                <?php if(tieneAcceso('permisos', 'ver')): ?>
+                                    <a class="dropdown-item <?php echo (strpos($_SERVER['REQUEST_URI'], '/permisos') !== false) ? 'active' : ''; ?>" href="<?php echo URLROOT; ?>/permisos/index">
+                                        <i class="bi bi-key"></i> Permisos
+                                    </a>
+                                <?php endif; ?>
+                            </div>
                         </li>
                     <?php endif; ?>
                 <?php endif; ?>
