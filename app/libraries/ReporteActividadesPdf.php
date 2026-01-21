@@ -5,38 +5,72 @@ require_once 'fpdf/fpdf.php';
 
 class ReporteActividadesPdf extends FPDF {
 
+    private $fechaInicio;
+    private $fechaFin;
+
     /**
      * Helper para agrupar las actividades por Alcance.
      * @param array $actividades Lista plana de actividades completadas.
+     * @param array $alcances Lista de alcances con información de recurrencia.
      * @return array Estructura agrupada y consolidada.
      */
-    private function agruparActividadesPorAlcance(array $actividades): array {
+    private function agruparActividadesPorAlcance(array $actividades, array $alcances): array {
         $grupos = [];
+        
+        // Crear un mapa de alcances para acceso rápido a es_recurrente
+        $mapaAlcances = [];
+        foreach ($alcances as $alcance) {
+            $mapaAlcances[$alcance->Id_alcance] = [
+                'es_recurrente' => isset($alcance->es_recurrente) ? (int)$alcance->es_recurrente : 0
+            ];
+        }
+        
         foreach ($actividades as $act) {
             $idAlcance = $act->Id_alcance;
             
             // Si el alcance no está en el grupo, inicializarlo
             if (!isset($grupos[$idAlcance])) {
+                $esRecurrente = isset($mapaAlcances[$idAlcance]) ? $mapaAlcances[$idAlcance]['es_recurrente'] : 0;
+                
                 $grupos[$idAlcance] = [
                     'Id_alcance'            => $idAlcance,
                     'Alcance_Descripcion'   => $act->Alcance_Descripcion,
                     'Contrato_Expediente'   => $act->Contrato_Expediente,
-                    'Actividades_List'      => [], // Almacena solo las descripciones
+                    'es_recurrente'         => $esRecurrente,
+                    'Actividades_List'      => [], // Almacena solo las descripciones (para no recurrentes)
+                    'Cantidad_Total'        => 0,  // Suma de cantidades (para recurrentes)
                 ];
             }
             
-            // Añadir la descripción al listado de actividades del alcance
-            if (!empty($act->Descripcion_realizada)) {
-                $grupos[$idAlcance]['Actividades_List'][] = trim($act->Descripcion_realizada);
+            // Si es recurrente, sumar las cantidades
+            if ($grupos[$idAlcance]['es_recurrente'] == 1) {
+                // Sumar cantidad_realizada si existe
+                if (isset($act->cantidad_realizada) && is_numeric($act->cantidad_realizada)) {
+                    $grupos[$idAlcance]['Cantidad_Total'] += (int)$act->cantidad_realizada;
+                }
+            } else {
+                // Si no es recurrente, añadir la descripción al listado
+                if (!empty($act->Descripcion_realizada)) {
+                    $grupos[$idAlcance]['Actividades_List'][] = trim($act->Descripcion_realizada);
+                }
             }
         }
         
-        // Convertir el array de actividades a una cadena separada por coma
+        // Convertir el array de actividades a una cadena según el tipo
         $reporteFinal = [];
         foreach ($grupos as $grupo) {
-            $grupo['Actividad_Concatenada'] = implode(', ', $grupo['Actividades_List']);
-            // Si no hay actividades, el campo Actividad_Concatenada quedará vacío.
+            if ($grupo['es_recurrente'] == 1) {
+                // Para recurrentes: mostrar "Alcance Recurrente: [suma]"
+                $grupo['Actividad_Concatenada'] = 'Alcance Recurrente: ' . $grupo['Cantidad_Total'];
+            } else {
+                // Para no recurrentes: concatenar descripciones con coma
+                $grupo['Actividad_Concatenada'] = implode(', ', $grupo['Actividades_List']);
+            }
+            
+            // Si no hay actividades, el campo Actividad_Concatenada quedará vacío o con "Alcance Recurrente: 0"
             unset($grupo['Actividades_List']); // Limpiar el array temporal
+            unset($grupo['Cantidad_Total']);   // Limpiar el total
+            unset($grupo['es_recurrente']);     // Limpiar el flag
             $reporteFinal[] = (object)$grupo; // Convertir a objeto para consistencia
         }
         
@@ -121,13 +155,37 @@ class ReporteActividadesPdf extends FPDF {
         return $nl * $h;
     }
 
+    // Pie de página
+    function Footer() {
+        // Posición: a 15 mm del final
+        $this->SetY(-15);
+        $this->SetFont('Arial', 'I', 8);
+        
+        // Número de página (centrado)
+        $this->Cell(0, 10, mb_convert_encoding('Página ', 'ISO-8859-1', 'UTF-8') . $this->PageNo() . ' de {nb}', 0, 0, 'C');
+        
+        // Rango de fechas (alineado a la derecha)
+        if ($this->fechaInicio && $this->fechaFin) {
+            $rangoFechas = 'Periodo: ' . date('d/m/Y', strtotime($this->fechaInicio)) . ' - ' . date('d/m/Y', strtotime($this->fechaFin));
+            $this->SetXY($this->lMargin, -15);
+            $this->Cell(0, 10, mb_convert_encoding($rangoFechas, 'ISO-8859-1', 'UTF-8'), 0, 0, 'R');
+        }
+    }
+
 
     public function generar(array $actividades, string $fechaInicio, string $fechaFin, object $personal, array $contrato, array $alcance, int $numeroPagoSeleccionado = 0, int $mesSeleccionado = 0, int $anioSeleccionado = 0, ?object $jefeDivision = null): void {
         
+        // Guardar fechas para el pie de página
+        $this->fechaInicio = $fechaInicio;
+        $this->fechaFin = $fechaFin;
+        
+        // Activar alias para número total de páginas
+        $this->AliasNbPages();
+        
         $this->AddPage();
         
-        // 1. Procesar y agrupar actividades
-        $actividadesAgrupadas = $this->agruparActividadesPorAlcance($actividades);
+        // 1. Procesar y agrupar actividades (pasando también los alcances para determinar recurrencia)
+        $actividadesAgrupadas = $this->agruparActividadesPorAlcance($actividades, $alcance);
         
         // 2. Crear un mapa de actividades por Id_alcance para búsqueda rápida
         $mapaActividades = [];
@@ -298,11 +356,17 @@ class ReporteActividadesPdf extends FPDF {
         // --- 5. UNIDAD RESPONSABLE Y FIRMAS ---
         $this->Ln(10);
         
-        // Texto "UNIDAD RESPONSABLE"
+        // Verificar si hay suficiente espacio para UNIDAD RESPONSABLE + firmas (aproximadamente 55mm necesarios)
+        $alturaSeccionFirmasCompleta = 55;
+        if ($this->GetY() + $alturaSeccionFirmasCompleta > $this->PageBreakTrigger) {
+            $this->AddPage();
+        }
+        
+        // Texto "UNIDAD RESPONSABLE" (solo una vez)
         $this->SetFont('Arial', 'B', 10);
         $unidadResponsable = 'UNIDAD RESPONSABLE: ' . ($personal->division_nombre ?? 'NO ESPECIFICADA');
         $this->Cell(0, 5, mb_convert_encoding($unidadResponsable, 'ISO-8859-1', 'UTF-8'), 0, 1, 'L');
-        $this->Ln(15);
+        $this->Ln(25); // Espacio aumentado para sellos (aproximadamente 2.5 cm)
         
         // Configuración para las firmas
         $firmaWidth = 60;

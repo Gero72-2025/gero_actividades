@@ -119,6 +119,18 @@ class Actividades extends Controller {
         $id_usuario_logueado = $_SESSION['user_id'];
         $personal_logueado = $this->personalModel->getPersonalByUserId($id_usuario_logueado);
 
+        // Obtener fechas del contrato para validación
+        $fechaInicioContrato = null;
+        $fechaFinContrato = null;
+        if($personal_logueado && $personal_logueado->Id_contrato){
+            $contratoModel = $this->model('ContratoModel');
+            $contrato = $contratoModel->getContratoById($personal_logueado->Id_contrato);
+            if($contrato){
+                $fechaInicioContrato = $contrato->Inicio_contrato;
+                $fechaFinContrato = $contrato->Fin_contrato;
+            }
+        }
+
         // Cargar datos para dropdowns
         // Filtrar alcances solo del contrato activo del usuario si tiene un registro de personal
         if($personal_logueado){
@@ -145,6 +157,7 @@ class Actividades extends Controller {
                 'fecha_ingreso' => $fecha_ingreso,
                 'descripcion_realizada' => trim($_POST['descripcion_realizada']),
                 'estado_actividad' => trim($_POST['estado_actividad']),
+                'cantidad_realizada' => isset($_POST['cantidad_realizada']) ? trim($_POST['cantidad_realizada']) : null,
                 
                 // Errores
                 'id_alcance_err' => '',
@@ -152,6 +165,8 @@ class Actividades extends Controller {
                 'fecha_ingreso_err' => '',
                 'descripcion_realizada_err' => '',
                 'estado_actividad_err' => '',
+                'cantidad_realizada_err' => '',
+                'duplicate_error' => '',
                 
                 // Dropdowns
                 'alcances' => $alcances,
@@ -169,9 +184,29 @@ class Actividades extends Controller {
             if(empty($data['fecha_ingreso'])){
                 $data['fecha_ingreso_err'] = 'La fecha de la actividad es obligatoria.';
             }
-            // NOTA: Descripcion_realizada puede ser NULL, pero la descripción es útil.
-            if(empty($data['descripcion_realizada'])){
-                $data['descripcion_realizada_err'] = 'Ingrese una descripción del trabajo a realizar o realizado.';
+            
+            // Determinar si el alcance es recurrente
+            $alcanceSeleccionado = null;
+            if (!empty($data['id_alcance'])) {
+                $alcanceSeleccionado = $this->alcanceModel->getAlcanceById($data['id_alcance']);
+            }
+            
+            if($alcanceSeleccionado && (int)$alcanceSeleccionado->es_recurrente === 1){
+                // Forzar descripción y validar cantidad
+                $data['descripcion_realizada'] = 'Alcance Recurrente';
+                $data['descripcion_realizada_err'] = '';
+                if(empty($data['cantidad_realizada']) || !is_numeric($data['cantidad_realizada']) || (int)$data['cantidad_realizada'] < 1){
+                    $data['cantidad_realizada_err'] = 'Ingrese una cantidad válida (>= 1) para tareas recurrentes.';
+                }
+            } else {
+                // Validar descripción para tareas no recurrentes
+                if(empty($data['descripcion_realizada'])){
+                    $data['descripcion_realizada_err'] = 'Ingrese una descripción del trabajo a realizar o realizado.';
+                }
+                // cantidad no requerida en no recurrentes
+                if(!empty($data['cantidad_realizada']) && (!is_numeric($data['cantidad_realizada']) || (int)$data['cantidad_realizada'] < 1)){
+                    $data['cantidad_realizada_err'] = 'La cantidad debe ser un número válido (>= 1).';
+                }
             }
             
             if(!in_array($data['estado_actividad'], $this->estados)){
@@ -180,12 +215,24 @@ class Actividades extends Controller {
 
 
             // 2. Si no hay errores, proceder
-            if(empty($data['id_alcance_err']) && empty($data['id_personal_err']) && empty($data['fecha_ingreso_err']) && empty($data['descripcion_realizada_err']) && empty($data['estado_actividad_err'])){
-                
-                if($this->actividadModel->addActividad($data)){
-                    redirect('actividades/index');
+            if(empty($data['id_alcance_err']) && empty($data['id_personal_err']) && empty($data['fecha_ingreso_err']) && empty($data['descripcion_realizada_err']) && empty($data['estado_actividad_err']) && empty($data['cantidad_realizada_err'])){
+                // Verificar duplicado: mismo alcance, misma fecha, mismo personal
+                $yaExiste = $this->actividadModel->existsActividadByAlcanceFechaPersonal(
+                    $data['id_alcance'],
+                    $data['fecha_ingreso'],
+                    $data['id_personal']
+                );
+
+                if ($yaExiste) {
+                    $data['duplicate_error'] = 'Ya existe una actividad para este alcance en la fecha seleccionada.';
+                    $this->view('actividades/add', $data);
                 } else {
-                    die('Algo salió mal al intentar guardar la actividad.');
+                    if($this->actividadModel->addActividad($data)){
+                        flashMessage('actividad_message', 'Actividad creada exitosamente', 'success');
+                        redirect('actividades/index');
+                    } else {
+                        die('Algo salió mal al intentar guardar la actividad.');
+                    }
                 }
             } else {
                 // Cargar vista con errores
@@ -201,16 +248,21 @@ class Actividades extends Controller {
                 'fecha_ingreso' => date('Y-m-d'), // Sugerir fecha de hoy
                 'descripcion_realizada' => '',
                 'estado_actividad' => 'Pendiente', // Estado por defecto
+                'cantidad_realizada' => '',
                 
                 'id_alcance_err' => '',
                 'id_personal_err' => '',
                 'fecha_ingreso_err' => '',
                 'descripcion_realizada_err' => '',
                 'estado_actividad_err' => '',
+                'cantidad_realizada_err' => '',
+                'duplicate_error' => '',
 
                 'alcances' => $alcances,
                 'personal' => $personal_para_dropdown,
-                'estados' => $this->estados
+                'estados' => $this->estados,
+                'fecha_inicio_contrato' => $fechaInicioContrato,
+                'fecha_fin_contrato' => $fechaFinContrato
             ];
 
             $this->view('actividades/add', $data);
@@ -224,7 +276,19 @@ class Actividades extends Controller {
         
         // Obtener el usuario actual
         $id_usuario_logueado = $_SESSION['user_id'];
+        // Obtener fechas del contrato para validación
         $personal_logueado = $this->personalModel->getPersonalByUserId($id_usuario_logueado);
+        
+        $fechaInicioContrato = null;
+        $fechaFinContrato = null;
+        if($personal_logueado && $personal_logueado->Id_contrato){
+            $contratoModel = $this->model('ContratoModel');
+            $contrato = $contratoModel->getContratoById($personal_logueado->Id_contrato);
+            if($contrato){
+                $fechaInicioContrato = $contrato->Inicio_contrato;
+                $fechaFinContrato = $contrato->Fin_contrato;
+            }
+        }
 
         // Cargar datos para dropdowns
         // Filtrar alcances solo del contrato activo del usuario si tiene un registro de personal
@@ -239,6 +303,12 @@ class Actividades extends Controller {
 
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
             
+            // Obtener actividad original para comparar fecha y validar existencia
+            $actividadOriginal = $this->actividadModel->getActividadById($id);
+            if(!$actividadOriginal){
+                redirect('actividades/index');
+            }
+
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
             $fecha_ingreso = trim($_POST['fecha_ingreso']);
             // El Id_personal se toma del usuario logueado para garantizar la seguridad
@@ -252,6 +322,7 @@ class Actividades extends Controller {
                 'fecha_ingreso' => $fecha_ingreso,
                 'descripcion_realizada' => trim($_POST['descripcion_realizada']),
                 'estado_actividad' => trim($_POST['estado_actividad']),
+                'cantidad_realizada' => isset($_POST['cantidad_realizada']) ? trim($_POST['cantidad_realizada']) : null,
 
                 // Errores
                 'id_alcance_err' => '',
@@ -259,11 +330,15 @@ class Actividades extends Controller {
                 'fecha_ingreso_err' => '',
                 'descripcion_realizada_err' => '',
                 'estado_actividad_err' => '',
+                'cantidad_realizada_err' => '',
+                'duplicate_error' => '',
 
                 // Dropdowns
                 'alcances' => $alcances,
                 'personal' => $personal_para_dropdown,
-                'estados' => $this->estados
+                'estados' => $this->estados,
+                'fecha_inicio_contrato' => $fechaInicioContrato,
+                'fecha_fin_contrato' => $fechaFinContrato
             ];
             
             // 1. Validar datos (misma lógica que Add)
@@ -276,16 +351,55 @@ class Actividades extends Controller {
             if(empty($data['fecha_ingreso'])){
                 $data['fecha_ingreso_err'] = 'La fecha de la actividad es obligatoria.';
             }
-            if(empty($data['descripcion_realizada'])){
-                $data['descripcion_realizada_err'] = 'Ingrese una descripción del trabajo a realizar o realizado.';
+
+            // Determinar si el alcance es recurrente
+            $alcanceSeleccionado = null;
+            if (!empty($data['id_alcance'])) {
+                $alcanceSeleccionado = $this->alcanceModel->getAlcanceById($data['id_alcance']);
+            }
+
+            if($alcanceSeleccionado && (int)$alcanceSeleccionado->es_recurrente === 1){
+                // Forzar descripción y validar cantidad
+                $data['descripcion_realizada'] = 'Alcance Recurrente';
+                $data['descripcion_realizada_err'] = '';
+                if(empty($data['cantidad_realizada']) || !is_numeric($data['cantidad_realizada']) || (int)$data['cantidad_realizada'] < 1){
+                    $data['cantidad_realizada_err'] = 'Ingrese una cantidad válida (>= 1) para tareas recurrentes.';
+                }
+            } else {
+                // Validar descripción para tareas no recurrentes
+                if(empty($data['descripcion_realizada'])){
+                    $data['descripcion_realizada_err'] = 'Ingrese una descripción del trabajo a realizar o realizado.';
+                }
+                // cantidad no requerida en no recurrentes
+                if(!empty($data['cantidad_realizada']) && (!is_numeric($data['cantidad_realizada']) || (int)$data['cantidad_realizada'] < 1)){
+                    $data['cantidad_realizada_err'] = 'La cantidad debe ser un número válido (>= 1).';
+                }
             }
             if(!in_array($data['estado_actividad'], $this->estados)){
                 $data['estado_actividad_err'] = 'Estado de actividad no válido.';
             }
             
             // 2. Si no hay errores
-            if(empty($data['id_alcance_err']) && empty($data['id_personal_err']) && empty($data['fecha_ingreso_err']) && empty($data['descripcion_realizada_err']) && empty($data['estado_actividad_err'])){
+            if(empty($data['id_alcance_err']) && empty($data['id_personal_err']) && empty($data['fecha_ingreso_err']) && empty($data['descripcion_realizada_err']) && empty($data['estado_actividad_err']) && empty($data['cantidad_realizada_err'])){
+                // Solo verificar duplicado si cambió la fecha
+                $fechaCambio = ($actividadOriginal->Fecha_ingreso !== $data['fecha_ingreso']);
+                if ($fechaCambio) {
+                    $yaExiste = $this->actividadModel->existsActividadByAlcanceFechaPersonalExceptId(
+                        $data['id_alcance'],
+                        $data['fecha_ingreso'],
+                        $data['id_personal'],
+                        $id
+                    );
+
+                    if ($yaExiste) {
+                        $data['duplicate_error'] = 'Ya existe una actividad para este alcance en la fecha seleccionada.';
+                        $this->view('actividades/edit', $data);
+                        return;
+                    }
+                }
+
                 if($this->actividadModel->updateActividad($data)){
+                    flashMessage('actividad_message', 'Actividad actualizada exitosamente', 'success');
                     redirect('actividades/index');
                 } else {
                     die('Algo salió mal al intentar actualizar.');
@@ -326,16 +440,21 @@ class Actividades extends Controller {
                 'fecha_ingreso' => $actividad->Fecha_ingreso,
                 'descripcion_realizada' => $actividad->Descripcion_realizada,
                 'estado_actividad' => $actividad->Estado_actividad,
+                 'cantidad_realizada' => $actividad->cantidad_realizada ?? '',
 
                 'id_alcance_err' => '',
                 'id_personal_err' => '',
                 'fecha_ingreso_err' => '',
                 'descripcion_realizada_err' => '',
                 'estado_actividad_err' => '',
+                'cantidad_realizada_err' => '',
+                'duplicate_error' => '',
 
                 'alcances' => $alcances,
                 'personal' => $personal_para_dropdown,
-                'estados' => $this->estados
+                'estados' => $this->estados,
+                'fecha_inicio_contrato' => $fechaInicioContrato,
+                'fecha_fin_contrato' => $fechaFinContrato
             ];
             
             $this->view('actividades/edit', $data);
@@ -372,6 +491,7 @@ class Actividades extends Controller {
             }
             
             if($this->actividadModel->deleteActividad($id)){
+                flashMessage('actividad_message', 'Actividad eliminada exitosamente', 'success');
                 redirect('actividades/index');
             } else {
                 die('Algo salió mal al intentar eliminar la actividad.');
@@ -456,6 +576,7 @@ class Actividades extends Controller {
             
             $fecha_ingreso = trim($_POST['fecha_ingreso']);
             $alcances_data = $_POST['alcances'] ?? []; // Array: [Id_alcance => Descripcion_realizada]
+            $cantidades_data = $_POST['cantidades'] ?? []; // Array: [Id_alcance => Cantidad_realizada]
             
             $id_usuario_logueado = $_SESSION['user_id'];
             $personal_logueado = $this->personalModel->getPersonalByUserId($id_usuario_logueado);
@@ -473,16 +594,36 @@ class Actividades extends Controller {
             // 1. Filtrar y preparar los datos
             foreach ($alcances_data as $id_alcance => $descripcion) {
                 $descripcion_limpia = trim($descripcion);
+                $cantidad = isset($cantidades_data[$id_alcance]) ? trim($cantidades_data[$id_alcance]) : null;
 
-                // Solo guarda si la descripción no está vacía
-                if (!empty($descripcion_limpia)) {
-                    $activities_to_save[] = [
-                        'id_alcance' => $id_alcance,
-                        'id_personal' => $id_personal,
-                        'fecha_ingreso' => $fecha_ingreso,
-                        'descripcion_realizada' => $descripcion_limpia,
-                        'estado_actividad' => 'Completada', // Asumimos que si se registra, se completó
-                    ];
+                // Para alcances recurrentes, el hidden input envía "1" y se usa la cantidad
+                // Para alcances no recurrentes, se usa la descripción de la textarea
+                $esRecurrente = ($descripcion === "1");
+                
+                if ($esRecurrente) {
+                    // Alcance recurrente: guardar si hay cantidad
+                    if (!empty($cantidad)) {
+                        $activities_to_save[] = [
+                            'id_alcance' => $id_alcance,
+                            'id_personal' => $id_personal,
+                            'fecha_ingreso' => $fecha_ingreso,
+                            'descripcion_realizada' => 'Alcance Recurrente',
+                            'estado_actividad' => 'Completada',
+                            'cantidad_realizada' => (int)$cantidad,
+                        ];
+                    }
+                } else {
+                    // Alcance no recurrente: guardar si hay descripción
+                    if (!empty($descripcion_limpia)) {
+                        $activities_to_save[] = [
+                            'id_alcance' => $id_alcance,
+                            'id_personal' => $id_personal,
+                            'fecha_ingreso' => $fecha_ingreso,
+                            'descripcion_realizada' => $descripcion_limpia,
+                            'estado_actividad' => 'Completada',
+                            'cantidad_realizada' => null,
+                        ];
+                    }
                 }
             }
 
@@ -587,7 +728,8 @@ class Actividades extends Controller {
                 'Id_actividad' => $act->Id_actividad,
                 'Descripcion_realizada' => $act->Descripcion_realizada,
                 'Estado_actividad' => $act->Estado_actividad,
-                'Alcance_Descripcion' => $act->Alcance_Descripcion
+                'Alcance_Descripcion' => $act->Alcance_Descripcion,
+                'cantidad_realizada' => $act->cantidad_realizada ?? null
             ];
         }
 
@@ -627,6 +769,7 @@ class Actividades extends Controller {
                 'fecha_ingreso' => $originalActivity->Fecha_ingreso, // La fecha no se edita desde este modal
                 'descripcion_realizada' => trim($_POST['descripcion_realizada']),
                 'estado_actividad' => trim($_POST['estado_actividad']),
+                'cantidad_realizada' => isset($_POST['cantidad_realizada']) && !empty(trim($_POST['cantidad_realizada'])) ? (int)trim($_POST['cantidad_realizada']) : null,
             ];
 
             // Se deben realizar validaciones aquí (alcance, descripción, estado)

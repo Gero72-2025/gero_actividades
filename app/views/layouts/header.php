@@ -26,4 +26,5 @@
             <div class="container">
                 <!-- Breadcrumb Navigation -->
                 <?php echo generarBreadcrumb(); ?>
+                <?php echo displayAllFlashMessages(); ?>
                 

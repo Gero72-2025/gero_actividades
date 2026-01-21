@@ -6,17 +6,6 @@ $canDelete = tienePermiso('roles.eliminar');
 $canPerms  = tienePermiso('roles.permisos');
 ?>
 
-<?php 
-    // Mostrar mensaje flash si existe
-    $flashMsg = getFlashMessage('role_message');
-    if($flashMsg): 
-?>
-    <div class="alert alert-<?php echo $flashMsg['type'] === 'success' ? 'success' : 'danger'; ?> alert-dismissible fade show" role="alert">
-        <?php echo htmlspecialchars($flashMsg['message']); ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-<?php endif; ?>
-
 <div class="row mb-4">
     <div class="col-12 col-md-6 mb-3 mb-md-0">
         <h1><?php echo $data['title']; ?></h1>

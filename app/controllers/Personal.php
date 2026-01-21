@@ -99,7 +99,7 @@ class Personal extends Controller {
                 
                 // Sin errores: Guardar
                 if($this->personalModel->addPersonal($data)){
-                    // Redirección exitosa
+                    flashMessage('personal_message', 'Personal creado exitosamente', 'success');
                     redirect('personal/index');
                 } else {
                     die('Algo salió mal al intentar guardar el personal.');
@@ -228,6 +228,7 @@ class Personal extends Controller {
                 
                 // Sin errores: Actualizar (Lógica existente)
                 if($this->personalModel->updatePersonal($data)){
+                    flashMessage('personal_message', 'Personal actualizado exitosamente', 'success');
                     redirect('personal/index');
                 } else {
                     die('Algo salió mal al intentar actualizar.');
@@ -329,7 +330,7 @@ class Personal extends Controller {
         
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
             if($this->personalModel->deletePersonal($id)){
-                // Puedes agregar un setFlashMessage() si lo tienes implementado
+                flashMessage('personal_message', 'Personal eliminado exitosamente', 'success');
                 redirect('personal/index');
             } else {
                 die('Algo salió mal al intentar eliminar el registro de personal.');

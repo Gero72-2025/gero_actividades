@@ -15,8 +15,13 @@
                             name="fecha_ingreso" 
                             class="form-control form-control-lg <?php echo (!empty($data['fecha_ingreso_err'])) ? 'is-invalid' : ''; ?>" 
                             value="<?php echo $data['fecha_ingreso']; ?>"
+                            <?php if(!empty($data['fecha_inicio_contrato'])): ?>min="<?php echo $data['fecha_inicio_contrato']; ?>"<?php endif; ?>
+                            <?php if(!empty($data['fecha_fin_contrato'])): ?>max="<?php echo $data['fecha_fin_contrato']; ?>"<?php endif; ?>
                         >
                         <span class="invalid-feedback"><?php echo $data['fecha_ingreso_err']; ?></span>
+                        <?php if(!empty($data['fecha_inicio_contrato']) && !empty($data['fecha_fin_contrato'])): ?>
+                            <small class="form-text text-muted">Rango permitido: <?php echo date('d/m/Y', strtotime($data['fecha_inicio_contrato'])); ?> - <?php echo date('d/m/Y', strtotime($data['fecha_fin_contrato'])); ?></small>
+                        <?php endif; ?>
                     </div>
 
                     <div class="form-group col-md-8">
@@ -97,7 +102,7 @@
                     <?php endif; ?>
                 </div>
                 
-                <div class="form-group">
+                <div id="descripcion_container" class="form-group">
                     <label for="descripcion_realizada">Descripción del Trabajo/Actividad: <sup>*</sup></label>
                     <textarea 
                         name="descripcion_realizada" 
@@ -114,11 +119,12 @@
                     <input 
                         type="number" 
                         name="cantidad_realizada" 
-                        class="form-control form-control-lg" 
+                        class="form-control form-control-lg <?php echo (!empty($data['cantidad_realizada_err'])) ? 'is-invalid' : ''; ?>" 
                         min="1"
                         value="<?php echo $data['cantidad_realizada'] ?? ''; ?>"
                         placeholder="Ingrese la cantidad de repeticiones (ej: número de escaneos, impresiones, etc.)"
                     >
+                    <span class="invalid-feedback"><?php echo $data['cantidad_realizada_err'] ?? ''; ?></span>
                     <small class="form-text text-muted">Este campo solo es necesario si el alcance es recurrente.</small>
                 </div>
 
@@ -135,11 +141,33 @@
     </div>
 </div>
 
+<!-- Modal de actividad duplicada -->
+<div class="modal fade" id="duplicateModal" tabindex="-1" role="dialog" aria-labelledby="duplicateModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="duplicateModalLabel"><i class="bi bi-exclamation-triangle-fill"></i> Actividad duplicada</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="duplicate-message mb-0">Ya existe una actividad para este alcance en la fecha seleccionada.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Entendido</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const alcanceSelect = document.querySelector('select[name="id_alcance"]');
     const cantidadContainer = document.getElementById('cantidad_container');
     const cantidadInput = document.querySelector('input[name="cantidad_realizada"]');
+    const descripcionContainer = document.getElementById('descripcion_container');
+    const descripcionTextarea = document.querySelector('textarea[name="descripcion_realizada"]');
     
     // Datos de alcances con información de recurrencia
     const alcancesData = <?php echo json_encode(array_map(function($a) { 
@@ -151,11 +179,23 @@ document.addEventListener('DOMContentLoaded', function() {
         const alcance = alcancesData.find(a => a.id === selectedId);
         
         if (alcance && alcance.es_recurrente) {
+            // Mostrar cantidad y ocultar descripción
             cantidadContainer.style.display = 'block';
             cantidadInput.required = true;
+
+            descripcionContainer.style.display = 'none';
+            descripcionTextarea.required = false;
+            descripcionTextarea.value = 'Alcance Recurrente';
         } else {
+            // Ocultar cantidad y mostrar descripción
             cantidadContainer.style.display = 'none';
             cantidadInput.required = false;
+
+            descripcionContainer.style.display = 'block';
+            descripcionTextarea.required = false; // validación del servidor se encarga
+            if (descripcionTextarea.value === 'Alcance Recurrente') {
+                descripcionTextarea.value = '';
+            }
         }
     }
     
@@ -163,6 +203,23 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Verificar al cargar si hay un alcance seleccionado
     checkAlcanceRecurrence();
+
+    // Mostrar modal de duplicado si el servidor detectó uno
+    const duplicateError = <?php echo json_encode($data['duplicate_error'] ?? ''); ?>;
+    if (duplicateError) {
+        const $modal = typeof $ === 'function' ? $('#duplicateModal') : null;
+        if ($modal && $modal.modal) {
+            $modal.find('.duplicate-message').text(duplicateError);
+            $modal.modal('show');
+        } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const modalEl = document.getElementById('duplicateModal');
+            modalEl.querySelector('.duplicate-message').textContent = duplicateError;
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        } else {
+            alert(duplicateError);
+        }
+    }
 });
 </script>
 

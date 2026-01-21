@@ -3,7 +3,7 @@
   define('DB_HOST', 'localhost');
   define('DB_USER', 'root'); // Reemplaza con tu usuario de DB
   define('DB_PASS', ''); // Reemplaza con tu contraseña de DB
-  define('DB_NAME', 'gestor_actividades'); // Reemplaza con el nombre de tu DB
+  define('DB_NAME', 'actividades_gero'); // Reemplaza con el nombre de tu DB
 
   
   // App Root (Ruta a la carpeta /app)

@@ -84,7 +84,7 @@ class Contratos extends Controller {
             if(empty($data['descripcion_err']) && empty($data['inicio_contrato_err']) && empty($data['numero_pagos_err']) && empty($data['id_division_err'])){
                 
                 if($this->contratoModel->addContrato($data)){
-                    // Si tienes flash messages, úsalos aquí
+                    flashMessage('contrato_message', 'Contrato creado exitosamente', 'success');
                     redirect('contratos/index');
                 } else {
                     die('Algo salió mal al intentar guardar el contrato.');
@@ -155,6 +155,7 @@ class Contratos extends Controller {
             // 2. Si no hay errores
             if(empty($data['descripcion_err']) && empty($data['inicio_contrato_err']) && empty($data['numero_pagos_err']) && empty($data['id_division_err'])){
                 if($this->contratoModel->updateContrato($data)){
+                    flashMessage('contrato_message', 'Contrato actualizado exitosamente', 'success');
                     redirect('contratos/index');
                 } else {
                     die('Algo salió mal al intentar actualizar.');
@@ -196,6 +197,7 @@ class Contratos extends Controller {
         
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
             if($this->contratoModel->deleteContrato($id)){
+                flashMessage('contrato_message', 'Contrato eliminado exitosamente', 'success');
                 redirect('contratos/index');
             } else {
                 die('Algo salió mal al intentar eliminar el contrato.');

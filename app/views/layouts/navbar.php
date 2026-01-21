@@ -110,9 +110,13 @@
 
             <ul class="navbar-nav ml-auto">
                 <?php if(isLoggedIn()): ?>
+                    <?php $userRole = getRolUsuarioActual(); ?>
                     <li class="nav-item">
-                        <span class="nav-link text-white">
-                            <i class="bi bi-person"></i> Bienvenido, <?php echo getUserDisplayName(); ?>
+                        <span class="nav-link text-white d-flex flex-column align-items-start" style="line-height: 1.2;">
+                            <span><i class="bi bi-person"></i> Bienvenido, <?php echo getUserDisplayName(); ?></span>
+                            <?php if($userRole): ?>
+                                <small class="text-white-50">Rol: <?php echo htmlspecialchars($userRole->Nombre, ENT_QUOTES, 'UTF-8'); ?></small>
+                            <?php endif; ?>
                         </span>
                     </li>
                     <li class="nav-item">

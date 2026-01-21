@@ -87,11 +87,14 @@ class Alcances extends Controller {
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
             
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
+            
+            // Capturar el checkbox antes de filtrar, ya que los checkboxes no enviados no aparecen en $_POST
+            $esRecurrente = isset($_REQUEST['es_recurrente']) ? 1 : 0;
 
             $data = [
                 'id_contrato' => trim($_POST['id_contrato']),
                 'descripcion' => trim($_POST['descripcion']),
-                'es_recurrente' => isset($_POST['es_recurrente']) ? 1 : 0,
+                'es_recurrente' => $esRecurrente,
                 'id_contrato_err' => '',
                 'descripcion_err' => '',
                 'title' => 'Añadir Alcance',
@@ -110,6 +113,7 @@ class Alcances extends Controller {
             if(empty($data['id_contrato_err']) && empty($data['descripcion_err'])){
                 
                 if($this->alcanceModel->addAlcance($data)){
+                    flashMessage('alcance_message', 'Alcance creado exitosamente', 'success');
                     redirect('alcances/index');
                 } else {
                     die('Algo salió mal al intentar guardar el alcance.');
@@ -151,12 +155,15 @@ class Alcances extends Controller {
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
             // Lógica de POST y actualización
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
+            
+            // Capturar el checkbox antes de filtrar, ya que los checkboxes no enviados no aparecen en $_POST
+            $esRecurrente = isset($_REQUEST['es_recurrente']) ? 1 : 0;
 
             $data = [
                 'id' => $id,
                 'id_contrato' => trim($_POST['id_contrato']),
                 'descripcion' => trim($_POST['descripcion']),
-                'es_recurrente' => isset($_POST['es_recurrente']) ? 1 : 0,
+                'es_recurrente' => $esRecurrente,
                 'id_contrato_err' => '',
                 'descripcion_err' => '',
                 'title' => 'Editar Alcance',
@@ -174,6 +181,7 @@ class Alcances extends Controller {
             // 2. Si no hay errores
             if(empty($data['id_contrato_err']) && empty($data['descripcion_err'])){
                 if($this->alcanceModel->updateAlcance($data)){
+                    flashMessage('alcance_message', 'Alcance actualizado exitosamente', 'success');
                     redirect('alcances/index');
                 } else {
                     die('Algo salió mal al intentar actualizar.');
@@ -210,6 +218,7 @@ class Alcances extends Controller {
         
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
             if($this->alcanceModel->deleteAlcance($id)){
+                flashMessage('alcance_message', 'Alcance eliminado exitosamente', 'success');
                 redirect('alcances/index');
             } else {
                 die('Algo salió mal al intentar eliminar el alcance.');

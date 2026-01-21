@@ -77,6 +77,7 @@ class Usuarios extends Controller {
                         $this->usuarioModel->assignRoleToUsuario($nuevoUsuario->Id_usuario, $data['id_role']);
                     }
                     
+                    flashMessage('usuario_message', 'Usuario creado exitosamente', 'success');
                     redirect('usuarios/index');
                 } else {
                     die('Algo salió mal al intentar guardar el usuario.');
@@ -149,6 +150,7 @@ class Usuarios extends Controller {
                     // Asignar rol si se seleccionó uno
                     $this->usuarioModel->assignRoleToUsuario($id, $data['id_role']);
                     
+                    flashMessage('usuario_message', 'Usuario actualizado exitosamente', 'success');
                     redirect('usuarios/index');
                 } else {
                     die('Algo salió mal al intentar actualizar el usuario.');
@@ -186,6 +188,7 @@ class Usuarios extends Controller {
         
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
             if($this->usuarioModel->deleteUsuario($id)){
+                flashMessage('usuario_message', 'Usuario eliminado exitosamente', 'success');
                 redirect('usuarios/index');
             } else {
                 die('Algo salió mal al intentar eliminar el usuario.');

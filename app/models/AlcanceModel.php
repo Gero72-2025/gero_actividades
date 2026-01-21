@@ -123,7 +123,7 @@ class AlcanceModel {
         
         $this->db->bind(':id_contrato', $data['id_contrato']);
         $this->db->bind(':descripcion', $data['descripcion']);
-        $this->db->bind(':es_recurrente', isset($data['es_recurrente']) ? 1 : 0);
+        $this->db->bind(':es_recurrente', $data['es_recurrente']);
 
         return $this->db->execute();
     }
@@ -137,7 +137,7 @@ class AlcanceModel {
         $this->db->bind(':id', $data['id']);
         $this->db->bind(':id_contrato', $data['id_contrato']);
         $this->db->bind(':descripcion', $data['descripcion']);
-        $this->db->bind(':es_recurrente', isset($data['es_recurrente']) ? 1 : 0);
+        $this->db->bind(':es_recurrente', $data['es_recurrente']);
 
         return $this->db->execute();
     }

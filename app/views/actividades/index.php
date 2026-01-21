@@ -76,11 +76,22 @@ $canDelete = tienePermiso('actividades.eliminar');
                     </thead>
                     <tbody>
                         <?php foreach($data['actividades'] as $actividad): ?>
+                            <?php
+                                $descripcionListado = $actividad->Descripcion_realizada;
+                                if (!empty($actividad->Alcance_esRecurrente) && (int)$actividad->Alcance_esRecurrente === 1) {
+                                    $cantidad = isset($actividad->cantidad_realizada) ? $actividad->cantidad_realizada : null;
+                                    $descripcionListado = trim($descripcionListado);
+                                    if ($cantidad !== null && $cantidad !== '') {
+                                        $descripcionListado .= ': ' . $cantidad;
+                                    }
+                                }
+                                $descripcionCorta = strlen($descripcionListado) > 50 ? substr($descripcionListado, 0, 50) . '...' : $descripcionListado;
+                            ?>
                             <tr>
                                 <td data-label="Fecha"><?php echo date('d/m/Y', strtotime($actividad->Fecha_ingreso)); ?></td>
                                 <td data-label="Personal"><?php echo $actividad->Personal_Nombre . ' ' . $actividad->Personal_Apellido; ?></td>
                                 <td class="hide-on-mobile" data-label="Alcance"><?php echo substr($actividad->Alcance_Descripcion, 0, 40) . '...'; ?></td>
-                                <td class="hide-on-mobile" data-label="Descripción"><?php echo substr($actividad->Descripcion_realizada, 0, 50) . '...'; ?></td>
+                                <td class="hide-on-mobile" data-label="Descripción"><?php echo $descripcionCorta; ?></td>
                                 <td data-label="Estado">
                                     <?php 
                                         $badge_class = '';
@@ -115,7 +126,7 @@ $canDelete = tienePermiso('actividades.eliminar');
                                                 data-toggle="modal" 
                                                 data-target="#deleteActividadModal"
                                                 data-id="<?php echo $actividad->Id_actividad; ?>"
-                                                data-nombre="<?php echo htmlspecialchars($actividad->Descripcion_realizada); ?>"
+                                                data-nombre="<?php echo htmlspecialchars($descripcionListado); ?>"
                                                 title="Eliminar"
                                             >
                                                 <i class="bi bi-trash"></i>

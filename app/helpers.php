@@ -146,32 +146,91 @@ function displayFlashMessage($key){
     if($message === null){
         return '';
     }
-    
-    $type = $message['type'];
-    $text = $message['message'];
-    
-    // Mapear tipos a clases de Bootstrap
+
+    $type = $message['type'] ?? 'info';
+    $text = $message['message'] ?? '';
+
+    // Mapear tipos a clases de Bootstrap 4 y su ícono
     $alertClass = 'alert-info';
+    $icon = 'bi-info-circle-fill';
     switch($type){
         case 'success':
             $alertClass = 'alert-success';
+            $icon = 'bi-check-circle-fill';
             break;
         case 'danger':
         case 'error':
             $alertClass = 'alert-danger';
+            $icon = 'bi-x-circle-fill';
             break;
         case 'warning':
             $alertClass = 'alert-warning';
+            $icon = 'bi-exclamation-triangle-fill';
             break;
         case 'info':
             $alertClass = 'alert-info';
+            $icon = 'bi-info-circle-fill';
             break;
     }
-    
-    return '<div class="alert ' . $alertClass . ' alert-dismissible fade show" role="alert">
-                ' . htmlspecialchars($text) . '
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>';
+
+    return '<div class="alert ' . $alertClass . ' alert-dismissible fade show" role="alert">'
+        . '<i class="bi ' . $icon . ' mr-2"></i>'
+        . htmlspecialchars($text) .
+        '<button type="button" class="close" data-dismiss="alert" aria-label="Close">'
+        . '<span aria-hidden="true">&times;</span>'
+        . '</button>'
+        . '</div>';
+}
+
+/**
+ * Muestra todos los mensajes flash almacenados
+ * @return string HTML con todas las alertas
+ */
+function displayAllFlashMessages(){
+    if(empty($_SESSION['flash']) || !is_array($_SESSION['flash'])){
+        return '';
+    }
+
+    $alerts = '';
+    foreach($_SESSION['flash'] as $key => $message){
+        $type = $message['type'] ?? 'info';
+        $text = $message['message'] ?? '';
+
+        $alertClass = 'alert-info';
+        $icon = 'bi-info-circle-fill';
+        switch($type){
+            case 'success':
+                $alertClass = 'alert-success';
+                $icon = 'bi-check-circle-fill';
+                break;
+            case 'danger':
+            case 'error':
+                $alertClass = 'alert-danger';
+                $icon = 'bi-x-circle-fill';
+                break;
+            case 'warning':
+                $alertClass = 'alert-warning';
+                $icon = 'bi-exclamation-triangle-fill';
+                break;
+            case 'info':
+                $alertClass = 'alert-info';
+                $icon = 'bi-info-circle-fill';
+                break;
+        }
+
+        $alerts .= '<div class="alert ' . $alertClass . ' alert-dismissible fade show" role="alert">'
+            . '<i class="bi ' . $icon . ' mr-2"></i>'
+            . htmlspecialchars($text) .
+            '<button type="button" class="close" data-dismiss="alert" aria-label="Close">'
+            . '<span aria-hidden="true">&times;</span>'
+            . '</button>'
+            . '</div>';
+
+        unset($_SESSION['flash'][$key]);
+    }
+
+    // Contenedor fijo tipo notification bar
+    return '<div class="flash-stack">' . $alerts . '</div>';
 }
 /**
  * Genera un Breadcrumb de Bootstrap basado en la URL actual
