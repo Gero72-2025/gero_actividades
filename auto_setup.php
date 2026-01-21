@@ -282,6 +282,7 @@ try {
             `conectado` TINYINT(1) DEFAULT 0,
             `fecha_ultimo_login` TIMESTAMP NULL,
             `Fecha_creacion` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `Fecha_actualizacion` TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_email (email),
             INDEX idx_estado (estado_usuario)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -501,9 +502,11 @@ try {
             `Id_actividad` INT AUTO_INCREMENT PRIMARY KEY,
             `Id_personal` INT NOT NULL,
             `Id_alcance` INT NOT NULL,
-            `Descripcion` TEXT,
+            `Fecha_ingreso` DATE NOT NULL COMMENT 'Fecha en que se realizó la actividad',
+            `Descripcion_realizada` TEXT COMMENT 'Descripción del trabajo realizado',
             `cantidad_realizada` INT DEFAULT NULL COMMENT 'Cantidad de repeticiones si el alcance es recurrente',
             `Estado_actividad` VARCHAR(50) DEFAULT 'Pendiente' COMMENT 'Pendiente, En Progreso, Completada, Cancelada',
+            `Estado` TINYINT(1) DEFAULT 1 COMMENT '1=Activo, 0=Inactivo',
             `Numero_orden` INT DEFAULT 1,
             `Fecha_inicio` DATE,
             `Fecha_fin` DATE,
@@ -512,7 +515,7 @@ try {
             FOREIGN KEY (`Id_alcance`) REFERENCES `alcances`(`Id_alcance`) ON DELETE CASCADE,
             INDEX idx_estado (Estado_actividad),
             INDEX idx_personal (Id_personal),
-            INDEX idx_fecha (Fecha_fin),
+            INDEX idx_fecha_ingreso (Fecha_ingreso),
             INDEX idx_cantidad (cantidad_realizada)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ";
@@ -629,7 +632,7 @@ try {
         ['roles.crear', 'Crear nuevos roles', 'roles', 'crear'],
         ['roles.editar', 'Editar roles existentes', 'roles', 'editar'],
         ['roles.eliminar', 'Eliminar roles', 'roles', 'eliminar'],
-        ['roles.asignar_permisos', 'Asignar permisos a roles', 'roles', 'asignar_permisos'],
+        ['roles.permisos', 'Gestionar permisos de roles', 'roles', 'permisos'],
         
         // Permisos
         ['permisos.ver', 'Ver listado de permisos', 'permisos', 'ver'],
