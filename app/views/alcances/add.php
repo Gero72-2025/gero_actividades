@@ -43,6 +43,23 @@
                     <span class="invalid-feedback"><?php echo $data['descripcion_err']; ?></span>
                 </div>
 
+                <div class="form-check mt-3 mb-4">
+                    <input 
+                        type="checkbox" 
+                        name="es_recurrente" 
+                        class="form-check-input" 
+                        id="es_recurrente"
+                        value="1"
+                        <?php echo isset($data['es_recurrente']) && $data['es_recurrente'] ? 'checked' : ''; ?>
+                    >
+                    <label class="form-check-label" for="es_recurrente">
+                        <i class="bi bi-arrow-repeat"></i> Este alcance es recurrente (se repite diariamente)
+                    </label>
+                    <small class="d-block text-muted mt-2">
+                        Si selecciona esta opción, podrá registrar la cantidad de veces que se realiza esta tarea cada día.
+                    </small>
+                </div>
+
                 <div class="row mt-4">
                     <div class="col">
                         <input type="submit" value="Guardar Alcance" class="btn btn-success btn-block">

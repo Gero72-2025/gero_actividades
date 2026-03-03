@@ -21,7 +21,20 @@ class Personal extends Controller {
         // Verificar permiso para ver personal
         $this->verificarAcceso('personal', 'ver');
         
-        $personal = $this->personalModel->getPersonal();
+        // Si el usuario es jefe de división, solo mostrar su personal activo
+        $idUsuario = $_SESSION['user_id'];
+        if ($this->personalModel->isJefeDivision($idUsuario)) {
+            $division = $this->personalModel->getDivisionWhereChief($idUsuario);
+            if ($division) {
+                $personal = $this->personalModel->getPersonalByDivision($division->Id_Division);
+            } else {
+                // Fallback: si no se encuentra división, no mostrar registros
+                $personal = [];
+            }
+        } else {
+            // Resto de usuarios (admin, etc.) ven todo el personal activo
+            $personal = $this->personalModel->getPersonal();
+        }
 
         $data = [
             'title' => 'Gestión de Personal',
@@ -40,6 +53,7 @@ class Personal extends Controller {
         $divisiones = $this->divisionModel->getDivisions();
         $contratos = $this->contratoModel->getContratosDisponibles();
         $usuarios = $this->usuarioModel->getUsuariosNoAsignados();
+        $roles = $this->usuarioModel->getRoles();
         
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
             
@@ -51,6 +65,7 @@ class Personal extends Controller {
                 'nombre' => trim($_POST['nombre']),
                 'apellido' => trim($_POST['apellido']),
                 'puesto' => trim($_POST['puesto']),
+                'tipo_servicio' => isset($_POST['tipo_servicio']) ? trim($_POST['tipo_servicio']) : '',
                 'id_division' => trim($_POST['id_division']),
                 'id_contrato' => trim($_POST['id_contrato']),
                 'id_usuario' => trim($_POST['id_usuario']), 
@@ -58,10 +73,12 @@ class Personal extends Controller {
                 'nombre_err' => '',
                 'apellido_err' => '',
                 'puesto_err' => '',
+                'tipo_servicio_err' => '',
                 'id_usuario_err' => '',
                 'divisiones' => $divisiones,
                 'contratos' => $contratos,
                 'usuarios' => $usuarios,
+                'roles' => $roles,
             ];
 
             // 2. Validación
@@ -71,17 +88,20 @@ class Personal extends Controller {
             if(empty($data['apellido'])){
                 $data['apellido_err'] = 'El apellido es obligatorio.';
             }
+            if($data['tipo_servicio'] === '' || !in_array($data['tipo_servicio'], ['0','1'], true)){
+                $data['tipo_servicio_err'] = 'Seleccione el tipo de servicio.';
+            }
             if(empty($data['id_usuario'])){
                 $data['id_usuario_err'] = 'Debe seleccionar un usuario para vincular.';
             }
             // NOTA: 'puesto', 'id_division' e 'id_contrato' son opcionales (NULL en la BD)
 
             // 3. Comprobar errores
-            if(empty($data['nombre_err']) && empty($data['apellido_err']) && empty($data['id_usuario_err'])){
+            if(empty($data['nombre_err']) && empty($data['apellido_err']) && empty($data['id_usuario_err']) && empty($data['tipo_servicio_err'])){
                 
                 // Sin errores: Guardar
                 if($this->personalModel->addPersonal($data)){
-                    // Redirección exitosa
+                    flashMessage('personal_message', 'Personal creado exitosamente', 'success');
                     redirect('personal/index');
                 } else {
                     die('Algo salió mal al intentar guardar el personal.');
@@ -98,16 +118,19 @@ class Personal extends Controller {
                 'nombre' => '',
                 'apellido' => '',
                 'puesto' => '',
+                'tipo_servicio' => '1',
                 'id_division' => '',
                 'id_contrato' => '',
                 'id_usuario' => '', 
                 'nombre_err' => '',
                 'apellido_err' => '',
                 'puesto_err' => '',
+                'tipo_servicio_err' => '',
                 'id_usuario_err' => '',
                 'divisiones' => $divisiones,
                 'contratos' => $contratos,
                 'usuarios' => $usuarios,
+                'roles' => $roles,
             ];
 
             $this->view('personal/add', $data);
@@ -125,14 +148,23 @@ class Personal extends Controller {
             redirect('personal/index');
         }
         
+        // Obtener información del contrato actual si existe
+        $contrato_actual = null;
+        $contrato_tiene_actividades = false;
+        if($personal_actual->Id_contrato){
+            $contrato_actual = $this->contratoModel->getContratoById($personal_actual->Id_contrato);
+            $contrato_tiene_actividades = $this->contratoModel->hasActividadesEnAlcances($personal_actual->Id_contrato);
+        }
+        
         // Cargar datos para dropdowns (Necesarios tanto en GET como en POST si hay errores)
         $divisiones = $this->divisionModel->getDivisions();
         // Obtener contratos disponibles, excluyendo el que ya está asignado a este personal
         $contratos = $this->contratoModel->getContratosDisponibles($personal_actual->Id_contrato);
         
-        // Cargar la lista de usuarios no asignados. Se asegura que siempre sea un array.
-        $usuarios_no_asignados_raw = $this->usuarioModel->getUsuariosNoAsignados();
-        $usuarios_no_asignados = is_array($usuarios_no_asignados_raw) ? $usuarios_no_asignados_raw : [];
+        // Cargar la lista de usuarios disponibles (activos y no asignados, o el usuario actual asignado)
+        // Esto asegura que si el usuario fue eliminado (estado=0), no aparezca en el dropdown
+        $usuarios = $this->usuarioModel->getUsuariosDisponiblesParaPersonal($personal_actual->Id_usuario);
+        $usuarios = is_array($usuarios) ? $usuarios : [];
         
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
             
@@ -145,6 +177,7 @@ class Personal extends Controller {
                 'nombre' => trim($_POST['nombre']),
                 'apellido' => trim($_POST['apellido']),
                 'puesto' => trim($_POST['puesto']),
+                'tipo_servicio' => isset($_POST['tipo_servicio']) ? trim($_POST['tipo_servicio']) : '',
                 'id_division' => trim($_POST['id_division']),
                 'id_contrato' => trim($_POST['id_contrato']),
                 'id_usuario' => trim($_POST['id_usuario']), 
@@ -152,9 +185,13 @@ class Personal extends Controller {
                 'nombre_err' => '',
                 'apellido_err' => '',
                 'puesto_err' => '',
+                'tipo_servicio_err' => '',
                 'id_usuario_err' => '',
+                'id_contrato_err' => '',
                 'divisiones' => $divisiones,
                 'contratos' => $contratos,
+                'contrato_actual' => $contrato_actual,
+                'contrato_tiene_actividades' => $contrato_tiene_actividades,
                 // 'usuarios' se define al final
             ];
 
@@ -165,15 +202,37 @@ class Personal extends Controller {
             if(empty($data['apellido'])){
                 $data['apellido_err'] = 'El apellido es obligatorio.';
             }
+            if($data['tipo_servicio'] === '' || !in_array($data['tipo_servicio'], ['0','1'], true)){
+                $data['tipo_servicio_err'] = 'Seleccione el tipo de servicio.';
+            }
             if(empty($data['id_usuario'])){
                 $data['id_usuario_err'] = 'El usuario vinculado no puede estar vacío.';
             }
+            
+            // Validación: Lógica para cambio de contrato
+            // Se intenta cambiar el contrato si el valor es diferente al actual
+            if($data['id_contrato'] != $personal_actual->Id_contrato && $contrato_actual){
+                // 1. Verificar si el contrato actual tiene actividades en sus alcances
+                $tiene_actividades = $this->contratoModel->hasActividadesEnAlcances($personal_actual->Id_contrato);
+                
+                if($tiene_actividades){
+                    // Si tiene actividades, verificar si el contrato está activo
+                    if($contrato_actual->Contrato_activo == 1){
+                        $data['id_contrato_err'] = 'No puede cambiar el contrato mientras esté activo y tenga actividades registradas. Debe finalizar el contrato primero.';
+                        // Revertir al contrato original
+                        $data['id_contrato'] = $personal_actual->Id_contrato;
+                    }
+                    // Si tiene actividades pero no está activo, se permite el cambio
+                }
+                // Si no tiene actividades, se permite el cambio sin importar si está activo
+            }
 
             // 3. Comprobar errores
-            if(empty($data['nombre_err']) && empty($data['apellido_err']) && empty($data['id_usuario_err'])){
+            if(empty($data['nombre_err']) && empty($data['apellido_err']) && empty($data['id_usuario_err']) && empty($data['tipo_servicio_err'])){
                 
                 // Sin errores: Actualizar (Lógica existente)
                 if($this->personalModel->updatePersonal($data)){
+                    flashMessage('personal_message', 'Personal actualizado exitosamente', 'success');
                     redirect('personal/index');
                 } else {
                     die('Algo salió mal al intentar actualizar.');
@@ -184,8 +243,8 @@ class Personal extends Controller {
                 // Obtener el usuario que debería estar seleccionado 
                 $usuario_actual = $this->usuarioModel->getUsuarioById($data['id_usuario']);
                 
-                // Inicializar la lista del dropdown con los usuarios no asignados (ya verificado como array)
-                $usuarios_dropdown = $usuarios_no_asignados;
+                // Inicializar la lista del dropdown con los usuarios disponibles
+                $usuarios_dropdown = $usuarios;
                 
                 if ($usuario_actual) {
                     $is_present = false;
@@ -220,10 +279,10 @@ class Personal extends Controller {
             // Obtener el usuario actualmente asignado
             $usuario_actual = $this->usuarioModel->getUsuarioById($personal->Id_usuario);
             
-            // Inicializar la lista del dropdown con los usuarios no asignados (ya verificado como array)
-            $usuarios_dropdown = $usuarios_no_asignados;
+            // Inicializar la lista del dropdown con los usuarios disponibles
+            $usuarios_dropdown = $usuarios;
 
-            // Combinar la lista de no asignados con el usuario actual
+            // Combinar la lista de disponibles con el usuario actual si no está presente
             if ($usuario_actual) {
                 $is_present = false;
                 
@@ -247,15 +306,22 @@ class Personal extends Controller {
                 'nombre' => $personal->Nombre_Completo,
                 'apellido' => $personal->Apellido_Completo,
                 'puesto' => $personal->Puesto,
+                'tipo_servicio' => $personal->Tipo_servicio,
                 'id_division' => $personal->Id_division,
                 'id_contrato' => $personal->Id_contrato,
                 'id_usuario' => $personal->Id_usuario, 
                 'nombre_err' => '',
                 'apellido_err' => '',
                 'puesto_err' => '',
+                'tipo_servicio_err' => '',
                 'id_usuario_err' => '',
+                'id_contrato_err' => '',
                 'divisiones' => $divisiones,
                 'contratos' => $contratos,
+                'contrato_actual' => $contrato_actual,
+                'contrato_tiene_actividades' => $contrato_tiene_actividades,
+                'usuarios' => $usuarios_dropdown,
+                'contrato_tiene_actividades' => $contrato_tiene_actividades,
                 'usuarios' => $usuarios_dropdown, // Usar la lista combinada
             ];
 
@@ -270,7 +336,7 @@ class Personal extends Controller {
         
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
             if($this->personalModel->deletePersonal($id)){
-                // Puedes agregar un setFlashMessage() si lo tienes implementado
+                flashMessage('personal_message', 'Personal eliminado exitosamente', 'success');
                 redirect('personal/index');
             } else {
                 die('Algo salió mal al intentar eliminar el registro de personal.');

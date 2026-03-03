@@ -92,5 +92,28 @@ class DivisionModel {
             return false;
         }
     }
+
+    /**
+     * Obtiene la información del jefe de una división específica.
+     * Retorna objeto con datos del personal jefe o null si no tiene jefe asignado.
+     */
+    public function getJefeDivision($idDivision){
+        $this->db->query('
+            SELECT 
+                p.Nombre_Completo,
+                p.Apellido_Completo,
+                p.Puesto
+            FROM 
+                division d
+            INNER JOIN 
+                personal p ON d.Id_personal_jefe = p.Id_personal
+            WHERE 
+                d.Id_Division = :id_division 
+                AND d.Estado_division = 1 
+                AND p.Estado = 1
+        ');
+        $this->db->bind(':id_division', $idDivision);
+        return $this->db->single();
+    }
     
 }

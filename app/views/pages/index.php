@@ -2,6 +2,14 @@
 
 <div class="row">
     <div class="col-md-9 mx-auto">
+        <!-- Pasar fechas del contrato al JavaScript -->
+        <script>
+            window.contractDates = {
+                inicio: '<?php echo $data['fecha_inicio_contrato'] ?? ''; ?>',
+                fin: '<?php echo $data['fecha_fin_contrato'] ?? ''; ?>'
+            };
+            console.log('Contract dates from PHP:', window.contractDates);
+        </script>
         <div class="calendar-layout-container">
             
             <div class="calendar-detail-card" id="detailCard">
@@ -45,7 +53,7 @@
         </button>
       </div>
       <form id="multiActivityForm" action="<?php echo URLROOT; ?>/actividades/process_multiple" method="post">
-          <div class="modal-body">
+          <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
               <h4 class="mb-3">Fecha Seleccionada: <span id="modalSelectedDate" class="badge badge-secondary"></span></h4>
               <input type="hidden" name="fecha_ingreso" id="modalFechaIngreso">
               
@@ -98,9 +106,14 @@
                       </select>
               </div>
 
-              <div class="form-group">
+              <div class="form-group" id="descriptionGroup">
                   <label for="modalDescripcionRealizada"><strong>Descripción Realizada:</strong></label>
                   <textarea name="descripcion_realizada" id="modalDescripcionRealizada" class="form-control" rows="5" disabled required></textarea>
+              </div>
+
+              <div class="form-group" id="quantityGroup" style="display: none;">
+                  <label for="modalCantidadRealizada"><strong>Cantidad Realizada:</strong></label>
+                  <input type="number" name="cantidad_realizada" id="modalCantidadRealizada" class="form-control" min="1" disabled required>
               </div>
               
               <div class="form-group">

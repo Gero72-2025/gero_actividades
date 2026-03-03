@@ -72,7 +72,7 @@ class Divisions extends Controller {
             if(empty($data['nombre_err']) && empty($data['siglas_err'])){
                 // Validado: Intentar agregar al modelo
                 if($this->divisionModel->addDivision($data)){
-                    // Redirigir al índice con un mensaje de éxito (flash message - a implementar después)
+                    flashMessage('division_message', 'División creada exitosamente', 'success');
                     redirect('divisions/index');
                 } else {
                     die('Algo salió mal al intentar guardar la división.');
@@ -137,6 +137,7 @@ class Divisions extends Controller {
             if(empty($data['nombre_err']) && empty($data['siglas_err'])){
                 // Validado, proceder a actualizar
                 if($this->divisionModel->updateDivision($data)){
+                    flashMessage('division_message', 'División actualizada exitosamente', 'success');
                     redirect('divisions/index');
                 } else {
                     die('Algo salió mal al intentar actualizar.');
@@ -181,7 +182,7 @@ class Divisions extends Controller {
 
             // 2. Llamar al modelo para realizar la eliminación lógica
             if($this->divisionModel->deleteDivision($id)){
-                // Éxito: Redirigir al index (con un mensaje de éxito si usas sesiones)
+                flashMessage('division_message', 'División eliminada exitosamente', 'success');
                 redirect('divisions/index');
             } else {
                 // Fallo

@@ -2,6 +2,7 @@
 class Alcances extends Controller {
     private $alcanceModel;
     private $contratoModel; // Necesario para el dropdown
+    private $personalModel;
 
     public function __construct(){
         if(!isLoggedIn()){
@@ -11,38 +12,89 @@ class Alcances extends Controller {
         $this->alcanceModel = $this->model('AlcanceModel');
         // Necesitas el modelo de Contratos para poblar el dropdown de selección
         $this->contratoModel = $this->model('ContratoModel'); 
+        $this->personalModel = $this->model('PersonalModel');
     }
 
     // Muestra la lista de alcances
-    public function index(){
+    public function index($page = 1){
         // Verificar permiso para ver alcances
         $this->verificarAcceso('alcances', 'ver');
         
-        $alcances = $this->alcanceModel->getAlcances();
+        $divisionIdUsuario = null;
+        $personal = $this->personalModel->getPersonalByUserId($_SESSION['user_id']);
+        if($personal && !empty($personal->Id_division)){
+            $divisionIdUsuario = $personal->Id_division;
+        }
+
+        $alcances = $this->alcanceModel->getAlcances($divisionIdUsuario);
+
+        // Agrupar por contrato
+        $agrupados = [];
+        foreach($alcances as $alcance){
+            $idContrato = $alcance->Id_contrato;
+            if(!isset($agrupados[$idContrato])){
+                $agrupados[$idContrato] = [
+                    'contrato' => [
+                        'Id_contrato' => $idContrato,
+                        'Expediente' => $alcance->Expediente,
+                        'Descripcion' => $alcance->Contrato_Descripcion,
+                        'Contrato_activo' => $alcance->Contrato_activo,
+                        'Inicio_contrato' => $alcance->Inicio_contrato,
+                        'Fin_contrato' => $alcance->Fin_contrato,
+                    ],
+                    'alcances' => []
+                ];
+            }
+            $alcance->tiene_actividades = $alcance->actividades_count > 0;
+            $agrupados[$idContrato]['alcances'][] = $alcance;
+        }
+
+        // Paginación
+        $itemsPerPage = 10;
+        $totalContratos = count($agrupados);
+        $totalPages = ceil($totalContratos / $itemsPerPage);
+        $currentPage = max(1, min($page, $totalPages ?: 1));
+        $offset = ($currentPage - 1) * $itemsPerPage;
+
+        // Obtener solo los contratos de la página actual
+        $agrupadosPaginados = array_slice($agrupados, $offset, $itemsPerPage, true);
 
         $data = [
             'title' => 'Gestión de Alcances de Contrato',
-            'alcances' => $alcances
+            'agrupados' => $agrupadosPaginados,
+            'alcances' => $alcances,
+            'currentPage' => $currentPage,
+            'totalPages' => $totalPages,
+            'totalContratos' => $totalContratos
         ];
 
         $this->view('alcances/index', $data);
     }
 
     // Añadir Alcance
-    public function add(){
+    public function add($idContratoPreseleccionado = null){
         // Verificar permiso para crear alcances
         $this->verificarAcceso('alcances', 'crear');
         
         // Cargar datos de contratos para el dropdown
-        $contratos = $this->contratoModel->getContratos();
+        $divisionIdUsuario = null;
+        $personal = $this->personalModel->getPersonalByUserId($_SESSION['user_id']);
+        if($personal && !empty($personal->Id_division)){
+            $divisionIdUsuario = $personal->Id_division;
+        }
+        $contratos = $this->contratoModel->getContratos($divisionIdUsuario);
         
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
             
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
+            
+            // Capturar el checkbox antes de filtrar, ya que los checkboxes no enviados no aparecen en $_POST
+            $esRecurrente = isset($_REQUEST['es_recurrente']) ? 1 : 0;
 
             $data = [
                 'id_contrato' => trim($_POST['id_contrato']),
                 'descripcion' => trim($_POST['descripcion']),
+                'es_recurrente' => $esRecurrente,
                 'id_contrato_err' => '',
                 'descripcion_err' => '',
                 'title' => 'Añadir Alcance',
@@ -61,6 +113,7 @@ class Alcances extends Controller {
             if(empty($data['id_contrato_err']) && empty($data['descripcion_err'])){
                 
                 if($this->alcanceModel->addAlcance($data)){
+                    flashMessage('alcance_message', 'Alcance creado exitosamente', 'success');
                     redirect('alcances/index');
                 } else {
                     die('Algo salió mal al intentar guardar el alcance.');
@@ -71,11 +124,12 @@ class Alcances extends Controller {
             }
 
         } else {
-            // GET request: Cargar formulario vacío
+            // GET request: Cargar formulario vacío o con contrato preseleccionado
             $data = [
                 'title' => 'Añadir Alcance',
-                'id_contrato' => '',
+                'id_contrato' => $idContratoPreseleccionado ?? '',
                 'descripcion' => '',
+                'es_recurrente' => 0,
                 'id_contrato_err' => '',
                 'descripcion_err' => '',
                 'contratos' => $contratos
@@ -91,16 +145,25 @@ class Alcances extends Controller {
         $this->verificarAcceso('alcances', 'editar');
         
         // Cargar datos de contratos para el dropdown
-        $contratos = $this->contratoModel->getContratos();
+        $divisionIdUsuario = null;
+        $personal = $this->personalModel->getPersonalByUserId($_SESSION['user_id']);
+        if($personal && !empty($personal->Id_division)){
+            $divisionIdUsuario = $personal->Id_division;
+        }
+        $contratos = $this->contratoModel->getContratos($divisionIdUsuario);
 
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
             // Lógica de POST y actualización
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
+            
+            // Capturar el checkbox antes de filtrar, ya que los checkboxes no enviados no aparecen en $_POST
+            $esRecurrente = isset($_REQUEST['es_recurrente']) ? 1 : 0;
 
             $data = [
                 'id' => $id,
                 'id_contrato' => trim($_POST['id_contrato']),
                 'descripcion' => trim($_POST['descripcion']),
+                'es_recurrente' => $esRecurrente,
                 'id_contrato_err' => '',
                 'descripcion_err' => '',
                 'title' => 'Editar Alcance',
@@ -118,6 +181,7 @@ class Alcances extends Controller {
             // 2. Si no hay errores
             if(empty($data['id_contrato_err']) && empty($data['descripcion_err'])){
                 if($this->alcanceModel->updateAlcance($data)){
+                    flashMessage('alcance_message', 'Alcance actualizado exitosamente', 'success');
                     redirect('alcances/index');
                 } else {
                     die('Algo salió mal al intentar actualizar.');
@@ -137,6 +201,7 @@ class Alcances extends Controller {
                 'title' => 'Editar Alcance',
                 'id_contrato' => $alcance->Id_contrato,
                 'descripcion' => $alcance->Descripcion,
+                'es_recurrente' => $alcance->es_recurrente ?? 0,
                 'id_contrato_err' => '',
                 'descripcion_err' => '',
                 'contratos' => $contratos
@@ -153,6 +218,7 @@ class Alcances extends Controller {
         
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
             if($this->alcanceModel->deleteAlcance($id)){
+                flashMessage('alcance_message', 'Alcance eliminado exitosamente', 'success');
                 redirect('alcances/index');
             } else {
                 die('Algo salió mal al intentar eliminar el alcance.');
@@ -173,8 +239,18 @@ class Alcances extends Controller {
             return;
         }
         
-        // Asume que AlcanceModel::getAlcances() obtiene una lista de objetos
-        $alcances = $this->alcanceModel->getAlcances(); 
+        // Obtener el usuario logueado y su información de personal
+        $userId = $_SESSION['user_id'];
+        $personal = $this->personalModel->getPersonalByUserId($userId);
+        
+        // Si el usuario tiene un registro de personal, obtener solo alcances de su contrato activo
+        if($personal && $personal->Id_contrato){
+            $alcances = $this->alcanceModel->getAlcancesByActiveContract($personal->Id_personal);
+        } else {
+            // Si no tiene personal asignado, devolver lista vacía
+            $alcances = [];
+        }
+        
         echo json_encode($alcances);
     }
 }

@@ -39,4 +39,19 @@ class User {
             return false;
         }
     }
+
+    /**
+     * Obtiene el nombre completo del personal asociado a un usuario
+     * @param int $userId ID del usuario
+     * @return object|null Objeto con Nombre_Completo y Apellido_Completo o null si no existe
+     */
+    public function getNombrePersonal($userId){
+        $this->db->query('
+            SELECT Nombre_Completo, Apellido_Completo 
+            FROM personal 
+            WHERE Id_usuario = :userId AND Estado = 1
+        ');
+        $this->db->bind(':userId', $userId);
+        return $this->db->single();
+    }
 }

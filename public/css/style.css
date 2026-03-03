@@ -23,6 +23,44 @@ html, body {
     min-height: 100vh; /* Asegura la altura mínima de la ventana */
 }
 
+/* Fijar el navbar en la parte superior */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1030; /* Asegura que esté por encima de otros elementos */
+    width: 100%;
+}
+
+/* Ajustar el contenedor principal para dejar espacio al navbar fijo */
+.app-wrapper {
+    padding-top: 56px; /* Altura aproximada del navbar */
+}
+
+/* Notification bar / toast-like stack */
+.flash-stack {
+    position: fixed;
+    top: 68px; /* ligeramente debajo del navbar fijo */
+    right: 16px;
+    width: calc(100% - 32px);
+    max-width: 420px;
+    z-index: 2000;
+}
+
+.flash-stack .alert {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    margin-bottom: 12px;
+}
+
+@media (min-width: 768px) {
+    .flash-stack {
+        top: 72px;
+        right: 24px;
+        width: 360px;
+    }
+}
 
 /*
  * 4. Área de Contenido (Scrollable)
@@ -39,6 +77,9 @@ html, body {
     
     /* Para debug, puedes poner un color de fondo */
     background-color: #f4f4f4; 
+    
+    /* Asegura que haya espacio para el footer fijo */
+    padding-bottom: 100px;
 }
 
 /* * 5. El Contenedor interno (para centrar y dar padding) 
@@ -81,6 +122,17 @@ html, body {
 .card-body {
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Footer Fijo */
+footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 1020; /* Debajo del navbar pero encima del contenido */
+    margin-top: auto;
 }
 
 .form-group {
@@ -278,6 +330,26 @@ body.login {
 .day-cell.text-muted {
     color: #ccc !important;
     cursor: default;
+}
+.day-cell.out-of-range {
+    background-color: #f0e6e6;
+    color: #999;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+    position: relative;
+}
+.day-cell.out-of-range:hover {
+    background-color: #f0e6e6 !important;
+}
+.day-cell.out-of-range::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 2px;
+    background-color: #dc3545;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
 }
 .current-day {
     background-color: #e2f0ff;
@@ -836,5 +908,158 @@ body.login {
     
     .text-center {
         text-align: center;
+    }
+}
+
+/* ============================================================
+ * ESTILOS DEL BREADCRUMB
+ * ============================================================ */
+
+.breadcrumb {
+    background-color: #f8f9fa !important;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    margin-bottom: 2rem !important;
+}
+
+.breadcrumb-item {
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.breadcrumb-item a {
+    color: #0d6efd;
+    transition: color 0.2s ease;
+}
+
+.breadcrumb-item a:hover {
+    color: #0b5ed7;
+    text-decoration: underline !important;
+}
+
+.breadcrumb-item.active {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.breadcrumb i {
+    margin-right: 6px;
+    font-size: 1rem;
+}
+
+/* ============================================================
+ * ESTILOS DEL NAVBAR CON MENÚS DESPLEGABLES
+ * ============================================================ */
+
+/* Estilos del navbar */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.4rem;
+    letter-spacing: 0.5px;
+}
+
+/* Estilos para los enlaces del navbar */
+.navbar-nav .nav-link {
+    margin: 0 8px;
+    transition: all 0.3s ease;
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.navbar-nav .nav-link:hover {
+    color: #fff !important;
+}
+
+.navbar-nav .nav-link.active {
+    color: #fff !important;
+    font-weight: 600;
+}
+
+/* Estilos para los dropdowns */
+.navbar-nav .dropdown-menu {
+    border: none;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    background-color: #2c3e50;
+    border-radius: 4px;
+    padding: 0;
+    min-width: 200px;
+}
+
+.navbar-nav .dropdown-menu .dropdown-item {
+    color: rgba(255, 255, 255, 0.8);
+    padding: 10px 20px;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+.navbar-nav .dropdown-menu .dropdown-item:hover {
+    background-color: #34495e;
+    color: #fff;
+    border-left-color: #3498db;
+    padding-left: 17px;
+}
+
+.navbar-nav .dropdown-menu .dropdown-item.active {
+    background-color: #34495e;
+    color: #fff;
+    border-left-color: #2ecc71;
+    padding-left: 17px;
+}
+
+.navbar-nav .dropdown-menu .dropdown-divider {
+    background-color: #34495e;
+    margin: 8px 0;
+}
+
+/* Iconos en el navbar */
+.navbar-nav .nav-link i,
+.navbar-nav .dropdown-menu .dropdown-item i {
+    margin-right: 8px;
+    font-size: 1rem;
+}
+
+/* Asegura que el dropdown toggle tenga el ícono de flecha */
+.navbar-nav .dropdown-toggle::after {
+    margin-left: 8px;
+    transition: transform 0.3s ease;
+}
+
+/* Rotación del ícono cuando el dropdown está abierto */
+.navbar-nav .dropdown-toggle[aria-expanded="true"]::after {
+    transform: rotate(180deg);
+}
+
+/* Responsive: Dropdowns en mobile */
+@media (max-width: 991px) {
+    .navbar-nav .dropdown-menu {
+        background-color: #1c3144;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    
+    .navbar-nav .dropdown-item {
+        padding: 12px 20px;
+        border-left: none;
+        padding-left: 20px;
+    }
+    
+    .navbar-nav .dropdown-item:hover {
+        background-color: #2c3e50;
+        border-left: none;
+        padding-left: 20px;
+    }
+}
+
+/* Responsive: Ajustar padding del app-wrapper en dispositivos pequeños */
+@media (max-width: 576px) {
+    .app-wrapper {
+        padding-top: 65px; /* Mayor espacio en móviles donde el navbar es más alto */
+    }
+    
+    .content-scrollable {
+        padding-bottom: 80px; /* Aumentar el padding para el footer en móviles */
     }
 }

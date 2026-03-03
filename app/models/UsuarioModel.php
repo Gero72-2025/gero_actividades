@@ -66,6 +66,32 @@ class UsuarioModel {
     }
 
     /**
+     * Obtiene usuarios activos disponibles para asignar a personal, incluido el usuario actual aunque esté eliminado.
+     * Esto asegura que al editar personal, siempre se pueda ver el usuario actualmente asignado,
+     * pero no se muestren usuarios eliminados que no estén asignados.
+     * @param int $id_usuario_actual - ID del usuario actualmente asignado (si aplica)
+     */
+    public function getUsuariosDisponiblesParaPersonal($id_usuario_actual = null){
+        $this->db->query('
+            SELECT 
+                u.Id_usuario, 
+                u.email,
+                u.estado_usuario
+            FROM 
+                usuario u
+            WHERE 
+                (u.estado_usuario = 1 AND u.Id_usuario NOT IN (
+                    SELECT Id_usuario FROM personal WHERE Id_usuario IS NOT NULL AND Id_usuario != :id_usuario_actual
+                ))
+                OR u.Id_usuario = :id_usuario_actual
+            ORDER BY 
+                u.email ASC
+        ');
+        $this->db->bind(':id_usuario_actual', $id_usuario_actual ?? 0);
+        return $this->db->resultSet();
+    }
+
+    /**
      * Agrega un nuevo usuario. La contraseña debe venir hasheada.
      */
     public function addUsuario($data){

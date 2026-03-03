@@ -191,4 +191,29 @@ class RoleModel {
         
         return $this->db->single() !== false;
     }
+
+    /**
+     * Obtiene los roles asignados a un usuario
+     * @param int $userId ID del usuario
+     * @return array Array de roles o false si no tiene roles
+     */
+    public function getRolesByUser($userId){
+        $this->db->query('
+            SELECT 
+                r.Id_role,
+                r.Nombre,
+                r.Descripcion,
+                r.Estado
+            FROM 
+                roles r
+            INNER JOIN 
+                usuario_role ur ON r.Id_role = ur.Id_role
+            WHERE 
+                ur.Id_usuario = :userId AND ur.Estado = 1 AND r.Estado = 1
+            ORDER BY 
+                r.Nombre ASC
+        ');
+        $this->db->bind(':userId', $userId);
+        return $this->db->resultSet();
+    }
 }

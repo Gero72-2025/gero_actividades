@@ -35,6 +35,29 @@
                         <label for="fin_contrato">Fecha de Fin (Opcional):</label>
                         <input type="date" name="fin_contrato" class="form-control form-control-lg" value="<?php echo $data['fin_contrato']; ?>">
                     </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="id_division">División: <sup>*</sup></label>
+                        <select name="id_division" class="form-control form-control-lg <?php echo (!empty($data['id_division_err'])) ? 'is-invalid' : ''; ?>">
+                            <option value="">Seleccione una división</option>
+                            <?php if(!empty($data['divisiones'])): ?>
+                                <?php foreach($data['divisiones'] as $division): ?>
+                                    <option value="<?php echo $division->Id_Division; ?>" <?php echo ($data['id_division'] == $division->Id_Division) ? 'selected' : ''; ?>>
+                                        <?php echo $division->Nombre; ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                        <span class="invalid-feedback"><?php echo $data['id_division_err']; ?></span>
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="contrato_activo">Estado del Contrato:</label>
+                        <select name="contrato_activo" class="form-control form-control-lg">
+                            <option value="1" <?php echo ($data['contrato_activo'] == 1) ? 'selected' : ''; ?>>Activo</option>
+                            <option value="0" <?php echo ($data['contrato_activo'] == 0) ? 'selected' : ''; ?>>Vencido</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="row mt-4">

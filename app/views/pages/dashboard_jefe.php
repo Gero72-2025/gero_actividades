@@ -114,28 +114,34 @@
                                 if(isset($data['personal_list']) && is_array($data['personal_list'])):
                                     $personalStats = [];
                                     
-                                    // Agrupar estadísticas por personal
-                                    foreach($data['stats_by_personal'] as $stat):
-                                        $key = $stat->Id_personal;
-                                        if(!isset($personalStats[$key])):
-                                            $personalStats[$key] = [
-                                                'nombre' => $stat->Nombre_Completo . ' ' . $stat->Apellido_Completo,
-                                                'completadas' => 0,
-                                                'en_progreso' => 0,
-                                                'pendientes' => 0
-                                            ];
-                                        endif;
-                                        
-                                        if($stat->Estado_actividad === 'Completada'):
-                                            $personalStats[$key]['completadas'] = $stat->cantidad;
-                                        elseif($stat->Estado_actividad === 'En Progreso'):
-                                            $personalStats[$key]['en_progreso'] = $stat->cantidad;
-                                        elseif($stat->Estado_actividad === 'Pendiente'):
-                                            $personalStats[$key]['pendientes'] = $stat->cantidad;
-                                        endif;
+                                    // Primero, inicializar todos los usuarios del personal_list con 0 en todo
+                                    foreach($data['personal_list'] as $personal):
+                                        $key = $personal->Id_personal;
+                                        $personalStats[$key] = [
+                                            'nombre' => $personal->Nombre_Completo . ' ' . $personal->Apellido_Completo,
+                                            'completadas' => 0,
+                                            'en_progreso' => 0,
+                                            'pendientes' => 0
+                                        ];
                                     endforeach;
                                     
-                                    // Mostrar tabla
+                                    // Luego, agregar las estadísticas de actividades (si existen)
+                                    if(isset($data['stats_by_personal']) && is_array($data['stats_by_personal'])):
+                                        foreach($data['stats_by_personal'] as $stat):
+                                            $key = $stat->Id_personal;
+                                            if(isset($personalStats[$key])):
+                                                if($stat->Estado_actividad === 'Completada'):
+                                                    $personalStats[$key]['completadas'] = $stat->cantidad;
+                                                elseif($stat->Estado_actividad === 'En Progreso'):
+                                                    $personalStats[$key]['en_progreso'] = $stat->cantidad;
+                                                elseif($stat->Estado_actividad === 'Pendiente'):
+                                                    $personalStats[$key]['pendientes'] = $stat->cantidad;
+                                                endif;
+                                            endif;
+                                        endforeach;
+                                    endif;
+                                    
+                                    // Mostrar tabla con todos los usuarios
                                     foreach($personalStats as $stats):
                                         $total = $stats['completadas'] + $stats['en_progreso'] + $stats['pendientes'];
                                         ?>

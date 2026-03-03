@@ -1,24 +1,24 @@
 <?php require APPROOT . '/views/layouts/header.php'; ?>
-
 <?php 
-    // Mostrar mensaje flash si existe
-    $flashMsg = getFlashMessage('permiso_message');
-    if($flashMsg): 
+$canCreate = tienePermiso('permisos.crear');
+$canEdit   = tienePermiso('permisos.editar');
+$canDelete = tienePermiso('permisos.eliminar');
 ?>
-    <div class="alert alert-<?php echo $flashMsg['type'] === 'success' ? 'success' : 'danger'; ?> alert-dismissible fade show" role="alert">
-        <?php echo htmlspecialchars($flashMsg['message']); ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-<?php endif; ?>
 
 <div class="row mb-4">
     <div class="col-12 col-md-6 mb-3 mb-md-0">
         <h1><?php echo $data['title']; ?></h1>
     </div>
     <div class="col-12 col-md-6">
-        <a href="<?php echo URLROOT; ?>/permisos/add" class="btn btn-success w-100">
-            <i class="bi bi-plus"></i> Crear Nuevo Permiso
-        </a>
+        <?php if($canCreate): ?>
+            <a href="<?php echo URLROOT; ?>/permisos/add" class="btn btn-success w-100">
+                <i class="bi bi-plus"></i> Crear Nuevo Permiso
+            </a>
+        <?php else: ?>
+            <button class="btn btn-success w-100" disabled title="Sin permiso para crear">
+                <i class="bi bi-plus"></i> Crear Nuevo Permiso
+            </button>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -78,20 +78,24 @@
                                 </td>
                                 <td class="hide-on-mobile" data-label="Descripción"><?php echo substr($permiso->Descripcion, 0, 40) . '...'; ?></td>
                                 <td data-label="Acciones" class="text-nowrap">
-                                    <a href="<?php echo URLROOT; ?>/permisos/edit/<?php echo $permiso->Id_permiso; ?>" class="btn btn-sm btn-info mr-1" title="Editar">
-                                        <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">Editar</span>
-                                    </a>
-                                    <button 
-                                        type="button" 
-                                        class="btn btn-sm btn-danger" 
-                                        data-toggle="modal" 
-                                        data-target="#deletePermisoModal"
-                                        data-id="<?php echo $permiso->Id_permiso; ?>" 
-                                        data-nombre="<?php echo $permiso->Nombre; ?>"
-                                        title="Eliminar"
-                                    >
-                                        <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
-                                    </button>
+                                    <?php if($canEdit): ?>
+                                        <a href="<?php echo URLROOT; ?>/permisos/edit/<?php echo $permiso->Id_permiso; ?>" class="btn btn-sm btn-info mr-1" title="Editar">
+                                            <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">Editar</span>
+                                        </a>
+                                    <?php endif; ?>
+                                    <?php if($canDelete): ?>
+                                        <button 
+                                            type="button" 
+                                            class="btn btn-sm btn-danger" 
+                                            data-toggle="modal" 
+                                            data-target="#deletePermisoModal"
+                                            data-id="<?php echo $permiso->Id_permiso; ?>" 
+                                            data-nombre="<?php echo $permiso->Nombre; ?>"
+                                            title="Eliminar"
+                                        >
+                                            <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Eliminar</span>
+                                        </button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

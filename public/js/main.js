@@ -1,3 +1,12 @@
+// Auto-cerrar notificaciones flash después de 5s
+$(function(){
+    const AUTO_DISMISS_MS = 5000;
+    $('.flash-stack .alert').each(function(){
+        const $alert = $(this);
+        setTimeout(function(){ $alert.alert('close'); }, AUTO_DISMISS_MS);
+    });
+});
+
 $('#deleteContratoModal').on('show.bs.modal', function (event) {
     var button = $(event.relatedTarget);
     var contratoId = button.data('id');
@@ -87,6 +96,18 @@ $('#deleteActividadModal').on('show.bs.modal', function (event) {
 let currentYear;
 let currentMonth; // 0 = Enero, 11 = Diciembre
 let allActivities = []; // Almacenar todas las actividades cargadas para el mes
+let contractStartDate = null; // Fecha de inicio del contrato
+let contractEndDate = null; // Fecha de fin del contrato
+
+/**
+ * Verifica si una fecha está dentro del rango del contrato
+ */
+function isDateInContractRange(dateStr) {
+    if(!contractStartDate || !contractEndDate) return true; // Si no hay contrato, permitir todo
+    
+    const date = new Date(dateStr + 'T00:00:00');
+    return date >= contractStartDate && date <= contractEndDate;
+}
 
 // Nombres en español
 const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -138,13 +159,11 @@ function getDotClass(estado) {
         }
 
         const displayDate = `${dayOfWeek} · ${monthName} · ${year}`;
-        // Renderizar el contenido de la tarjeta negra
-        detailCard.innerHTML = `
-            <h1 class="detail-day-number">${dayNumber}</h1>
-            <p class="detail-full-date">${dayOfWeek} · ${monthName} · ${year}</p>
-            ${activityListHTML}
-            <hr style="width: 80%; border-color: rgba(255,255,255,0.2);">
-
+        
+        // Verificar si la fecha está dentro del rango del contrato
+        const isInRange = isDateInContractRange(dateStr);
+        const outOfRangeMessage = !isInRange ? '<div class="alert alert-danger mt-3" role="alert"><i class="bi bi-exclamation-circle"></i> Esta fecha está fuera del rango de duración de tu contrato.</div>' : '';
+        const addButtonHTML = isInRange ? `
             <button 
                 type="button" 
                 class="btn btn-outline-light btn-block mt-3" 
@@ -156,6 +175,16 @@ function getDotClass(estado) {
             >
                 <i class="fa fa-pencil-alt"></i> Agregar Actividad
             </button>
+        ` : '';
+        
+        // Renderizar el contenido de la tarjeta negra
+        detailCard.innerHTML = `
+            <h1 class="detail-day-number">${dayNumber}</h1>
+            <p class="detail-full-date">${dayOfWeek} · ${monthName} · ${year}</p>
+            ${activityListHTML}
+            <hr style="width: 80%; border-color: rgba(255,255,255,0.2);">
+            ${outOfRangeMessage}
+            ${addButtonHTML}
         `;
     }
 
@@ -172,8 +201,8 @@ function getDotColor(estado) {
 
 // --- FUNCIÓN DE RENDERIZADO PRINCIPAL ---
 async function renderCalendar() {
-    const year = currentYear;
-    const month = currentMonth;
+    const year = currentYear || new Date().getFullYear();
+    const month = currentMonth !== undefined ? currentMonth : new Date().getMonth();
     const daysContainer = document.getElementById('daysContainer');
     daysContainer.innerHTML = ''; 
 
@@ -219,13 +248,19 @@ async function renderCalendar() {
         let cellClass = 'day-cell';
         let htmlContent = day;
         let dotHTML = '';
+        
+        // --- VERIFICAR SI LA FECHA ESTÁ DENTRO DEL RANGO DEL CONTRATO ---
+        const isInRange = isDateInContractRange(dateStr);
+        if(!isInRange) {
+            cellClass += ' out-of-range';
+        }
 
         // --- LÓGICA PARA FIN DE SEMANA ---
         if (dayOfWeek === 0 || dayOfWeek === 6) { 
             cellClass += ' weekend';
         }
         // Definir qué día debe seleccionarse por defecto
-        if (isToday) {
+        if (isToday && isInRange) {
             cellClass += ' selected';
             selectedDateStr = dateStr;
         }
@@ -238,10 +273,14 @@ async function renderCalendar() {
             cellClass += ' has-activity';
         }
         
+        const onClickHandler = isInRange ? `onclick="handleDayClick(this, '${dateStr}')"` : '';
+        const titleAttr = isInRange ? '' : 'title="Fuera del rango del contrato"';
+        
         daysContainer.innerHTML += `<div 
             class="${cellClass}" 
             data-date="${dateStr}" 
-            onclick="handleDayClick(this, '${dateStr}')">
+            ${onClickHandler}
+            ${titleAttr}>
             ${htmlContent}
             ${dotHTML}
         </div>`;
@@ -324,6 +363,13 @@ if (document.getElementById('nextMonth')) {
 }
 
 function initializeCalendar() {
+    // Inicializar fechas del contrato si están disponibles (se definen en la vista)
+    if(typeof window.contractDates !== 'undefined' && window.contractDates.inicio && window.contractDates.fin){
+        contractStartDate = new Date(window.contractDates.inicio);
+        contractEndDate = new Date(window.contractDates.fin);
+        console.log('Fechas del contrato cargadas:', contractStartDate, contractEndDate);
+    }
+    
     const today = new Date();
     currentYear = today.getFullYear();
     currentMonth = today.getMonth();
@@ -336,6 +382,13 @@ function initializeCalendar() {
 // Solo inicializar el calendario si existe
 if (document.getElementById('daysContainer')) {
     initializeCalendar();
+} else {
+    // Si el elemento no está listo aún, esperar a que se cargue el DOM
+    document.addEventListener('DOMContentLoaded', function() {
+        if (document.getElementById('daysContainer')) {
+            initializeCalendar();
+        }
+    });
 }
 
 async function fetchAllAlcances() {
@@ -378,11 +431,15 @@ async function loadAlcancesForActivity(dateStr, dateDisplay) {
     let html = '';
     alcances.forEach(alcance => {
         const id = `actividad_alcance_${alcance.Id_alcance}`;
+        const idCantidad = `cantidad_alcance_${alcance.Id_alcance}`;
         const actividadExistente = actividadesDelDia[alcance.Id_alcance];
+        const esRecurrente = alcance.es_recurrente == 1;
         
         // Determinar si el campo debe estar deshabilitado
         const isDisabled = actividadExistente ? true : false;
         const descripcion = actividadExistente ? actividadExistente.Descripcion_realizada : '';
+        const cantidad = actividadExistente ? (actividadExistente.cantidad_realizada || '') : '';
+        
         const placeholderText = actividadExistente 
             ? 'Esta actividad ya fue registrada. No puede editarse desde aquí.'
             : 'Escriba la descripción de la actividad realizada para este alcance. Dejar vacío para omitir.';
@@ -393,14 +450,26 @@ async function loadAlcancesForActivity(dateStr, dateDisplay) {
             badgeHTML = `<span class="badge badge-info ml-2">Estado: ${actividadExistente.Estado_actividad}</span>`;
         }
         
-        html += `
-            <div class="form-group border p-3 mb-3 ${isDisabled ? 'bg-light' : ''}">
-                <label for="${id}">
-                    <strong>Alcance ${alcance.Id_alcance}:</strong> ${alcance.Descripcion}
-                    ${badgeHTML}
-                    <br> 
-                    <small class="text-muted">(Contrato ID ${alcance.Expediente})</small>
-                </label>
+        // Determinar qué campo mostrar
+        let inputHTML = '';
+        if (esRecurrente) {
+            // Mostrar input numérico para cantidad
+            inputHTML = `
+                <input 
+                    type="number" 
+                    id="${idCantidad}" 
+                    name="cantidades[${alcance.Id_alcance}]" 
+                    class="form-control" 
+                    min="1"
+                    placeholder="Ingrese la cantidad realizada (dejar vacío para omitir)"
+                    ${isDisabled ? 'disabled' : ''}
+                    value="${cantidad}"
+                >
+                <input type="hidden" name="alcances[${alcance.Id_alcance}]" value="1">
+            `;
+        } else {
+            // Mostrar textarea para descripción
+            inputHTML = `
                 <textarea 
                     id="${id}" 
                     name="alcances[${alcance.Id_alcance}]" 
@@ -409,6 +478,19 @@ async function loadAlcancesForActivity(dateStr, dateDisplay) {
                     placeholder="${placeholderText}"
                     ${isDisabled ? 'disabled' : ''}
                 >${descripcion}</textarea>
+            `;
+        }
+        
+        html += `
+            <div class="form-group border p-3 mb-3 ${isDisabled ? 'bg-light' : ''}">
+                <label for="${esRecurrente ? idCantidad : id}">
+                    <strong>Alcance ${alcance.Id_alcance}:</strong> ${alcance.Descripcion}
+                    ${badgeHTML}
+                    ${esRecurrente ? '<span class="badge badge-secondary ml-2">Recurrente</span>' : ''}
+                    <br> 
+                    <small class="text-muted">(Contrato ID ${alcance.Expediente})</small>
+                </label>
+                ${inputHTML}
                 ${isDisabled ? '<small class="text-warning"><i class="fa fa-lock"></i> Campo deshabilitado - Actividad ya registrada</small>' : ''}
             </div>
         `;
@@ -457,7 +539,21 @@ async function viewActivityDetails(activityId) {
         $('#modalActivityId').val(activity.Id_actividad);
         $('#displayFechaIngreso').text(activity.Fecha_ingreso);
         $('#displayPersonal').text(`${activity.Personal_Nombre} ${activity.Personal_Apellido}`);
-        $('#modalDescripcionRealizada').val(activity.Descripcion_realizada);
+        
+        // Verificar si el alcance es recurrente
+        const esRecurrente = activity.Alcance_esRecurrente == 1;
+        
+        if (esRecurrente) {
+            // Para alcances recurrentes: mostrar campo de cantidad, ocultar textarea
+            $('#descriptionGroup').hide();
+            $('#quantityGroup').show();
+            $('#modalCantidadRealizada').val(activity.cantidad_realizada || '');
+        } else {
+            // Para alcances no recurrentes: mostrar textarea, ocultar campo numérico
+            $('#descriptionGroup').show();
+            $('#quantityGroup').hide();
+            $('#modalDescripcionRealizada').val(activity.Descripcion_realizada);
+        }
         
         // Setear el SELECTs
         await loadAlcancesDropdown(activity.Id_alcance); // Cargar todos los alcances y seleccionar el actual
@@ -488,6 +584,7 @@ function toggleEditMode(enable) {
     // Campos a habilitar/deshabilitar
     $('#modalIdAlcance').prop('disabled', !isEditing);
     $('#modalDescripcionRealizada').prop('disabled', !isEditing);
+    $('#modalCantidadRealizada').prop('disabled', !isEditing);
     $('#modalEstadoActividad').prop('disabled', !isEditing);
     
     // Títulos y botones
