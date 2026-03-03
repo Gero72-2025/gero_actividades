@@ -364,7 +364,7 @@ mysql -u root -p gestor_actividades < backup.sql
 
 ## 📄 Licencia
 
-Este proyecto es de código abierto. Úsalo libremente.
+Este proyecto es de código abierto.
 
 ---
 
@@ -391,6 +391,8 @@ Para reportar problemas:
 ## 📞 Contacto
 
 Para preguntas o sugerencias, contacta al equipo de desarrollo.
+gero722025@gmail.com
+Dev.: Erick Quiñonez.
 
 ---
 
