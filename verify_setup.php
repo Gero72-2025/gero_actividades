@@ -8,8 +8,6 @@
  * ============================================================
  */
 
-echo "🔍 Verificando instalación de Gero Actividades...\n\n";
-
 // Configuración
 $db_host = 'localhost';
 $db_user = 'root';
@@ -18,37 +16,72 @@ $db_name = 'gestor_actividades';
 
 $issues = [];
 $success_count = 0;
+$checks = [];
 
 // 1. Verificar conexión MySQL
-echo "1️⃣  Verificando conexión a MySQL...\n";
+$check1 = [
+    'number' => 1,
+    'title' => 'Conexión a MySQL',
+    'status' => 'pending',
+    'message' => '',
+    'details' => []
+];
+
 try {
     $conn = new mysqli($db_host, $db_user, $db_pass);
     if ($conn->connect_error) {
-        $issues[] = "❌ No se puede conectar a MySQL: " . $conn->connect_error;
-        echo "   ❌ FALLO\n\n";
+        $check1['status'] = 'error';
+        $check1['message'] = "No se puede conectar a MySQL: " . $conn->connect_error;
+        $issues[] = $check1['message'];
     } else {
-        echo "   ✅ Conexión OK\n\n";
+        $check1['status'] = 'success';
+        $check1['message'] = "Conexión exitosa a MySQL";
         $success_count++;
     }
 } catch (Exception $e) {
-    $issues[] = "❌ Excepción: " . $e->getMessage();
-    echo "   ❌ FALLO\n\n";
+    $check1['status'] = 'error';
+    $check1['message'] = "Excepción: " . $e->getMessage();
+    $issues[] = $check1['message'];
 }
+$checks[] = $check1;
 
 // 2. Verificar base de datos
-echo "2️⃣  Verificando base de datos '$db_name'...\n";
-$db_check = $conn->query("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '$db_name'");
-if ($db_check && $db_check->num_rows > 0) {
-    echo "   ✅ Base de datos existe\n\n";
-    $success_count++;
-    $conn->select_db($db_name);
+$check2 = [
+    'number' => 2,
+    'title' => 'Base de Datos',
+    'status' => 'pending',
+    'message' => '',
+    'details' => []
+];
+
+if (isset($conn) && !$conn->connect_error) {
+    $db_check = $conn->query("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '$db_name'");
+    if ($db_check && $db_check->num_rows > 0) {
+        $check2['status'] = 'success';
+        $check2['message'] = "Base de datos '$db_name' existe";
+        $success_count++;
+        $conn->select_db($db_name);
+    } else {
+        $check2['status'] = 'error';
+        $check2['message'] = "Base de datos '$db_name' no existe";
+        $issues[] = "Ejecuta auto_setup.php primero.";
+    }
 } else {
-    $issues[] = "❌ Base de datos '$db_name' no existe. Ejecuta auto_setup.php primero.";
-    echo "   ❌ FALLO\n\n";
+    $check2['status'] = 'error';
+    $check2['message'] = "No se pudo verificar la base de datos";
 }
+$checks[] = $check2;
 
 // 3. Verificar tablas
-echo "3️⃣  Verificando tablas requeridas...\n";
+$check3 = [
+    'number' => 3,
+    'title' => 'Tablas Requeridas',
+    'status' => 'pending',
+    'message' => '',
+    'details' => [],
+    'table_details' => []
+];
+
 $tables = [
     'usuario',
     'roles',
@@ -63,135 +96,699 @@ $tables = [
 ];
 
 $tables_ok = 0;
-foreach ($tables as $table) {
-    $result = $conn->query("SHOW TABLES LIKE '$table'");
-    if ($result && $result->num_rows > 0) {
-        echo "   ✅ Tabla '$table' existe\n";
-        $tables_ok++;
-    } else {
-        echo "   ❌ Tabla '$table' NO existe\n";
-        $issues[] = "❌ Tabla '$table' no existe";
+if (isset($conn) && !$conn->connect_error) {
+    foreach ($tables as $table) {
+        $result = $conn->query("SHOW TABLES LIKE '$table'");
+        if ($result && $result->num_rows > 0) {
+            $check3['table_details'][] = ['name' => $table, 'status' => 'success'];
+            $tables_ok++;
+        } else {
+            $check3['table_details'][] = ['name' => $table, 'status' => 'error'];
+            $issues[] = "Tabla '$table' no existe";
+        }
     }
 }
-echo "\n";
 
 if ($tables_ok == count($tables)) {
+    $check3['status'] = 'success';
+    $check3['message'] = "Todas las tablas existen (" . count($tables) . ")";
     $success_count++;
+} else {
+    $check3['status'] = $tables_ok > 0 ? 'warning' : 'error';
+    $check3['message'] = "$tables_ok de " . count($tables) . " tablas encontradas";
 }
+$checks[] = $check3;
 
 // 4. Verificar usuario administrador
-echo "4️⃣  Verificando usuario administrador...\n";
-$admin_check = $conn->query("SELECT * FROM usuario WHERE email = 'admin@admin.com'");
-if ($admin_check && $admin_check->num_rows > 0) {
-    $admin = $admin_check->fetch_assoc();
-    echo "   ✅ Usuario admin existe\n";
-    echo "      Email: {$admin['email']}\n";
-    echo "      Estado: " . ($admin['estado_usuario'] == 1 ? 'Activo' : 'Inactivo') . "\n";
-    echo "      Creado: {$admin['Fecha_creacion']}\n\n";
-    $success_count++;
+$check4 = [
+    'number' => 4,
+    'title' => 'Usuario Administrador',
+    'status' => 'pending',
+    'message' => '',
+    'details' => []
+];
+
+if (isset($conn) && !$conn->connect_error) {
+    $admin_check = $conn->query("SELECT * FROM usuario WHERE email = 'admin@admin.com'");
+    if ($admin_check && $admin_check->num_rows > 0) {
+        $admin = $admin_check->fetch_assoc();
+        $check4['status'] = 'success';
+        $check4['message'] = "Usuario admin existe";
+        $check4['details'][] = "Email: " . $admin['email'];
+        $check4['details'][] = "Estado: " . ($admin['estado_usuario'] == 1 ? 'Activo' : 'Inactivo');
+        $check4['details'][] = "Creado: " . $admin['Fecha_creacion'];
+        $success_count++;
+    } else {
+        $check4['status'] = 'error';
+        $check4['message'] = "Usuario administrador no existe";
+        $issues[] = "Usuario admin no encontrado";
+    }
 } else {
-    $issues[] = "❌ Usuario administrador no existe";
-    echo "   ❌ Usuario admin NO existe\n\n";
+    $check4['status'] = 'error';
+    $check4['message'] = "No se pudo verificar el usuario";
 }
+$checks[] = $check4;
 
 // 5. Verificar roles
-echo "5️⃣  Verificando roles...\n";
-$roles_check = $conn->query("SELECT COUNT(*) as count FROM roles WHERE Estado = 1");
-if ($roles_check) {
-    $roles_count = $roles_check->fetch_assoc()['count'];
-    if ($roles_count >= 5) {
-        echo "   ✅ Roles creados ($roles_count)\n\n";
-        $success_count++;
-    } else {
-        $issues[] = "⚠️  Solo hay $roles_count roles (se esperaban 5 o más)";
-        echo "   ⚠️  ADVERTENCIA: Solo hay $roles_count roles\n\n";
+$check5 = [
+    'number' => 5,
+    'title' => 'Roles del Sistema',
+    'status' => 'pending',
+    'message' => '',
+    'details' => []
+];
+
+if (isset($conn) && !$conn->connect_error) {
+    $roles_check = $conn->query("SELECT COUNT(*) as count FROM roles WHERE Estado = 1");
+    if ($roles_check) {
+        $roles_count = $roles_check->fetch_assoc()['count'];
+        if ($roles_count >= 5) {
+            $check5['status'] = 'success';
+            $check5['message'] = "Roles configurados correctamente";
+            $check5['details'][] = "Total de roles activos: " . $roles_count;
+            $success_count++;
+        } else {
+            $check5['status'] = 'warning';
+            $check5['message'] = "Solo hay $roles_count roles (se esperaban 5 o más)";
+            $issues[] = "Roles insuficientes";
+        }
     }
+} else {
+    $check5['status'] = 'error';
+    $check5['message'] = "No se pudo verificar los roles";
 }
+$checks[] = $check5;
 
 // 6. Verificar permisos
-echo "6️⃣  Verificando permisos...\n";
-$permisos_check = $conn->query("SELECT COUNT(*) as count FROM permisos WHERE Estado = 1");
-if ($permisos_check) {
-    $permisos_count = $permisos_check->fetch_assoc()['count'];
-    if ($permisos_count >= 30) {
-        echo "   ✅ Permisos creados ($permisos_count)\n\n";
-        $success_count++;
-    } else {
-        $issues[] = "⚠️  Solo hay $permisos_count permisos (se esperaban 30 o más)";
-        echo "   ⚠️  ADVERTENCIA: Solo hay $permisos_count permisos\n\n";
+$check6 = [
+    'number' => 6,
+    'title' => 'Permisos del Sistema',
+    'status' => 'pending',
+    'message' => '',
+    'details' => []
+];
+
+if (isset($conn) && !$conn->connect_error) {
+    $permisos_check = $conn->query("SELECT COUNT(*) as count FROM permisos WHERE Estado = 1");
+    if ($permisos_check) {
+        $permisos_count = $permisos_check->fetch_assoc()['count'];
+        if ($permisos_count >= 30) {
+            $check6['status'] = 'success';
+            $check6['message'] = "Permisos configurados correctamente";
+            $check6['details'][] = "Total de permisos activos: " . $permisos_count;
+            $success_count++;
+        } else {
+            $check6['status'] = 'warning';
+            $check6['message'] = "Solo hay $permisos_count permisos (se esperaban 30 o más)";
+            $issues[] = "Permisos insuficientes";
+        }
     }
+} else {
+    $check6['status'] = 'error';
+    $check6['message'] = "No se pudo verificar los permisos";
 }
+$checks[] = $check6;
 
 // 7. Verificar asignación de permisos al admin
-echo "7️⃣  Verificando asignación de permisos al admin...\n";
-$admin_permisos = $conn->query("
-    SELECT COUNT(DISTINCT rp.Id_permiso) as count
-    FROM usuario u
-    JOIN usuario_role ur ON u.Id_usuario = ur.Id_usuario
-    JOIN role_permiso rp ON ur.Id_role = rp.Id_role
-    WHERE u.email = 'admin@admin.com' AND ur.Estado = 1 AND rp.Estado = 1
-");
+$check7 = [
+    'number' => 7,
+    'title' => 'Permisos del Admin',
+    'status' => 'pending',
+    'message' => '',
+    'details' => []
+];
 
-if ($admin_permisos) {
-    $permisos_asignados = $admin_permisos->fetch_assoc()['count'];
-    if ($permisos_asignados > 0) {
-        echo "   ✅ Admin tiene $permisos_asignados permisos asignados\n\n";
-        $success_count++;
-    } else {
-        $issues[] = "❌ El admin no tiene permisos asignados";
-        echo "   ❌ Admin no tiene permisos asignados\n\n";
+if (isset($conn) && !$conn->connect_error) {
+    $admin_permisos = $conn->query("
+        SELECT COUNT(DISTINCT rp.Id_permiso) as count
+        FROM usuario u
+        JOIN usuario_role ur ON u.Id_usuario = ur.Id_usuario
+        JOIN role_permiso rp ON ur.Id_role = rp.Id_role
+        WHERE u.email = 'admin@admin.com' AND ur.Estado = 1 AND rp.Estado = 1
+    ");
+
+    if ($admin_permisos) {
+        $permisos_asignados = $admin_permisos->fetch_assoc()['count'];
+        if ($permisos_asignados > 0) {
+            $check7['status'] = 'success';
+            $check7['message'] = "Admin tiene permisos asignados";
+            $check7['details'][] = "Permisos asignados: " . $permisos_asignados;
+            $success_count++;
+        } else {
+            $check7['status'] = 'error';
+            $check7['message'] = "El admin no tiene permisos asignados";
+            $issues[] = "Admin sin permisos";
+        }
     }
+} else {
+    $check7['status'] = 'error';
+    $check7['message'] = "No se pudo verificar los permisos del admin";
 }
+$checks[] = $check7;
 
 // 8. Verificar archivo config.php
-echo "8️⃣  Verificando archivo config/config.php...\n";
-if (file_exists('../config/config.php')) {
-    echo "   ✅ Archivo config.php existe\n\n";
+$check8 = [
+    'number' => 8,
+    'title' => 'Archivo de Configuración',
+    'status' => 'pending',
+    'message' => '',
+    'details' => []
+];
+
+if (file_exists(__DIR__ . '/config/config.php')) {
+    $check8['status'] = 'success';
+    $check8['message'] = "Archivo config/config.php existe";
+    $check8['details'][] = __DIR__ . '/config/config.php';
     $success_count++;
 } else {
-    $issues[] = "❌ Archivo config/config.php no encontrado";
-    echo "   ❌ Archivo config/config.php no encontrado\n\n";
+    $check8['status'] = 'error';
+    $check8['message'] = "Archivo config/config.php no encontrado";
+    $issues[] = "Archivo de configuración faltante";
 }
+$checks[] = $check8;
 
-// Resumen
-echo "\n════════════════════════════════════════════════════════════\n";
-echo "📊 RESUMEN DE VERIFICACIÓN\n";
-echo "════════════════════════════════════════════════════════════\n\n";
-
-$total_checks = 8;
+$total_checks = count($checks);
 $percentage = ($success_count / $total_checks) * 100;
 
-echo "Verificaciones exitosas: $success_count / $total_checks (" . round($percentage) . "%)\n\n";
-
-if (count($issues) > 0) {
-    echo "⚠️  PROBLEMAS ENCONTRADOS:\n";
-    foreach ($issues as $issue) {
-        echo "   $issue\n";
-    }
-    echo "\n";
-}
-
-if ($success_count == $total_checks) {
-    echo "🎉 ¡INSTALACIÓN VERIFICADA CORRECTAMENTE!\n";
-    echo "\n✅ El sistema está listo para usar.\n";
-    echo "\nPróximos pasos:\n";
-    echo "1. Ve a: http://localhost/gero_activities/\n";
-    echo "2. Inicia sesión con:\n";
-    echo "   - Email: admin@admin.com\n";
-    echo "   - Password: Admin.62\n";
-    echo "3. Cambia la contraseña del admin\n";
-} else if ($success_count >= 6) {
-    echo "⚠️  INSTALACIÓN PARCIALMENTE COMPLETADA\n";
-    echo "\nAlgunos elementos faltan. Revisa los problemas arriba.\n";
-} else {
-    echo "❌ INSTALACIÓN INCOMPLETA\n";
-    echo "\nDebes ejecutar auto_setup.php primero.\n";
-}
-
-echo "\n════════════════════════════════════════════════════════════\n";
-
-if ($conn) {
+if (isset($conn)) {
     $conn->close();
 }
-
 ?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificación de Instalación - Gero Actividades</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            animation: slideDown 0.6s ease-out;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .progress-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            animation: slideUp 0.6s ease-out;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .progress-text {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .progress-percentage {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .checks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .check-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border-left: 5px solid #ddd;
+            animation: fadeIn 0.6s ease-out backwards;
+        }
+
+        .check-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .check-card.success {
+            border-left-color: #4caf50;
+            background: linear-gradient(135deg, #f5fff8 0%, #ffffff 100%);
+        }
+
+        .check-card.error {
+            border-left-color: #f44336;
+            background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+        }
+
+        .check-card.warning {
+            border-left-color: #ff9800;
+            background: linear-gradient(135deg, #fffef5 0%, #ffffff 100%);
+        }
+
+        .check-card.pending {
+            border-left-color: #9e9e9e;
+            background: #fafafa;
+        }
+
+        .check-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .check-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            margin-right: 15px;
+            font-size: 1.2em;
+        }
+
+        .check-card.success .check-number {
+            background: #4caf50;
+        }
+
+        .check-card.error .check-number {
+            background: #f44336;
+        }
+
+        .check-card.warning .check-number {
+            background: #ff9800;
+        }
+
+        .check-card.pending .check-number {
+            background: #9e9e9e;
+        }
+
+        .check-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .check-status {
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.95em;
+            font-weight: 500;
+        }
+
+        .check-card.success .check-status {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .check-card.error .check-status {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .check-card.warning .check-status {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .check-details {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .check-detail-item {
+            margin: 6px 0;
+            padding: 4px 0;
+        }
+
+        .table-details {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .table-item {
+            display: flex;
+            align-items: center;
+            margin: 6px 0;
+            font-size: 0.9em;
+        }
+
+        .table-item .status-icon {
+            margin-right: 8px;
+            font-size: 1.1em;
+        }
+
+        .summary-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            animation: slideUp 0.8s ease-out;
+        }
+
+        .summary-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .result-status {
+            text-align: center;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .result-status.success {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            border: 2px solid #4caf50;
+        }
+
+        .result-status.warning {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            border: 2px solid #ff9800;
+        }
+
+        .result-status.error {
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+            border: 2px solid #f44336;
+        }
+
+        .result-status h2 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+
+        .result-status.success h2 {
+            color: #2e7d32;
+        }
+
+        .result-status.warning h2 {
+            color: #e65100;
+        }
+
+        .result-status.error h2 {
+            color: #c62828;
+        }
+
+        .result-status p {
+            font-size: 1.1em;
+            color: #333;
+        }
+
+        .issues-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: #fff3e0;
+            border: 1px solid #ffb74d;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .issues-section.show {
+            display: block;
+        }
+
+        .issues-section h3 {
+            color: #e65100;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .issue-item {
+            padding: 10px 0;
+            color: #d84315;
+            border-bottom: 1px solid #ffe0b2;
+        }
+
+        .issue-item:last-child {
+            border-bottom: none;
+        }
+
+        .next-steps {
+            margin-top: 30px;
+            padding: 20px;
+            background: #e3f2fd;
+            border: 1px solid #64b5f6;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .next-steps.show {
+            display: block;
+        }
+
+        .next-steps h3 {
+            color: #1565c0;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .step-item {
+            padding: 10px 0;
+            padding-left: 25px;
+            position: relative;
+            color: #0d47a1;
+        }
+
+        .step-item:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+
+        .credential-box {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: monospace;
+            border: 1px solid #ddd;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .checks-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .progress-info {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Verificación de Instalación</h1>
+            <p>Gero Actividades - Gestor de Actividades</p>
+        </div>
+
+        <div class="progress-section">
+            <div class="progress-info">
+                <span class="progress-text">Progreso General</span>
+                <span class="progress-percentage"><?php echo round($percentage); ?>%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: <?php echo $percentage; ?>%"></div>
+            </div>
+        </div>
+
+        <div class="checks-grid">
+            <?php foreach ($checks as $check): ?>
+                <?php
+                    $delay = ($check['number'] - 1) * 0.1;
+                    $style = "animation-delay: {$delay}s";
+                ?>
+                <div class="check-card <?php echo $check['status']; ?>" style="<?php echo $style; ?>">
+                    <div class="check-header">
+                        <div class="check-number"><?php echo $check['number']; ?></div>
+                        <div class="check-title"><?php echo $check['title']; ?></div>
+                    </div>
+                    <div class="check-status">
+                        <?php
+                            $icons = [
+                                'success' => '✓ ',
+                                'error' => '✗ ',
+                                'warning' => '⚠ ',
+                                'pending' => '○ '
+                            ];
+                            echo $icons[$check['status']] . $check['message'];
+                        ?>
+                    </div>
+                    <?php if (!empty($check['details'])): ?>
+                        <div class="check-details">
+                            <?php foreach ($check['details'] as $detail): ?>
+                                <div class="check-detail-item">→ <?php echo htmlspecialchars($detail); ?></div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($check['table_details'])): ?>
+                        <div class="table-details">
+                            <?php foreach ($check['table_details'] as $table): ?>
+                                <div class="table-item">
+                                    <span class="status-icon"><?php echo $table['status'] === 'success' ? '✓' : '✗'; ?></span>
+                                    <span><?php echo htmlspecialchars($table['name']); ?></span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+
+        <div class="summary-section" style="margin-top: 30px;">
+            <div class="summary-title">📊 Resumen Final</div>
+            
+            <?php
+                if ($success_count == $total_checks) {
+                    $status_class = 'success';
+                    $title = '🎉 ¡INSTALACIÓN VERIFICADA CORRECTAMENTE!';
+                    $message = 'El sistema está listo para usar';
+                } else if ($success_count >= 6) {
+                    $status_class = 'warning';
+                    $title = '⚠️ INSTALACIÓN PARCIALMENTE COMPLETADA';
+                    $message = 'Algunos elementos faltan. Revisa los problemas abajo.';
+                } else {
+                    $status_class = 'error';
+                    $title = '❌ INSTALACIÓN INCOMPLETA';
+                    $message = 'Debes ejecutar auto_setup.php primero.';
+                }
+            ?>
+
+            <div class="result-status <?php echo $status_class; ?>">
+                <h2><?php echo $title; ?></h2>
+                <p><?php echo $message; ?></p>
+                <p style="margin-top: 10px; font-size: 0.95em;">
+                    Verificaciones exitosas: <strong><?php echo $success_count; ?> / <?php echo $total_checks; ?></strong>
+                </p>
+            </div>
+
+            <?php if (!empty($issues)): ?>
+                <div class="issues-section show">
+                    <h3>Problemas Encontrados:</h3>
+                    <?php foreach ($issues as $issue): ?>
+                        <div class="issue-item">→ <?php echo htmlspecialchars($issue); ?></div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($success_count == $total_checks): ?>
+                <div class="next-steps show">
+                    <h3>✅ Próximos Pasos:</h3>
+                    <div class="step-item">Accede a: <strong>http://localhost/gero_activities/</strong></div>
+                    <div class="step-item">Inicia sesión con las siguientes credenciales:
+                        <div class="credential-box">
+                            Email: <strong>admin@admin.com</strong><br>
+                            Contraseña: <strong>Admin.62</strong>
+                        </div>
+                    </div>
+                    <div class="step-item">Cambia la contraseña del administrador inmediatamente</div>
+                    <div class="step-item">Comienza a configurar tu sistema</div>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</body>
+</html>
