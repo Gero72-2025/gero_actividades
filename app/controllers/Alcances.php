@@ -72,7 +72,7 @@ class Alcances extends Controller {
     }
 
     // Añadir Alcance
-    public function add(){
+    public function add($idContratoPreseleccionado = null){
         // Verificar permiso para crear alcances
         $this->verificarAcceso('alcances', 'crear');
         
@@ -124,10 +124,10 @@ class Alcances extends Controller {
             }
 
         } else {
-            // GET request: Cargar formulario vacío
+            // GET request: Cargar formulario vacío o con contrato preseleccionado
             $data = [
                 'title' => 'Añadir Alcance',
-                'id_contrato' => '',
+                'id_contrato' => $idContratoPreseleccionado ?? '',
                 'descripcion' => '',
                 'es_recurrente' => 0,
                 'id_contrato_err' => '',

@@ -53,6 +53,7 @@ class Personal extends Controller {
         $divisiones = $this->divisionModel->getDivisions();
         $contratos = $this->contratoModel->getContratosDisponibles();
         $usuarios = $this->usuarioModel->getUsuariosNoAsignados();
+        $roles = $this->usuarioModel->getRoles();
         
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
             
@@ -77,6 +78,7 @@ class Personal extends Controller {
                 'divisiones' => $divisiones,
                 'contratos' => $contratos,
                 'usuarios' => $usuarios,
+                'roles' => $roles,
             ];
 
             // 2. Validación
@@ -128,6 +130,7 @@ class Personal extends Controller {
                 'divisiones' => $divisiones,
                 'contratos' => $contratos,
                 'usuarios' => $usuarios,
+                'roles' => $roles,
             ];
 
             $this->view('personal/add', $data);
@@ -158,9 +161,10 @@ class Personal extends Controller {
         // Obtener contratos disponibles, excluyendo el que ya está asignado a este personal
         $contratos = $this->contratoModel->getContratosDisponibles($personal_actual->Id_contrato);
         
-        // Cargar la lista de usuarios no asignados. Se asegura que siempre sea un array.
-        $usuarios_no_asignados_raw = $this->usuarioModel->getUsuariosNoAsignados();
-        $usuarios_no_asignados = is_array($usuarios_no_asignados_raw) ? $usuarios_no_asignados_raw : [];
+        // Cargar la lista de usuarios disponibles (activos y no asignados, o el usuario actual asignado)
+        // Esto asegura que si el usuario fue eliminado (estado=0), no aparezca en el dropdown
+        $usuarios = $this->usuarioModel->getUsuariosDisponiblesParaPersonal($personal_actual->Id_usuario);
+        $usuarios = is_array($usuarios) ? $usuarios : [];
         
         if($_SERVER['REQUEST_METHOD'] == 'POST'){
             
@@ -239,8 +243,8 @@ class Personal extends Controller {
                 // Obtener el usuario que debería estar seleccionado 
                 $usuario_actual = $this->usuarioModel->getUsuarioById($data['id_usuario']);
                 
-                // Inicializar la lista del dropdown con los usuarios no asignados (ya verificado como array)
-                $usuarios_dropdown = $usuarios_no_asignados;
+                // Inicializar la lista del dropdown con los usuarios disponibles
+                $usuarios_dropdown = $usuarios;
                 
                 if ($usuario_actual) {
                     $is_present = false;
@@ -275,10 +279,10 @@ class Personal extends Controller {
             // Obtener el usuario actualmente asignado
             $usuario_actual = $this->usuarioModel->getUsuarioById($personal->Id_usuario);
             
-            // Inicializar la lista del dropdown con los usuarios no asignados (ya verificado como array)
-            $usuarios_dropdown = $usuarios_no_asignados;
+            // Inicializar la lista del dropdown con los usuarios disponibles
+            $usuarios_dropdown = $usuarios;
 
-            // Combinar la lista de no asignados con el usuario actual
+            // Combinar la lista de disponibles con el usuario actual si no está presente
             if ($usuario_actual) {
                 $is_present = false;
                 
@@ -315,6 +319,8 @@ class Personal extends Controller {
                 'divisiones' => $divisiones,
                 'contratos' => $contratos,
                 'contrato_actual' => $contrato_actual,
+                'contrato_tiene_actividades' => $contrato_tiene_actividades,
+                'usuarios' => $usuarios_dropdown,
                 'contrato_tiene_actividades' => $contrato_tiene_actividades,
                 'usuarios' => $usuarios_dropdown, // Usar la lista combinada
             ];

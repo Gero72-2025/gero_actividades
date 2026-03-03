@@ -197,4 +197,96 @@ class Usuarios extends Controller {
             redirect('usuarios/index');
         }
     }
+
+    /**
+     * Endpoint AJAX para crear usuario desde el modal en personal/add
+     * Retorna JSON con el usuario creado o errores de validación
+     */
+    public function addAjax(){
+        // Verificar que sea una petición AJAX
+        if($_SERVER['REQUEST_METHOD'] != 'POST'){
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Petición inválida']);
+            exit;
+        }
+
+        // Verificar permiso para crear usuarios
+        try {
+            $this->verificarAcceso('usuarios', 'crear');
+        } catch (Exception $e) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'No tiene permisos para crear usuarios']);
+            exit;
+        }
+
+        // Saneamiento de datos
+        $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
+
+        $data = [
+            'email' => trim($_POST['email'] ?? ''),
+            'pass' => trim($_POST['pass'] ?? ''),
+            'confirm_pass' => trim($_POST['confirm_pass'] ?? ''),
+            'id_role' => !empty($_POST['id_role']) ? $_POST['id_role'] : '',
+            'email_err' => '',
+            'pass_err' => '',
+            'confirm_pass_err' => ''
+        ];
+
+        // 1. Validar Email
+        if(empty($data['email'])){
+            $data['email_err'] = 'Por favor ingrese el correo electrónico.';
+        } elseif($this->usuarioModel->findUserByEmail($data['email'])){
+            $data['email_err'] = 'Este correo ya está registrado.';
+        }
+
+        // 2. Validar Contraseña
+        if(empty($data['pass'])){
+            $data['pass_err'] = 'Por favor ingrese una contraseña.';
+        } elseif(strlen($data['pass']) < 6){
+            $data['pass_err'] = 'La contraseña debe tener al menos 6 caracteres.';
+        }
+
+        // 3. Validar Confirmación
+        if($data['pass'] != $data['confirm_pass']){
+            $data['confirm_pass_err'] = 'Las contraseñas no coinciden.';
+        }
+
+        // 4. Retornar errores si existen
+        if(!empty($data['email_err']) || !empty($data['pass_err']) || !empty($data['confirm_pass_err'])){
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'email_err' => $data['email_err'],
+                'pass_err' => $data['pass_err'],
+                'confirm_pass_err' => $data['confirm_pass_err']
+            ]);
+            exit;
+        }
+
+        // 5. Hashear y guardar
+        $data['pass'] = password_hash($data['pass'], PASSWORD_DEFAULT);
+        
+        if($this->usuarioModel->addUsuario($data)){
+            // Obtener el usuario recién creado
+            $nuevoUsuario = $this->usuarioModel->getUsuarioByEmail($data['email']);
+            
+            // Asignar rol si se seleccionó uno
+            if(!empty($data['id_role']) && $nuevoUsuario){
+                $this->usuarioModel->assignRoleToUsuario($nuevoUsuario->Id_usuario, $data['id_role']);
+            }
+
+            // Retornar el usuario creado como JSON
+            http_response_code(200);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Usuario creado exitosamente',
+                'usuario' => $nuevoUsuario
+            ]);
+            exit;
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Error al guardar el usuario']);
+            exit;
+        }
+    }
 }

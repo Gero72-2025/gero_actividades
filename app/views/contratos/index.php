@@ -3,6 +3,7 @@
 $canCreate = tienePermiso('contratos.crear');
 $canEdit   = tienePermiso('contratos.editar');
 $canDelete = tienePermiso('contratos.eliminar');
+$canCreateAlcance = tienePermiso('alcances.crear');
 ?>
 
 <div class="row mb-4">
@@ -62,6 +63,11 @@ $canDelete = tienePermiso('contratos.eliminar');
                                     <?php endif; ?>
                                 </td>
                                 <td data-label="Acciones" class="text-nowrap">
+                                    <?php if($canCreateAlcance): ?>
+                                        <a href="<?php echo URLROOT; ?>/alcances/add/<?php echo $contrato->Id_contrato; ?>" class="btn btn-sm btn-success mr-1" title="Crear Alcance" target="_blank">
+                                            <i class="bi bi-plus-circle"></i> <span class="d-none d-sm-inline">Alcance</span>
+                                        </a>
+                                    <?php endif; ?>
                                     <?php if($canEdit): ?>
                                         <a href="<?php echo URLROOT; ?>/contratos/edit/<?php echo $contrato->Id_contrato; ?>" class="btn btn-sm btn-info mr-1" title="Editar">
                                             <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">Editar</span>
