@@ -13,8 +13,9 @@ temp/
 # Ignore all files in the fpdf tutorial directory
 app/libraries/fpdf/tutorial/*
 
-# Ignore all SQL scripts in the database_scripts directory
-database_scripts/*.sql
 
 # Ignore all files in the user info directory
 info/*
+
+# Ignore config files
+# config/*.php

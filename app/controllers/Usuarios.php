@@ -289,4 +289,5 @@ class Usuarios extends Controller {
             exit;
         }
     }
+
 }

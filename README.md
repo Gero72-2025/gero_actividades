@@ -20,6 +20,7 @@ Sistema web completo para la gestión de actividades, personal, contratos, divis
 - 📅 **Gestión de Actividades** - Crear actividades vinculadas a personal y alcances
 - 🔑 **Gestión de Roles** - Definir roles y asignar permisos
 - ⚙️ **Gestión de Permisos** - Control granular de permisos por módulo y acción
+- 📊 **Tablero Kanban** - Gestión visual de tareas con columnas, tarjetas, listas, etiquetas y cronómetro
 
 ✅ **Dashboard Ejecutivo**
 - Estadísticas por división
@@ -30,6 +31,20 @@ Sistema web completo para la gestión de actividades, personal, contratos, divis
 - Generación de reportes de actividades completadas
 - Exportación de datos
 
+✅ **Tablero Kanban** (Nuevo)
+- 📋 Tableros múltiples con usuarios asignados
+- 🏷️ Tarjetas organizadas en columnas editables
+- 📝 Listas de tareas dentro de tarjetas con estado completado/pendiente
+- ⏱️ Cronómetro integrado para registrar tiempo en tareas
+- 🏷️ Etiquetas personalizables por tablero
+- 📌 Prioridades configurables (alta, media, baja)
+- 🔐 Permisos granulares por usuario y tablero
+- 📅 Fechas de inicio y fin en tarjetas
+- 👥 Asignación de usuarios responsables a tarjetas
+- 📊 Checklist dentro de tarjetas
+- 🔄 Drag & drop de tarjetas entre columnas
+- 📋 Historial de cambios en tarjetas
+
 ✅ **Características Técnicas**
 - Arquitectura MVC limpia
 - Base de datos MySQL normalizada
@@ -38,6 +53,7 @@ Sistema web completo para la gestión de actividades, personal, contratos, divis
 - Responsive design con Bootstrap 5
 - Iconos con Bootstrap Icons
 - Funcionamiento offline (bibliotecas locales)
+- Sortable.js para drag & drop en tablero
 
 ---
 
@@ -112,11 +128,13 @@ gero_activities/
 │   │   ├── Roles.php
 │   │   ├── Permisos.php
 │   │   ├── Usuarios.php
+│   │   ├── Tablero.php       # Gestión de tableros Kanban
 │   │   └── Pages.php
 │   ├── models/                # Modelos de datos
 │   │   ├── ActividadModel.php
 │   │   ├── PersonalModel.php
 │   │   ├── ContratoModel.php
+│   │   ├── TableroModel.php   # Modelo para tablero Kanban
 │   │   └── ...
 │   ├── libraries/             # Clases base
 │   │   ├── Controller.php
@@ -128,9 +146,13 @@ gero_activities/
 │       ├── actividades/
 │       ├── personal/
 │       ├── contratos/
+│       ├── tablero/           # Vistas del tablero Kanban
 │       └── ...
 ├── config/
 │   └── config.php             # Configuración
+├── database_scripts/
+│   ├── 09_tablero_actividades.sql # Tablas/permisos del tablero (usado por auto_setup)
+│   └── 10_restaurar_admin.sql     # Script utilitario para restaurar permisos admin
 ├── public/
 │   ├── index.php              # Punto de entrada
 │   ├── css/
@@ -200,6 +222,32 @@ Cada módulo tiene permisos granulares:
 - `modulo.eliminar` - Eliminar registros
 - `modulo.reporte` - Generar reportes (actividades)
 
+### Permisos Granulares del Tablero
+
+Además de los permisos globales, el tablero tiene permisos específicos **por usuario y por tablero**:
+
+| Permiso | Descripción |
+|---------|-------------|
+| `tablero_ver` | Ver el tablero asignado |
+| `tablero_crear` | Crear nuevos tableros |
+| `tablero_editar` | Editar configuración del tablero |
+| `tablero_eliminar` | Eliminar tableros |
+| `tablero_asignar` | Asignar usuarios al tablero y gestionar permisos |
+| `tarjeta_ver` | Ver tarjetas en el tablero |
+| `tarjeta_crear` | Crear nuevas tarjetas |
+| `tarjeta_editar` | Editar tarjetas |
+| `tarjeta_eliminar` | Eliminar tarjetas |
+| `tarjeta_asignar` | Asignar usuarios a tarjetas |
+| `lista_crear` | Crear listas de tareas en tarjetas |
+| `lista_editar` | Editar listas de tareas |
+| `lista_eliminar` | Eliminar listas de tareas |
+| `tarea_crear` | Crear tareas dentro de listas |
+| `tarea_editar` | Editar tareas |
+| `tarea_eliminar` | Eliminar tareas |
+| `tarea_tiempo_editar` | Editar manualmente tiempo registrado en tareas |
+
+**Nota:** Los usuarios también pueden marcar tareas/tarjetas como completadas si tienen acceso visual al tablero (`tablero_ver`).
+
 ---
 
 ## 🔧 Configuración
@@ -247,6 +295,21 @@ personal → division
   ↓
   ├→ contratos → alcances → actividades
   └→ actividades
+
+tablero → tablero_usuario_permiso → usuario
+  ↓
+  ├→ tablero_columnas
+  │
+  ├→ tablero_tarjetas → usuario (responsable)
+  │   ├→ tablero_tiempos
+  │   ├→ tablero_tareas (listas)
+  │   ├→ tablero_tarea_detalles (items tareas)
+  │   ├→ tablero_etiquetas
+  │   └→ tablero_tarjeta_etiqueta
+  │
+  ├→ tablero_prioridades
+  │
+  └→ tablero_historial_tarjeta
 ```
 
 ---
@@ -290,6 +353,19 @@ personal → division
 3. Asigna a personal y alcances
 4. Establece fechas y descripción
 
+### Crear un Tablero
+
+1. Ve a **Tablero**
+2. Haz clic en **Crear Nuevo Tablero**
+3. Ingresa nombre y descripción
+4. Da permisos a usuarios específicos desde **Asignar Usuario al Tablero**
+5. Personaliza columnas (estados): Pendiente, En Progreso, En Revisión, Completada
+6. Crea tarjetas dentro de las columnas
+7. Agrega tareas a las tarjetas
+8. Asigna etiquetas y prioridades
+9. Registra tiempo con el cronómetro integrado
+10. Marca tareas como completadas conforme avanzan
+
 ---
 
 ## 📝 API Endpoints
@@ -311,6 +387,23 @@ Ejemplos:
 - `POST /usuarios/add` - Crear usuario
 - `POST /usuarios/edit/5` - Editar usuario ID 5
 - `POST /usuarios/delete/5` - Eliminar usuario ID 5
+
+### Endpoints del Tablero
+
+```
+GET    /tablero/                           - Listar tableros asignados
+POST   /tablero/add                        - Crear nuevo tablero
+GET    /tablero/index/ID_TABLERO           - Ver tablero (vista Kanban)
+POST   /tablero/add_usuario                - Asignar usuario a tablero
+POST   /tablero/get_usuario_permiso_tablero - Obtener permisos del usuario
+POST   /tablero/toggle_tarjeta_completado  - Marcar tarjeta como finalizada
+POST   /tablero/toggle_tarjeta_tarea_detalle - Marcar tarea como completada
+POST   /tablero/start_timer                - Iniciar cronómetro en tarjeta
+POST   /tablero/stop_timer                 - Detener cronómetro
+POST   /tablero/update_tarea_detalle_tiempo_manual - Editar tiempo manualmente
+POST   /tablero/add_tarjeta_tarea          - Crear tarea en tarjeta
+POST   /tablero/delete_tarjeta_tarea       - Eliminar tarea
+```
 
 ---
 
@@ -396,6 +489,7 @@ Dev.: Erick Quiñonez.
 
 ---
 
-**Última actualización:** Diciembre 2024  
-**Versión:** 1.0.0  
-**Estado:** ✅ Production Ready
+**Última actualización:** Marzo 2026  
+**Versión:** 2.0.0  
+**Estado:** ✅ Production Ready  
+**Nuevas características en v2.0:** Tablero Kanban con gestión de tareas, cronómetro, etiquetas, prioridades y permisos granulares por usuario y tablero

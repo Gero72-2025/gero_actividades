@@ -280,6 +280,12 @@ function generarBreadcrumb(){
             'parent' => 'GERO',
             'permission' => ['actividades', 'ver']
         ],
+        'tablero' => [
+            'label' => 'Tablero',
+            'icon' => 'bi-kanban',
+            'parent' => 'GERO',
+            'permission' => ['tablero', 'ver']
+        ],
         'usuarios' => [
             'label' => 'Usuarios',
             'icon' => 'bi-person-badge',

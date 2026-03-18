@@ -18,7 +18,8 @@
                                       tieneAcceso('personal', 'ver') || 
                                       tieneAcceso('contratos', 'ver') || 
                                       tieneAcceso('alcances', 'ver') || 
-                                      tieneAcceso('actividades', 'ver');
+                                      tieneAcceso('actividades', 'ver') ||
+                                      tieneAcceso('tablero', 'ver');
                     
                     // Validar que el usuario tenga acceso a al menos un item del menú Configuraciones
                     $tieneAccesoConfig = tieneAcceso('usuarios', 'ver') || 
@@ -61,7 +62,7 @@
                                 <?php endif; ?>
                                 
                                 <!-- Separador -->
-                                <?php if((tieneAcceso('actividades', 'ver'))): ?>
+                                <?php if((tieneAcceso('actividades', 'ver') || tieneAcceso('tablero', 'ver'))): ?>
                                     <div class="dropdown-divider"></div>
                                 <?php endif; ?>
                                 
@@ -69,6 +70,13 @@
                                 <?php if(tieneAcceso('actividades', 'ver')): ?>
                                     <a class="dropdown-item <?php echo (strpos($_SERVER['REQUEST_URI'], '/actividades') !== false) ? 'active' : ''; ?>" href="<?php echo URLROOT; ?>/actividades/index">
                                         <i class="bi bi-check-square"></i> Actividades
+                                    </a>
+                                <?php endif; ?>
+
+                                <!-- Tablero de Actividades -->
+                                <?php if(tieneAcceso('tablero', 'ver')): ?>
+                                    <a class="dropdown-item <?php echo (strpos($_SERVER['REQUEST_URI'], '/tablero') !== false) ? 'active' : ''; ?>" href="<?php echo URLROOT; ?>/tablero/index">
+                                        <i class="bi bi-kanban"></i> Tablero
                                     </a>
                                 <?php endif; ?>
                             </div>
