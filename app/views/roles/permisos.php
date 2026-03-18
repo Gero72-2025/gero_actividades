@@ -1,12 +1,26 @@
 <?php require APPROOT . '/views/layouts/header.php'; ?>
+<?php $isAdminRoleUser = !empty($data['is_admin_role_user']); ?>
 
 <div class="row mb-4">
     <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center">
-            <h1><?php echo $data['title']; ?></h1>
-            <a href="<?php echo URLROOT; ?>/roles/index" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Volver
-            </a>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h1 class="mb-0"><?php echo $data['title']; ?></h1>
+            <div class="d-flex gap-2">
+                <?php if($isAdminRoleUser): ?>
+                    <button
+                        type="button"
+                        class="btn btn-warning"
+                        data-toggle="modal"
+                        data-target="#restaurarPermisosModal"
+                        title="Restaura todos los permisos del usuario Administrador"
+                    >
+                        <i class="bi bi-shield-lock"></i> Restaurar Permisos
+                    </button>
+                <?php endif; ?>
+                <a href="<?php echo URLROOT; ?>/roles/index" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Volver
+                </a>
+            </div>
         </div>
     </div>
 </div>
@@ -80,3 +94,81 @@
 </div>
 
 <?php require APPROOT . '/views/layouts/footer.php'; ?>
+
+<?php if($isAdminRoleUser): ?>
+<div class="modal fade" id="restaurarPermisosModal" tabindex="-1" aria-labelledby="restaurarPermisosModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="restaurarPermisosModalLabel">
+                    <i class="bi bi-shield-lock"></i> Restaurar Permisos del Administrador
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Esta acción restaurará permisos del usuario <strong>admin@admin.com</strong> (ID 1):</p>
+                <ul>
+                    <li>Rol Administrador activo</li>
+                    <li>Todos los permisos globales activos para Administrador</li>
+                    <li>Todos los permisos granulares de tablero activos</li>
+                </ul>
+                <div id="restaurarPermisosMsg" class="mt-3 d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" id="btnConfirmarRestaurar" class="btn btn-warning">
+                    <i class="bi bi-arrow-counterclockwise"></i> Si, Restaurar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function(){
+        const btnConfirmar = document.getElementById('btnConfirmarRestaurar');
+        const msgEl = document.getElementById('restaurarPermisosMsg');
+        if(!btnConfirmar || !msgEl) return;
+
+        btnConfirmar.addEventListener('click', async function(){
+                btnConfirmar.disabled = true;
+                btnConfirmar.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Restaurando...';
+                msgEl.className = 'mt-3 d-none';
+
+                try {
+                        const resp = await fetch('<?php echo URLROOT; ?>/roles/restaurar_permisos_admin', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({})
+                        });
+                        const data = await resp.json();
+                        msgEl.className = 'mt-3 alert ' + (data.success ? 'alert-success' : 'alert-danger');
+                        msgEl.textContent = data.success ? data.message : (data.error || 'Error desconocido.');
+
+                        if(data.success){
+                            setTimeout(function(){
+                                if(window.jQuery && window.jQuery.fn && window.jQuery.fn.modal){
+                                    window.jQuery('#restaurarPermisosModal').modal('hide');
+                                } else {
+                                    const modalEl = document.getElementById('restaurarPermisosModal');
+                                    if(modalEl){
+                                        modalEl.classList.remove('show');
+                                        modalEl.style.display = 'none';
+                                    }
+                                }
+                                window.location.reload();
+                            }, 500);
+                        }
+                } catch(err) {
+                        msgEl.className = 'mt-3 alert alert-danger';
+                        msgEl.textContent = 'Error de red al intentar restaurar permisos.';
+                }
+
+                btnConfirmar.disabled = false;
+                btnConfirmar.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Si, Restaurar';
+        });
+})();
+</script>
+<?php endif; ?>

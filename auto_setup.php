@@ -222,6 +222,206 @@ function outputSuccess($message) {
     }
 }
 
+// Ejecuta un archivo SQL en la conexion actual y reporta resultados.
+function runSqlFile(mysqli $conn, $filePath) {
+    if (!file_exists($filePath)) {
+        throw new Exception("No se encontro el archivo SQL: " . basename($filePath));
+    }
+
+    $sql = file_get_contents($filePath);
+    if ($sql === false) {
+        throw new Exception("No se pudo leer el archivo SQL: " . basename($filePath));
+    }
+
+    // Limpia comentarios de linea para simplificar el parseo.
+    $sql = preg_replace('/^\s*--.*$/m', '', $sql);
+    $queries = array_filter(array_map('trim', explode(';', $sql)));
+
+    $executed = 0;
+    foreach ($queries as $query) {
+        if ($query === '') {
+            continue;
+        }
+        if ($conn->query($query) === false) {
+            throw new Exception("Error en " . basename($filePath) . ": " . $conn->error . " | SQL: " . substr($query, 0, 180));
+        }
+        $executed++;
+    }
+
+    return $executed;
+}
+
+function columnExists(mysqli $conn, $table, $column) {
+    $table = $conn->real_escape_string($table);
+    $column = $conn->real_escape_string($column);
+    $sql = "SELECT COUNT(*) AS total
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = '$table'
+              AND COLUMN_NAME = '$column'";
+    $res = $conn->query($sql);
+    if (!$res) {
+        return false;
+    }
+    $row = $res->fetch_assoc();
+    return !empty($row) && (int)$row['total'] > 0;
+}
+
+function indexExists(mysqli $conn, $table, $indexName) {
+    $table = $conn->real_escape_string($table);
+    $indexName = $conn->real_escape_string($indexName);
+    $sql = "SELECT COUNT(*) AS total
+            FROM information_schema.STATISTICS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = '$table'
+              AND INDEX_NAME = '$indexName'";
+    $res = $conn->query($sql);
+    if (!$res) {
+        return false;
+    }
+    $row = $res->fetch_assoc();
+    return !empty($row) && (int)$row['total'] > 0;
+}
+
+function fkExists(mysqli $conn, $table, $fkName) {
+    $table = $conn->real_escape_string($table);
+    $fkName = $conn->real_escape_string($fkName);
+    $sql = "SELECT COUNT(*) AS total
+            FROM information_schema.TABLE_CONSTRAINTS
+            WHERE CONSTRAINT_SCHEMA = DATABASE()
+              AND TABLE_NAME = '$table'
+              AND CONSTRAINT_NAME = '$fkName'
+              AND CONSTRAINT_TYPE = 'FOREIGN KEY'";
+    $res = $conn->query($sql);
+    if (!$res) {
+        return false;
+    }
+    $row = $res->fetch_assoc();
+    return !empty($row) && (int)$row['total'] > 0;
+}
+
+function tableExists(mysqli $conn, $table) {
+    $table = $conn->real_escape_string($table);
+    $sql = "SELECT COUNT(*) AS total
+            FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = '$table'";
+    $res = $conn->query($sql);
+    if (!$res) {
+        return false;
+    }
+    $row = $res->fetch_assoc();
+    return !empty($row) && (int)$row['total'] > 0;
+}
+
+function generateOfflineSqlBundle($dbName, $adminEmail, $adminPass) {
+    $safeDb = preg_replace('/[^a-zA-Z0-9_]/', '', (string)$dbName);
+    if ($safeDb === '') {
+        $safeDb = 'gestor_actividades';
+    }
+
+    $fileName = 'offline_setup_' . $safeDb . '_' . date('Ymd_His') . '.sql';
+    $filePath = __DIR__ . DIRECTORY_SEPARATOR . $fileName;
+    $adminHash = str_replace("'", "''", password_hash($adminPass, PASSWORD_BCRYPT));
+    $adminEmailSql = str_replace("'", "''", $adminEmail);
+
+    $sql = "-- =====================================================\n";
+    $sql .= "-- OFFLINE SETUP BUNDLE - Gero Actividades\n";
+    $sql .= "-- Generado automaticamente cuando no hay conexion a MySQL\n";
+    $sql .= "-- Fecha: " . date('Y-m-d H:i:s') . "\n";
+    $sql .= "-- =====================================================\n\n";
+    $sql .= "CREATE DATABASE IF NOT EXISTS `{$safeDb}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\n";
+    $sql .= "USE `{$safeDb}`;\n\n";
+
+    $sql .= "CREATE TABLE IF NOT EXISTS `usuario` (\n";
+    $sql .= "  `Id_usuario` INT AUTO_INCREMENT PRIMARY KEY,\n";
+    $sql .= "  `email` VARCHAR(100) NOT NULL UNIQUE,\n";
+    $sql .= "  `pass` VARCHAR(255) NOT NULL,\n";
+    $sql .= "  `estado_usuario` TINYINT(1) DEFAULT 1,\n";
+    $sql .= "  `conectado` TINYINT(1) DEFAULT 0,\n";
+    $sql .= "  `fecha_ultimo_login` TIMESTAMP NULL,\n";
+    $sql .= "  `Fecha_creacion` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n";
+    $sql .= "  `Fecha_actualizacion` TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP\n";
+    $sql .= ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n";
+
+    $sql .= "CREATE TABLE IF NOT EXISTS `roles` (\n";
+    $sql .= "  `Id_role` INT AUTO_INCREMENT PRIMARY KEY,\n";
+    $sql .= "  `Nombre` VARCHAR(100) NOT NULL UNIQUE,\n";
+    $sql .= "  `Descripcion` TEXT,\n";
+    $sql .= "  `Estado` TINYINT(1) DEFAULT 1,\n";
+    $sql .= "  `Fecha_creacion` TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n";
+    $sql .= ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n";
+
+    $sql .= "CREATE TABLE IF NOT EXISTS `permisos` (\n";
+    $sql .= "  `Id_permiso` INT AUTO_INCREMENT PRIMARY KEY,\n";
+    $sql .= "  `Nombre` VARCHAR(100) NOT NULL UNIQUE,\n";
+    $sql .= "  `Descripcion` TEXT,\n";
+    $sql .= "  `Modulo` VARCHAR(50) NOT NULL,\n";
+    $sql .= "  `Accion` VARCHAR(50) NOT NULL,\n";
+    $sql .= "  `Estado` TINYINT(1) DEFAULT 1,\n";
+    $sql .= "  `Fecha_creacion` TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n";
+    $sql .= ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n";
+
+    $sql .= "CREATE TABLE IF NOT EXISTS `role_permiso` (\n";
+    $sql .= "  `Id_role` INT NOT NULL,\n";
+    $sql .= "  `Id_permiso` INT NOT NULL,\n";
+    $sql .= "  `Estado` TINYINT(1) DEFAULT 1,\n";
+    $sql .= "  `Fecha_asignacion` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n";
+    $sql .= "  PRIMARY KEY (`Id_role`, `Id_permiso`)\n";
+    $sql .= ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n";
+
+    $sql .= "CREATE TABLE IF NOT EXISTS `usuario_role` (\n";
+    $sql .= "  `Id_usuario` INT NOT NULL,\n";
+    $sql .= "  `Id_role` INT NOT NULL,\n";
+    $sql .= "  `Estado` TINYINT(1) DEFAULT 1,\n";
+    $sql .= "  `Fecha_asignacion` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n";
+    $sql .= "  PRIMARY KEY (`Id_usuario`, `Id_role`)\n";
+    $sql .= ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n";
+
+    $sql .= "INSERT INTO `usuario` (`email`, `pass`, `estado_usuario`, `conectado`)\n";
+    $sql .= "VALUES ('{$adminEmailSql}', '{$adminHash}', 1, 0)\n";
+    $sql .= "ON DUPLICATE KEY UPDATE `estado_usuario` = 1;\n\n";
+
+    $sql .= "INSERT IGNORE INTO `roles` (`Id_role`, `Nombre`, `Descripcion`, `Estado`) VALUES\n";
+    $sql .= "(1, 'Administrador', 'Acceso completo a toda la plataforma', 1),\n";
+    $sql .= "(2, 'Gerente', 'Acceso a reportes, contratos y actividades', 1),\n";
+    $sql .= "(3, 'Jefe', 'Acceso a personal y actividades de su división', 1),\n";
+    $sql .= "(4, 'Supervisor', 'Acceso a actividades y personal asignado', 1),\n";
+    $sql .= "(5, 'Personal', 'Acceso limitado a sus propias actividades', 1),\n";
+    $sql .= "(6, 'Visualizador', 'Acceso de solo lectura a reportes', 1);\n\n";
+
+    $sql .= "INSERT IGNORE INTO `usuario_role` (`Id_usuario`, `Id_role`, `Estado`) VALUES (1, 1, 1);\n\n";
+
+    $sql .= "-- Asignar todos los permisos existentes al rol Administrador\n";
+    $sql .= "INSERT IGNORE INTO `role_permiso` (`Id_role`, `Id_permiso`, `Estado`)\n";
+    $sql .= "SELECT 1, `Id_permiso`, 1 FROM `permisos` WHERE `Estado` = 1;\n\n";
+
+    $sql .= "-- =====================================================\n";
+    $sql .= "-- CONTENIDO DE SCRIPTS COMPLEMENTARIOS\n";
+    $sql .= "-- =====================================================\n\n";
+
+    $scripts = [
+        __DIR__ . '/database_scripts/09_tablero_actividades.sql',
+        __DIR__ . '/database_scripts/10_restaurar_admin.sql'
+    ];
+
+    foreach ($scripts as $scriptPath) {
+        if (file_exists($scriptPath)) {
+            $scriptName = basename($scriptPath);
+            $scriptSql = file_get_contents($scriptPath);
+            $sql .= "\n-- ===== BEGIN {$scriptName} =====\n";
+            $sql .= $scriptSql . "\n";
+            $sql .= "-- ===== END {$scriptName} =====\n\n";
+        }
+    }
+
+    if (file_put_contents($filePath, $sql) === false) {
+        return false;
+    }
+
+    return $filePath;
+}
+
 // Mostrar inicio
 if ($isWeb) {
     echo "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Auto Setup - Instalación</title>";
@@ -251,6 +451,15 @@ try {
     }
     
     output("✅ Conectado a MySQL");
+
+    // Detectar si la BD ya existia antes de crear/verificar.
+    $dbEscaped = $conn->real_escape_string($db_name);
+    $existsRes = $conn->query("SELECT COUNT(*) AS total FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '$dbEscaped'");
+    $dbExisted = false;
+    if ($existsRes) {
+        $existsRow = $existsRes->fetch_assoc();
+        $dbExisted = !empty($existsRow) && (int)$existsRow['total'] > 0;
+    }
     
     // Crear base de datos
     $sql = "CREATE DATABASE IF NOT EXISTS `$db_name` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
@@ -263,6 +472,11 @@ try {
     // Seleccionar la BD
     $conn->select_db($db_name);
     output("✅ BD '$db_name' seleccionada");
+    if ($dbExisted) {
+        output("ℹ️  Base existente detectada: se ejecutara sincronizacion de esquema (tablas/columnas faltantes)");
+    } else {
+        output("ℹ️  Base nueva detectada: se creara esquema completo inicial");
+    }
     output("");
     
     // ============================================================
@@ -697,6 +911,182 @@ try {
             echo "✅ Rol ya estaba asignado\n";
         }
     }
+
+    // ============================================================
+    // 5.1 MIGRACION DE COMPATIBILIDAD PARA BD EXISTENTES
+    // ============================================================
+    echo "📝 Verificando columnas de compatibilidad para bases existentes...\n";
+
+    $requiredSchema = [
+        'actividades' => ['Fecha_ingreso', 'Descripcion_realizada', 'Estado', 'cantidad_realizada'],
+        'alcances' => ['es_recurrente'],
+        'personal' => ['Tipo_servicio'],
+        'contratos' => ['Contrato_activo', 'Id_division']
+    ];
+
+    foreach ($requiredSchema as $tableName => $columns) {
+        if (!tableExists($conn, $tableName)) {
+            echo "⚠️  Tabla faltante detectada: $tableName (se espera que se cree en flujo base o script 09)\n";
+            continue;
+        }
+
+        $missing = [];
+        foreach ($columns as $colName) {
+            if (!columnExists($conn, $tableName, $colName)) {
+                $missing[] = $colName;
+            }
+        }
+
+        if (!empty($missing)) {
+            echo "ℹ️  $tableName tiene columnas faltantes: " . implode(', ', $missing) . "\n";
+        }
+    }
+
+    if (!columnExists($conn, 'actividades', 'Fecha_ingreso')) {
+        $conn->query("ALTER TABLE `actividades` ADD COLUMN `Fecha_ingreso` DATE NULL COMMENT 'Fecha en que se realizó la actividad'");
+        echo "✅ Se agrego actividades.Fecha_ingreso\n";
+    }
+
+    if (!indexExists($conn, 'actividades', 'idx_fecha_ingreso')) {
+        $conn->query("ALTER TABLE `actividades` ADD INDEX `idx_fecha_ingreso` (`Fecha_ingreso`)");
+        echo "✅ Se agrego indice idx_fecha_ingreso en actividades\n";
+    }
+
+    if (!columnExists($conn, 'actividades', 'Descripcion_realizada')) {
+        $posicionDescripcion = columnExists($conn, 'actividades', 'Fecha_ingreso') ? ' AFTER `Fecha_ingreso`' : '';
+        $conn->query("ALTER TABLE `actividades` ADD COLUMN `Descripcion_realizada` TEXT NULL" . $posicionDescripcion);
+
+        if (columnExists($conn, 'actividades', 'Descripcion')) {
+            $conn->query("UPDATE `actividades` SET `Descripcion_realizada` = `Descripcion` WHERE `Descripcion_realizada` IS NULL");
+            echo "✅ Se agrego actividades.Descripcion_realizada y se migro desde Descripcion\n";
+        } else {
+            echo "✅ Se agrego actividades.Descripcion_realizada\n";
+        }
+    }
+
+    if (!columnExists($conn, 'actividades', 'Estado')) {
+        $posicionEstado = columnExists($conn, 'actividades', 'Estado_actividad') ? ' AFTER `Estado_actividad`' : '';
+        $conn->query("ALTER TABLE `actividades` ADD COLUMN `Estado` TINYINT(1) DEFAULT 1 COMMENT '1=Activo, 0=Inactivo'" . $posicionEstado);
+
+        if (columnExists($conn, 'actividades', 'Estado_actividad')) {
+            // Si existe estado descriptivo previo, marcar inactiva solo la actividad cancelada.
+            $conn->query("UPDATE `actividades` SET `Estado` = CASE WHEN `Estado_actividad` = 'Cancelada' THEN 0 ELSE 1 END");
+        }
+
+        echo "✅ Se agrego actividades.Estado\n";
+    }
+
+    if (!indexExists($conn, 'actividades', 'idx_estado')) {
+        $conn->query("ALTER TABLE `actividades` ADD INDEX `idx_estado` (`Estado`)");
+        echo "✅ Se agrego indice idx_estado en actividades\n";
+    }
+
+    if (!columnExists($conn, 'actividades', 'cantidad_realizada')) {
+        $conn->query("ALTER TABLE `actividades` ADD COLUMN `cantidad_realizada` INT DEFAULT NULL COMMENT 'Cantidad de repeticiones si el alcance es recurrente' AFTER `Descripcion_realizada`");
+        echo "✅ Se agrego actividades.cantidad_realizada\n";
+    }
+
+    if (!indexExists($conn, 'actividades', 'idx_cantidad')) {
+        $conn->query("ALTER TABLE `actividades` ADD INDEX `idx_cantidad` (`cantidad_realizada`)");
+        echo "✅ Se agrego indice idx_cantidad en actividades\n";
+    }
+
+    if (!columnExists($conn, 'alcances', 'es_recurrente')) {
+        $conn->query("ALTER TABLE `alcances` ADD COLUMN `es_recurrente` TINYINT(1) DEFAULT 0 COMMENT '1=Recurrente (diario), 0=No recurrente' AFTER `Descripcion`");
+        echo "✅ Se agrego alcances.es_recurrente\n";
+    }
+
+    if (!indexExists($conn, 'alcances', 'idx_recurrente')) {
+        $conn->query("ALTER TABLE `alcances` ADD INDEX `idx_recurrente` (`es_recurrente`)");
+        echo "✅ Se agrego indice idx_recurrente en alcances\n";
+    }
+
+    if (!columnExists($conn, 'personal', 'Tipo_servicio')) {
+        $conn->query("ALTER TABLE `personal` ADD COLUMN `Tipo_servicio` TINYINT(1) DEFAULT 1 COMMENT '1=Profesionales, 0=Técnicos' AFTER `Puesto`");
+        echo "✅ Se agrego personal.Tipo_servicio\n";
+    }
+
+    if (!indexExists($conn, 'personal', 'idx_tipo_servicio')) {
+        $conn->query("ALTER TABLE `personal` ADD INDEX `idx_tipo_servicio` (`Tipo_servicio`)");
+        echo "✅ Se agrego indice idx_tipo_servicio en personal\n";
+    }
+
+    if (!columnExists($conn, 'contratos', 'Contrato_activo')) {
+        $conn->query("ALTER TABLE `contratos` ADD COLUMN `Contrato_activo` TINYINT(1) DEFAULT 1 COMMENT '1=Contrato Activo, 0=Contrato Vencido' AFTER `Fin_contrato`");
+        echo "✅ Se agrego contratos.Contrato_activo\n";
+    }
+
+    if (!indexExists($conn, 'contratos', 'idx_contrato_activo')) {
+        $conn->query("ALTER TABLE `contratos` ADD INDEX `idx_contrato_activo` (`Contrato_activo`)");
+        echo "✅ Se agrego indice idx_contrato_activo en contratos\n";
+    }
+
+    if (!columnExists($conn, 'contratos', 'Id_division')) {
+        $conn->query("ALTER TABLE `contratos` ADD COLUMN `Id_division` INT NULL AFTER `Contrato_activo`");
+        echo "✅ Se agrego contratos.Id_division\n";
+    }
+
+    if (!indexExists($conn, 'contratos', 'idx_id_division')) {
+        $conn->query("ALTER TABLE `contratos` ADD INDEX `idx_id_division` (`Id_division`)");
+        echo "✅ Se agrego indice idx_id_division en contratos\n";
+    }
+
+    if (!fkExists($conn, 'contratos', 'fk_contratos_division')) {
+        // Intentar crear FK sin bloquear la instalacion si hay datos huerfanos.
+        if ($conn->query("ALTER TABLE `contratos` ADD CONSTRAINT `fk_contratos_division` FOREIGN KEY (`Id_division`) REFERENCES `division`(`Id_Division`) ON DELETE SET NULL") === TRUE) {
+            echo "✅ Se agrego FK fk_contratos_division\n";
+        } else {
+            echo "⚠️  No se pudo crear FK fk_contratos_division (posibles datos inconsistentes): " . $conn->error . "\n";
+        }
+    }
+
+    // ============================================================
+    // 6. EJECUTAR SCRIPT DEL MODULO TABLERO (09)
+    // ============================================================
+    echo "📝 Ejecutando script del módulo Tablero (09_tablero_actividades.sql)...\n";
+    $tableroScriptPath = __DIR__ . '/database_scripts/09_tablero_actividades.sql';
+    $queries09 = runSqlFile($conn, $tableroScriptPath);
+    echo "✅ Script 09 ejecutado correctamente ($queries09 sentencias)\n";
+
+    // Asegurar que el admin real del setup tenga permisos de tablero (si no es Id 1).
+    if ((int)$admin_id !== 1) {
+        echo "📝 Sincronizando permisos de tablero para el admin real (ID: $admin_id)...\n";
+
+        $syncSql = "
+            INSERT INTO tablero_usuario_permiso (
+                Id_tablero, Id_usuario,
+                Permiso_ver, Permiso_crear, Permiso_editar, Permiso_eliminar,
+                Permiso_tablero_ver, Permiso_tablero_crear, Permiso_tablero_editar, Permiso_tablero_eliminar, Permiso_tablero_asignar,
+                Permiso_tarjeta_ver, Permiso_tarjeta_crear, Permiso_tarjeta_editar, Permiso_tarjeta_eliminar, Permiso_tarjeta_asignar,
+                Permiso_lista_crear, Permiso_lista_editar, Permiso_lista_eliminar,
+                Permiso_tarea_crear, Permiso_tarea_editar, Permiso_tarea_eliminar, Permiso_tarea_tiempo_editar,
+                Estado
+            )
+            SELECT
+                t.Id_tablero, $admin_id,
+                1,1,1,1,
+                1,1,1,1,1,
+                1,1,1,1,1,
+                1,1,1,
+                1,1,1,1,
+                1
+            FROM tablero t
+            WHERE t.Estado = 1
+            ON DUPLICATE KEY UPDATE
+                Permiso_ver=1, Permiso_crear=1, Permiso_editar=1, Permiso_eliminar=1,
+                Permiso_tablero_ver=1, Permiso_tablero_crear=1, Permiso_tablero_editar=1, Permiso_tablero_eliminar=1, Permiso_tablero_asignar=1,
+                Permiso_tarjeta_ver=1, Permiso_tarjeta_crear=1, Permiso_tarjeta_editar=1, Permiso_tarjeta_eliminar=1, Permiso_tarjeta_asignar=1,
+                Permiso_lista_crear=1, Permiso_lista_editar=1, Permiso_lista_eliminar=1,
+                Permiso_tarea_crear=1, Permiso_tarea_editar=1, Permiso_tarea_eliminar=1, Permiso_tarea_tiempo_editar=1,
+                Estado=1
+        ";
+
+        if ($conn->query($syncSql) === TRUE) {
+            echo "✅ Permisos de tablero sincronizados para admin ID $admin_id\n";
+        } else {
+            echo "⚠️  No se pudo sincronizar permisos de tablero para admin ID $admin_id: " . $conn->error . "\n";
+        }
+    }
     
     echo "\n";
     echo "════════════════════════════════════════════════════════════\n";
@@ -741,7 +1131,28 @@ try {
     $conn->close();
     
 } catch (Exception $e) {
-    outputError($e->getMessage());
+    $errorMessage = $e->getMessage();
+    outputError($errorMessage);
+
+    $isConnectionIssue =
+        stripos($errorMessage, 'Error de conexión') !== false ||
+        stripos($errorMessage, 'connect_error') !== false ||
+        stripos($errorMessage, 'Access denied') !== false ||
+        stripos($errorMessage, 'Connection refused') !== false ||
+        stripos($errorMessage, 'Can\'t connect') !== false ||
+        stripos($errorMessage, 'php_network_getaddresses') !== false;
+
+    $offlineSqlPath = false;
+    if ($isConnectionIssue) {
+        $offlineSqlPath = generateOfflineSqlBundle($db_name, $admin_email, $admin_pass);
+        if ($offlineSqlPath !== false) {
+            outputSuccess("Se genero SQL offline de contingencia: " . $offlineSqlPath);
+            output("ℹ️  Puedes importar este archivo manualmente en phpMyAdmin/CLI cuando tengas acceso a la instancia.");
+        } else {
+            outputError("No se pudo generar el SQL offline de contingencia.");
+        }
+    }
+
     if ($isWeb) {
         echo "<div class='step' style='color: #dc3545; border-left-color: #dc3545;'>";
         echo "<p>Si el problema persiste, verifica:</p>";
@@ -749,9 +1160,20 @@ try {
         echo "<li>Que MySQL está ejecutándose</li>";
         echo "<li>Las credenciales en config/config.php</li>";
         echo "<li>Los permisos de la carpeta</li>";
+        if ($isConnectionIssue && $offlineSqlPath !== false) {
+            echo "<li>Importa el SQL offline generado: <code>" . htmlspecialchars($offlineSqlPath) . "</code></li>";
+        }
         echo "</ul>";
         echo "</div>";
         echo "</div></body></html>";
+    } else {
+        echo "\nAlternativas sugeridas:\n";
+        echo "1) Verifica que MySQL esté activo y credenciales correctas.\n";
+        echo "2) Si no hay conectividad, importa el SQL offline generado manualmente.\n";
+        echo "3) Reintenta auto_setup cuando la instancia esté disponible.\n";
+        if ($isConnectionIssue && $offlineSqlPath !== false) {
+            echo "SQL offline: " . $offlineSqlPath . "\n";
+        }
     }
     exit(1);
 }

@@ -209,6 +209,17 @@ class Roles extends Controller {
         }
         
         $permisos = $this->roleModel->getRolePermisos($id);
+
+        $rolesUsuario = $this->roleModel->getRolesByUser((int)$_SESSION['user_id']);
+        $isAdminRoleUser = false;
+        if(!empty($rolesUsuario)){
+            foreach($rolesUsuario as $r){
+                if(isset($r->Nombre) && $r->Nombre === 'Administrador'){
+                    $isAdminRoleUser = true;
+                    break;
+                }
+            }
+        }
         
         // Agrupar permisos por módulo
         $permisos_agrupados = [];
@@ -222,7 +233,8 @@ class Roles extends Controller {
         $data = [
             'title' => 'Gestionar Permisos - ' . $role->Nombre,
             'role' => $role,
-            'permisos_agrupados' => $permisos_agrupados
+            'permisos_agrupados' => $permisos_agrupados,
+            'is_admin_role_user' => $isAdminRoleUser
         ];
         
         $this->view('roles/permisos', $data);
@@ -247,6 +259,97 @@ class Roles extends Controller {
             } else {
                 json_response(['success' => false, 'message' => 'Error al eliminar el role']);
             }
+        }
+    }
+
+    /**
+     * Endpoint AJAX: restaura permisos globales y de tablero del admin principal (Id_usuario=1).
+     * Disponible desde la pantalla de roles/permisos y solo para usuarios con rol Administrador.
+     */
+    public function restaurar_permisos_admin(){
+        $this->verificarAcceso('roles', 'permisos');
+
+        if($_SERVER['REQUEST_METHOD'] !== 'POST'){
+            http_response_code(405);
+            echo json_encode(['success' => false, 'error' => 'Metodo no permitido']);
+            exit;
+        }
+
+        $rolesUsuario = $this->roleModel->getRolesByUser((int)$_SESSION['user_id']);
+        $esAdministrador = false;
+        if(!empty($rolesUsuario)){
+            foreach($rolesUsuario as $role){
+                if(isset($role->Nombre) && $role->Nombre === 'Administrador'){
+                    $esAdministrador = true;
+                    break;
+                }
+            }
+        }
+
+        if(!$esAdministrador){
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Accion disponible solo para el rol Administrador']);
+            exit;
+        }
+
+        try {
+            $db = new Database();
+
+            // 1. Asegurar rol Administrador activo para usuario 1
+            $db->query('INSERT INTO `usuario_role` (`Id_usuario`, `Id_role`, `Estado`) VALUES (1, 1, 1)
+                        ON DUPLICATE KEY UPDATE `Estado` = 1');
+            $db->execute();
+
+            // 2. Asignar y activar todos los permisos en role Administrador
+            $db->query('INSERT IGNORE INTO `role_permiso` (`Id_role`, `Id_permiso`, `Estado`)
+                        SELECT 1, p.Id_permiso, 1 FROM `permisos` p WHERE p.Estado = 1');
+            $db->execute();
+
+            $db->query('UPDATE `role_permiso` SET `Estado` = 1 WHERE `Id_role` = 1');
+            $db->execute();
+
+            // 3. Restaurar permisos granulares en todos los tableros activos para usuario 1
+            $db->query('
+                INSERT INTO `tablero_usuario_permiso` (
+                    `Id_tablero`, `Id_usuario`,
+                    `Permiso_ver`, `Permiso_crear`, `Permiso_editar`, `Permiso_eliminar`,
+                    `Permiso_tablero_ver`, `Permiso_tablero_crear`, `Permiso_tablero_editar`,
+                    `Permiso_tablero_eliminar`, `Permiso_tablero_asignar`,
+                    `Permiso_tarjeta_ver`, `Permiso_tarjeta_crear`, `Permiso_tarjeta_editar`,
+                    `Permiso_tarjeta_eliminar`, `Permiso_tarjeta_asignar`,
+                    `Permiso_lista_crear`, `Permiso_lista_editar`, `Permiso_lista_eliminar`,
+                    `Permiso_tarea_crear`, `Permiso_tarea_editar`, `Permiso_tarea_eliminar`,
+                    `Permiso_tarea_tiempo_editar`, `Estado`
+                )
+                SELECT
+                    t.Id_tablero, 1,
+                    1,1,1,1,
+                    1,1,1,1,1,
+                    1,1,1,1,1,
+                    1,1,1,
+                    1,1,1,1,
+                    1
+                FROM `tablero` t
+                WHERE t.Estado = 1
+                ON DUPLICATE KEY UPDATE
+                    Permiso_ver=1, Permiso_crear=1, Permiso_editar=1, Permiso_eliminar=1,
+                    Permiso_tablero_ver=1, Permiso_tablero_crear=1, Permiso_tablero_editar=1,
+                    Permiso_tablero_eliminar=1, Permiso_tablero_asignar=1,
+                    Permiso_tarjeta_ver=1, Permiso_tarjeta_crear=1, Permiso_tarjeta_editar=1,
+                    Permiso_tarjeta_eliminar=1, Permiso_tarjeta_asignar=1,
+                    Permiso_lista_crear=1, Permiso_lista_editar=1, Permiso_lista_eliminar=1,
+                    Permiso_tarea_crear=1, Permiso_tarea_editar=1, Permiso_tarea_eliminar=1,
+                    Permiso_tarea_tiempo_editar=1, Estado=1
+            ');
+            $db->execute();
+
+            http_response_code(200);
+            echo json_encode(['success' => true, 'message' => 'Permisos del administrador restaurados correctamente.']);
+            exit;
+        } catch(Exception $e){
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Error interno al restaurar permisos.']);
+            exit;
         }
     }
 }
