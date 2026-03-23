@@ -43,6 +43,39 @@ function isGerenteOrAdmin(){
     return false;
 }
 
+/**
+ * Verifica si el usuario actual tiene rol de Administrador
+ * @return bool True si tiene rol administrador/admin, false si no
+ */
+function isAdministradorRol(){
+    if(!isLoggedIn()) return false;
+
+    static $isAdministradorCache = null;
+    if($isAdministradorCache !== null){
+        return $isAdministradorCache;
+    }
+
+    require_once APPROOT . '/models/RoleModel.php';
+    $roleModel = new RoleModel();
+    $userRoles = $roleModel->getRolesByUser($_SESSION['user_id']);
+
+    if(!$userRoles){
+        $isAdministradorCache = false;
+        return false;
+    }
+
+    foreach($userRoles as $role){
+        $roleName = strtolower(trim((string)($role->Nombre ?? '')));
+        if($roleName === 'administrador' || $roleName === 'admin'){
+            $isAdministradorCache = true;
+            return true;
+        }
+    }
+
+    $isAdministradorCache = false;
+    return false;
+}
+
 // Variable estática para cachear la instancia de PermisoModel
 static $permisoModelCache = null;
 

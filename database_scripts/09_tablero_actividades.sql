@@ -296,6 +296,28 @@ CREATE TABLE IF NOT EXISTS `tablero_tarjetas_tarea_detalle_tiempo` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------
+-- 5.5) TABLA: tablero_tarjetas_tareas_detalle_tiempo_usuario
+--      Acumulado por tarea-detalle y usuario
+-- ------------------------------------------
+CREATE TABLE IF NOT EXISTS `tablero_tarjetas_tareas_detalle_tiempo_usuario` (
+    `Id_tarea_detalle_tiempo_usuario` INT AUTO_INCREMENT PRIMARY KEY,
+    `Id_tarea_detalle` INT NOT NULL,
+    `Id_usuario` INT NOT NULL,
+    `Tiempo_total_segundos` INT NOT NULL DEFAULT 0,
+    `Estado` TINYINT(1) NOT NULL DEFAULT 1,
+    `Fecha_creacion` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `Fecha_actualizacion` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_tttdtu_detalle_usuario` (`Id_tarea_detalle`, `Id_usuario`),
+    INDEX `idx_tttdtu_detalle` (`Id_tarea_detalle`),
+    INDEX `idx_tttdtu_usuario` (`Id_usuario`),
+    INDEX `idx_tttdtu_estado` (`Estado`),
+    CONSTRAINT `fk_tttdtu_detalle`
+        FOREIGN KEY (`Id_tarea_detalle`) REFERENCES `tablero_tarjetas_tarea_detalle`(`Id_tarea_detalle`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk_tttdtu_usuario`
+        FOREIGN KEY (`Id_usuario`) REFERENCES `usuario`(`Id_usuario`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------
 -- 6) MIGRACION BASICA SI EXISTIAN TABLAS PREVIAS
 -- ------------------------------------------
 ALTER TABLE `tablero_columnas`
@@ -378,6 +400,31 @@ SET
 ALTER TABLE `tablero_tarjetas`
     ADD COLUMN IF NOT EXISTS `Id_alcance` INT NULL AFTER `Id_columna`;
 
+ALTER TABLE `tablero_tarjetas_tarea_detalle`
+    ADD COLUMN IF NOT EXISTS `Id_usuario_asignado` INT NULL AFTER `Id_tarea`;
+
+ALTER TABLE `tablero_tarjetas_tarea_detalle`
+    ADD INDEX IF NOT EXISTS `idx_tttd_usuario_asignado` (`Id_usuario_asignado`);
+
+SET @fk_tttd_usuario_asignado_exists := (
+    SELECT COUNT(*)
+    FROM information_schema.TABLE_CONSTRAINTS
+    WHERE CONSTRAINT_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'tablero_tarjetas_tarea_detalle'
+      AND CONSTRAINT_NAME = 'fk_tttd_usuario_asignado'
+      AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+);
+
+SET @sql_fk_tttd_usuario_asignado := IF(
+    @fk_tttd_usuario_asignado_exists = 0,
+    'ALTER TABLE `tablero_tarjetas_tarea_detalle` ADD CONSTRAINT `fk_tttd_usuario_asignado` FOREIGN KEY (`Id_usuario_asignado`) REFERENCES `usuario`(`Id_usuario`) ON DELETE SET NULL ON UPDATE CASCADE',
+    'SELECT 1'
+);
+
+PREPARE stmt_fk_tttd_usuario_asignado FROM @sql_fk_tttd_usuario_asignado;
+EXECUTE stmt_fk_tttd_usuario_asignado;
+DEALLOCATE PREPARE stmt_fk_tttd_usuario_asignado;
+
 ALTER TABLE `tablero_tarjetas`
     ADD INDEX IF NOT EXISTS `idx_tablero_tarjeta_alcance` (`Id_alcance`);
 
@@ -435,6 +482,28 @@ UPDATE `tablero_tarjetas`
 SET `Estado_tarjeta` = 'Completado'
 WHERE `Completado` = 1
     AND `Estado_tarjeta` <> 'Completado';
+
+-- Backfill de acumulado por usuario usando historico existente.
+INSERT INTO `tablero_tarjetas_tareas_detalle_tiempo_usuario` (
+    `Id_tarea_detalle`,
+    `Id_usuario`,
+    `Tiempo_total_segundos`,
+    `Estado`
+)
+SELECT
+    tdti.Id_tarea_detalle,
+    tdti.Id_usuario,
+    SUM(COALESCE(tdti.duracion_segundos, TIMESTAMPDIFF(SECOND, tdti.inicio_timestamp, COALESCE(tdti.fin_timestamp, NOW())))) AS total_segundos,
+    1
+FROM `tablero_tarjetas_tarea_detalle_tiempo` tdti
+INNER JOIN `tablero_tarjetas_tarea_detalle` d ON d.Id_tarea_detalle = tdti.Id_tarea_detalle
+WHERE tdti.Estado = 1
+  AND d.Estado = 1
+GROUP BY tdti.Id_tarea_detalle, tdti.Id_usuario
+ON DUPLICATE KEY UPDATE
+    Tiempo_total_segundos = VALUES(Tiempo_total_segundos),
+    Estado = 1,
+    Fecha_actualizacion = NOW();
 
 -- Si venias de la version anterior, este indice unico era global por Orden_columna
 -- y provoca errores al crear columnas de otro tablero (Duplicate entry '1').

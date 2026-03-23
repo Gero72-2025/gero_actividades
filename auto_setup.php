@@ -15,32 +15,163 @@
 
 // Detectar si se ejecuta desde navegador o CLI
 $isWeb = php_sapi_name() !== 'cli';
-$db_host = 'localhost';
-$db_user = 'root';
-$db_pass = '';
-$db_name = null;
+$requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$configFile = __DIR__ . '/config/config.php';
 
-// Si viene de POST, usa ese nombre de BD
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['db_name'])) {
-    $db_name = trim(preg_replace('/[^a-zA-Z0-9_]/', '', $_POST['db_name']));
+function normalizeDbIdentifier($value) {
+    return trim((string) preg_replace('/[^a-zA-Z0-9_]/', '', (string) $value));
 }
 
-// Si se ejecuta desde CLI, solicita el nombre de la BD
-if (php_sapi_name() === 'cli' && empty($db_name)) {
+function escapePhpSingleQuotedValue($value) {
+    return str_replace(['\\', "'"], ['\\\\', "\\'"], (string) $value);
+}
+
+function extractConfigDefine($content, $constantName, $default = '') {
+    $pattern = "/define\('" . preg_quote($constantName, '/') . "',\s*'((?:\\\\'|[^'])*)'\)/";
+    if (preg_match($pattern, $content, $matches)) {
+        return stripcslashes($matches[1]);
+    }
+
+    return $default;
+}
+
+function readInstallerConfigDefaults($configFile) {
+    $defaults = [
+        'DB_HOST' => 'localhost',
+        'DB_USER' => 'root',
+        'DB_PASS' => '',
+        'DB_NAME' => 'gestor_actividades'
+    ];
+
+    if (!file_exists($configFile)) {
+        return $defaults;
+    }
+
+    $content = file_get_contents($configFile);
+    if ($content === false) {
+        return $defaults;
+    }
+
+    foreach ($defaults as $constant => $defaultValue) {
+        $defaults[$constant] = extractConfigDefine($content, $constant, $defaultValue);
+    }
+
+    return $defaults;
+}
+
+function updateInstallerConfig($configFile, array $values, &$errorMessage = null) {
+    if (!file_exists($configFile)) {
+        $errorMessage = 'No se encontro config/config.php';
+        return false;
+    }
+
+    $content = file_get_contents($configFile);
+    if ($content === false) {
+        $errorMessage = 'No se pudo leer config/config.php';
+        return false;
+    }
+
+    $replacements = [
+        'DB_HOST' => $values['DB_HOST'],
+        'DB_USER' => $values['DB_USER'],
+        'DB_PASS' => $values['DB_PASS'],
+        'DB_NAME' => $values['DB_NAME']
+    ];
+
+    foreach ($replacements as $constant => $value) {
+        $escapedValue = escapePhpSingleQuotedValue($value);
+        $pattern = "/define\('" . preg_quote($constant, '/') . "',\s*'((?:\\\\'|[^'])*)'\)/";
+        $updated = preg_replace($pattern, "define('{$constant}', '{$escapedValue}')", $content, 1, $count);
+        if ($updated === null || $count !== 1) {
+            $errorMessage = "No se pudo actualizar {$constant} en config/config.php";
+            return false;
+        }
+        $content = $updated;
+    }
+
+    if (file_put_contents($configFile, $content) === false) {
+        $errorMessage = 'No se pudo escribir config/config.php';
+        return false;
+    }
+
+    return true;
+}
+
+function h($value) {
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+}
+
+$configDefaults = readInstallerConfigDefaults($configFile);
+$db_host = $configDefaults['DB_HOST'];
+$db_user = $configDefaults['DB_USER'];
+$db_pass = $configDefaults['DB_PASS'];
+$db_name = $configDefaults['DB_NAME'];
+$wizardErrors = [];
+$configUpdated = false;
+$configUpdateError = '';
+
+if ($requestMethod === 'POST') {
+    $db_host = trim((string) ($_POST['db_host'] ?? $db_host));
+    $db_user = trim((string) ($_POST['db_user'] ?? $db_user));
+    $db_pass = (string) ($_POST['db_pass'] ?? $db_pass);
+
+    $rawDbName = trim((string) ($_POST['db_name'] ?? ''));
+    $db_name = normalizeDbIdentifier($rawDbName);
+
+    if ($db_host === '') {
+        $wizardErrors[] = 'El host de la base de datos es obligatorio.';
+    }
+
+    if ($db_user === '') {
+        $wizardErrors[] = 'El usuario de la base de datos es obligatorio.';
+    }
+
+    if ($rawDbName === '') {
+        $wizardErrors[] = 'El nombre de la base de datos es obligatorio.';
+    } elseif ($db_name !== $rawDbName) {
+        $wizardErrors[] = 'El nombre de la base de datos solo puede contener letras, numeros y guion bajo (_).';
+    }
+}
+
+// Si se ejecuta desde CLI, solicita host, usuario, password y nombre de BD
+if (!$isWeb && $requestMethod !== 'POST') {
     echo "════════════════════════════════════════════════════════════\n";
-    echo "🚀 AUTO SETUP - Gero Actividades\n";
+    echo "AUTO SETUP - Gero Actividades\n";
     echo "════════════════════════════════════════════════════════════\n\n";
-    echo "Por favor, ingresa el nombre de la base de datos:\n";
-    echo "Nombre por defecto: gestor_actividades\n";
-    echo "Ingresa el nombre (o presiona Enter para usar el por defecto): ";
-    
+
+    echo "Host MySQL [{$db_host}]: ";
     $input = trim(fgets(STDIN));
-    $db_name = !empty($input) ? preg_replace('/[^a-zA-Z0-9_]/', '', $input) : 'gestor_actividades';
+    if ($input !== '') {
+        $db_host = $input;
+    }
+
+    echo "Usuario MySQL [{$db_user}]: ";
+    $input = trim(fgets(STDIN));
+    if ($input !== '') {
+        $db_user = $input;
+    }
+
+    echo "Password MySQL [enter para conservar actual]: ";
+    $input = rtrim((string) fgets(STDIN), "\r\n");
+    if ($input !== '') {
+        $db_pass = $input;
+    }
+
+    echo "Base de datos [{$db_name}]: ";
+    $input = trim(fgets(STDIN));
+    if ($input !== '') {
+        $db_name = normalizeDbIdentifier($input);
+    }
+
+    if ($db_name === '') {
+        $db_name = 'gestor_actividades';
+    }
+
     echo "\n";
 }
 
-// Si es web y no tiene nombre de BD, muestra formulario
-if ($isWeb && empty($db_name)) {
+// Si es web y faltan datos o hay errores de validacion, muestra el asistente
+if ($isWeb && ($requestMethod !== 'POST' || !empty($wizardErrors) || empty($db_name) || empty($db_host) || empty($db_user))) {
     ?>
     <!DOCTYPE html>
     <html lang="es">
@@ -114,6 +245,17 @@ if ($isWeb && empty($db_name)) {
                 color: #1565c0;
                 font-size: 0.95em;
             }
+            .error-box {
+                background: #fff1f2;
+                border-left: 4px solid #dc3545;
+                padding: 12px;
+                margin-bottom: 20px;
+                border-radius: 3px;
+                color: #b42318;
+            }
+            .error-box ul {
+                margin: 8px 0 0 18px;
+            }
             .button-group {
                 display: flex;
                 gap: 10px;
@@ -150,12 +292,64 @@ if ($isWeb && empty($db_name)) {
         <div class="container">
             <div class="header">
                 <h1>🚀 Auto Setup</h1>
-                <p>Gero Actividades - Instalación</p>
+                <p>Gero Actividades - Asistente de instalación</p>
             </div>
             
             <form method="POST" action="">
                 <div class="info">
-                    ℹ️ Ingresa el nombre de la base de datos a crear
+                    ℹ️ Ingresa las credenciales reales de MySQL. El sistema validará la conexión antes de actualizar la configuración y ejecutar la instalación.
+                </div>
+
+                <?php if (!empty($wizardErrors)): ?>
+                    <div class="error-box">
+                        <strong>No se puede continuar con los datos actuales:</strong>
+                        <ul>
+                            <?php foreach ($wizardErrors as $wizardError): ?>
+                                <li><?php echo h($wizardError); ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
+
+                <div class="form-group">
+                    <label for="db_host">Host de MySQL:</label>
+                    <input 
+                        type="text"
+                        id="db_host"
+                        name="db_host"
+                        placeholder="localhost"
+                        value="<?php echo h($db_host); ?>"
+                        maxlength="255"
+                        required
+                        autofocus
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="db_user">Usuario de MySQL:</label>
+                    <input 
+                        type="text"
+                        id="db_user"
+                        name="db_user"
+                        placeholder="ej: cpanel_user"
+                        value="<?php echo h($db_user); ?>"
+                        maxlength="255"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="db_pass">Contraseña de MySQL:</label>
+                    <input 
+                        type="password"
+                        id="db_pass"
+                        name="db_pass"
+                        placeholder="Ingresa la contraseña de MySQL"
+                        maxlength="255"
+                    >
+                    <small style="color: #666; margin-top: 5px; display: block;">
+                        Por seguridad este campo no se autocompleta. Ingresa la contraseña real para validar la conexión.
+                    </small>
                 </div>
                 
                 <div class="form-group">
@@ -165,19 +359,18 @@ if ($isWeb && empty($db_name)) {
                         id="db_name" 
                         name="db_name" 
                         placeholder="ej: gestor_actividades"
-                        value="gestor_actividades"
+                        value="<?php echo h($db_name); ?>"
                         pattern="[a-zA-Z0-9_]+"
                         maxlength="64"
                         required
-                        autofocus
                     >
                     <small style="color: #666; margin-top: 5px; display: block;">
-                        Solo caracteres alfanuméricos y guiones bajos (_)
+                        Compatible con entornos locales y cPanel. Solo caracteres alfanuméricos y guiones bajos (_).
                     </small>
                 </div>
                 
                 <div class="button-group">
-                    <button type="submit" class="btn-submit">▶️ Continuar</button>
+                    <button type="submit" class="btn-submit">▶️ Validar e instalar</button>
                     <button type="reset" class="btn-reset">🔄 Limpiar</button>
                 </div>
             </form>
@@ -337,6 +530,9 @@ function generateOfflineSqlBundle($dbName, $adminEmail, $adminPass) {
     $sql .= "  `Id_usuario` INT AUTO_INCREMENT PRIMARY KEY,\n";
     $sql .= "  `email` VARCHAR(100) NOT NULL UNIQUE,\n";
     $sql .= "  `pass` VARCHAR(255) NOT NULL,\n";
+    $sql .= "  `reset_token` VARCHAR(64) DEFAULT NULL,\n";
+    $sql .= "  `token_expira` DATETIME DEFAULT NULL,\n";
+    $sql .= "  `password_temp` TINYINT(1) NOT NULL DEFAULT 0,\n";
     $sql .= "  `estado_usuario` TINYINT(1) DEFAULT 1,\n";
     $sql .= "  `conectado` TINYINT(1) DEFAULT 0,\n";
     $sql .= "  `fecha_ultimo_login` TIMESTAMP NULL,\n";
@@ -402,7 +598,8 @@ function generateOfflineSqlBundle($dbName, $adminEmail, $adminPass) {
 
     $scripts = [
         __DIR__ . '/database_scripts/09_tablero_actividades.sql',
-        __DIR__ . '/database_scripts/10_restaurar_admin.sql'
+        __DIR__ . '/database_scripts/10_restaurar_admin.sql',
+        __DIR__ . '/database_scripts/11_recuperacion_password.sql'
     ];
 
     foreach ($scripts as $scriptPath) {
@@ -426,18 +623,20 @@ function generateOfflineSqlBundle($dbName, $adminEmail, $adminPass) {
 if ($isWeb) {
     echo "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Auto Setup - Instalación</title>";
     echo "<style>body{font-family: Arial; background: #f5f5f5; padding: 20px;} ";
-    echo ".content{max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px;} ";
+    echo ".content{max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; white-space: pre-line;} ";
     echo ".success{color: #28a745;} .error{color: #dc3545;} .info{color: #17a2b8;} ";
     echo ".step{margin: 15px 0; padding: 10px; border-left: 4px solid #667eea;} ";
     echo ".check{color: #28a745;} h1{color: #667eea;} .final{padding: 20px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px; color: #155724; margin-top: 20px;}</style></head><body><div class='content'>";
     echo "<h1>🚀 Auto Setup - Instalación en progreso...</h1>";
-    echo "<p class='info'>Base de datos: <strong>$db_name</strong></p>";
+    echo "<p class='info'>Conectando a <strong>" . h($db_host) . "</strong> con el usuario <strong>" . h($db_user) . "</strong>. Base de datos objetivo: <strong>" . h($db_name) . "</strong></p>";
     echo "<hr style='margin: 20px 0;'>";
 } else {
     echo "════════════════════════════════════════════════════════════\n";
     echo "🚀 AUTO SETUP - Gero Actividades\n";
     echo "════════════════════════════════════════════════════════════\n";
     echo "Base de datos: $db_name\n";
+    echo "Host: $db_host\n";
+    echo "Usuario: $db_user\n";
     echo "════════════════════════════════════════════════════════════\n\n";
 }
 
@@ -461,16 +660,20 @@ try {
         $dbExisted = !empty($existsRow) && (int)$existsRow['total'] > 0;
     }
     
-    // Crear base de datos
+    // Crear base de datos. En cPanel puede fallar la creacion aunque la BD ya exista y sea utilizable.
     $sql = "CREATE DATABASE IF NOT EXISTS `$db_name` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
     if ($conn->query($sql) === TRUE) {
         output("✅ Base de datos '$db_name' creada/verificada");
+    } elseif ($conn->select_db($db_name)) {
+        output("⚠️  No se pudo crear la base de datos por permisos, pero la base '$db_name' ya existe y sera utilizada");
     } else {
-        throw new Exception("Error al crear BD: " . $conn->error);
+        throw new Exception("No se pudo crear ni seleccionar la BD '$db_name': " . $conn->error);
     }
     
     // Seleccionar la BD
-    $conn->select_db($db_name);
+    if (!$conn->select_db($db_name)) {
+        throw new Exception("No se pudo seleccionar la BD '$db_name': " . $conn->error);
+    }
     output("✅ BD '$db_name' seleccionada");
     if ($dbExisted) {
         output("ℹ️  Base existente detectada: se ejecutara sincronizacion de esquema (tablas/columnas faltantes)");
@@ -492,6 +695,9 @@ try {
             `Id_usuario` INT AUTO_INCREMENT PRIMARY KEY,
             `email` VARCHAR(100) NOT NULL UNIQUE,
             `pass` VARCHAR(255) NOT NULL,
+            `reset_token` VARCHAR(64) DEFAULT NULL,
+            `token_expira` DATETIME DEFAULT NULL,
+            `password_temp` TINYINT(1) NOT NULL DEFAULT 0,
             `estado_usuario` TINYINT(1) DEFAULT 1 COMMENT '1=Activo, 0=Inactivo',
             `conectado` TINYINT(1) DEFAULT 0,
             `fecha_ultimo_login` TIMESTAMP NULL,
@@ -1048,6 +1254,14 @@ try {
     $queries09 = runSqlFile($conn, $tableroScriptPath);
     echo "✅ Script 09 ejecutado correctamente ($queries09 sentencias)\n";
 
+    // ============================================================
+    // 7. EJECUTAR SCRIPT DE RECUPERACION DE CONTRASENA (11)
+    // ============================================================
+    echo "📝 Ejecutando script de recuperación de contraseña (11_recuperacion_password.sql)...\n";
+    $passwordResetScriptPath = __DIR__ . '/database_scripts/11_recuperacion_password.sql';
+    $queries11 = runSqlFile($conn, $passwordResetScriptPath);
+    echo "✅ Script 11 ejecutado correctamente ($queries11 sentencias)\n";
+
     // Asegurar que el admin real del setup tenga permisos de tablero (si no es Id 1).
     if ((int)$admin_id !== 1) {
         echo "📝 Sincronizando permisos de tablero para el admin real (ID: $admin_id)...\n";
@@ -1113,19 +1327,22 @@ try {
     
     echo "🔗 Accede a: http://localhost/gero_activities/\n";
     echo "════════════════════════════════════════════════════════════\n";
-    
-    // Actualizar config/config.php con el nombre de la BD
-    $config_file = dirname(__FILE__) . '/config/config.php';
-    if (file_exists($config_file)) {
-        $config_content = file_get_contents($config_file);
-        $config_content_updated = preg_replace(
-            "/define\('DB_NAME',\s*'[^']*'\)/",
-            "define('DB_NAME', '$db_name')",
-            $config_content
-        );
-        if (file_put_contents($config_file, $config_content_updated)) {
-            echo "✅ config/config.php actualizado con DB_NAME = '$db_name'\n";
-        }
+
+    $configUpdated = updateInstallerConfig(
+        $configFile,
+        [
+            'DB_HOST' => $db_host,
+            'DB_USER' => $db_user,
+            'DB_PASS' => $db_pass,
+            'DB_NAME' => $db_name
+        ],
+        $configUpdateError
+    );
+
+    if ($configUpdated) {
+        outputSuccess("config/config.php actualizado con las credenciales validadas de MySQL");
+    } else {
+        outputError("La instalación terminó, pero no se pudo actualizar config/config.php: " . $configUpdateError);
     }
     
     $conn->close();
@@ -1158,12 +1375,13 @@ try {
         echo "<p>Si el problema persiste, verifica:</p>";
         echo "<ul>";
         echo "<li>Que MySQL está ejecutándose</li>";
-        echo "<li>Las credenciales en config/config.php</li>";
+        echo "<li>Las credenciales ingresadas en el asistente</li>";
         echo "<li>Los permisos de la carpeta</li>";
         if ($isConnectionIssue && $offlineSqlPath !== false) {
             echo "<li>Importa el SQL offline generado: <code>" . htmlspecialchars($offlineSqlPath) . "</code></li>";
         }
         echo "</ul>";
+        echo "<p><a href='auto_setup.php' style='display: inline-block; margin-top: 10px; color: #667eea;'>Volver al asistente</a></p>";
         echo "</div>";
         echo "</div></body></html>";
     } else {
@@ -1185,9 +1403,15 @@ if ($isWeb) {
     echo "<p><strong>Email:</strong> $admin_email</p>";
     echo "<p><strong>Contraseña:</strong> $admin_pass</p>";
     echo "<p><strong>Base de Datos:</strong> <code>$db_name</code></p>";
-    echo "<p style='margin-top: 15px; padding: 10px; background: #e7f3ff; border-left: 3px solid #2196F3; border-radius: 3px;'>";
-    echo "✅ config/config.php ha sido actualizado automáticamente";
-    echo "</p>";
+    if ($configUpdated) {
+        echo "<p style='margin-top: 15px; padding: 10px; background: #e7f3ff; border-left: 3px solid #2196F3; border-radius: 3px;'>";
+        echo "✅ config/config.php fue actualizado con host, usuario, contraseña y base de datos validados";
+        echo "</p>";
+    } else {
+        echo "<p style='margin-top: 15px; padding: 10px; background: #fff4e5; border-left: 3px solid #ff9800; border-radius: 3px;'>";
+        echo "⚠️ La instalación terminó, pero debes revisar manualmente config/config.php: " . h($configUpdateError);
+        echo "</p>";
+    }
     echo "<p style='margin-top: 15px; font-size: 0.9em;'>";
     echo "<strong>⚠️ Importante:</strong> Cambia la contraseña después de instalar. ";
     echo "Puedes eliminar este archivo (auto_setup.php) por razones de seguridad.";

@@ -21,6 +21,7 @@ Sistema web completo para la gestión de actividades, personal, contratos, divis
 - 🔑 **Gestión de Roles** - Definir roles y asignar permisos
 - ⚙️ **Gestión de Permisos** - Control granular de permisos por módulo y acción
 - 📊 **Tablero Kanban** - Gestión visual de tareas con columnas, tarjetas, listas, etiquetas y cronómetro
+- 🔐 **Recuperación de Contraseña** - Restablecimiento por correo SMTP con contraseña temporal y cambio forzado
 
 ✅ **Dashboard Ejecutivo**
 - Estadísticas por división
@@ -95,6 +96,10 @@ cd C:\xampp\htdocs\gero_activities
 php auto_setup.php
 ```
 
+`auto_setup.php` ejecuta automáticamente estos scripts complementarios durante la instalación:
+- `database_scripts/09_tablero_actividades.sql`
+- `database_scripts/11_recuperacion_password.sql`
+
 #### 4️⃣ Verificar instalación (opcional)
 ```bash
 # Desde navegador
@@ -152,7 +157,8 @@ gero_activities/
 │   └── config.php             # Configuración
 ├── database_scripts/
 │   ├── 09_tablero_actividades.sql # Tablas/permisos del tablero (usado por auto_setup)
-│   └── 10_restaurar_admin.sql     # Script utilitario para restaurar permisos admin
+│   ├── 10_restaurar_admin.sql     # Script utilitario para restaurar permisos admin
+│   └── 11_recuperacion_password.sql # Columnas para recuperación de contraseña
 ├── public/
 │   ├── index.php              # Punto de entrada
 │   ├── css/
@@ -418,6 +424,11 @@ POST   /tablero/delete_tarjeta_tarea       - Eliminar tarea
 - Ejecuta nuevamente `auto_setup.php`
 - Verifica que la BD fue creada correctamente
 
+### Error: "No llega correo de recuperación"
+- Verifica credenciales SMTP en `.env`
+- Revisa que el puerto SMTP esté habilitado (465/587)
+- Revisa carpeta de spam del destinatario
+
 ### Error: "Permiso denegado"
 - Verifica que el usuario tiene el rol correcto
 - Verifica que el rol tiene el permiso asignado
@@ -492,4 +503,4 @@ Dev.: Erick Quiñonez.
 **Última actualización:** Marzo 2026  
 **Versión:** 2.0.0  
 **Estado:** ✅ Production Ready  
-**Nuevas características en v2.0:** Tablero Kanban con gestión de tareas, cronómetro, etiquetas, prioridades y permisos granulares por usuario y tablero
+**Nuevas características en v2.0:** Tablero Kanban con gestión de tareas, cronómetro, etiquetas, prioridades, permisos granulares por usuario y tablero, y recuperación de contraseña por correo SMTP

@@ -9,10 +9,18 @@
  */
 
 // Configuración
-$db_host = 'localhost';
-$db_user = 'root';
-$db_pass = '';
-$db_name = 'gestor_actividades';
+$configPath = __DIR__ . '/config/config.php';
+$configLoaded = false;
+
+if (file_exists($configPath)) {
+    require_once $configPath;
+    $configLoaded = true;
+}
+
+$db_host = defined('DB_HOST') ? DB_HOST : 'localhost';
+$db_user = defined('DB_USER') ? DB_USER : 'root';
+$db_pass = defined('DB_PASS') ? DB_PASS : '';
+$db_name = defined('DB_NAME') ? DB_NAME : 'gestor_actividades';
 
 $issues = [];
 $success_count = 0;
@@ -82,28 +90,66 @@ $check3 = [
     'table_details' => []
 ];
 
+// Tabla a verificar con sus columnas requeridas
 $tables = [
-    'usuario',
-    'roles',
-    'permisos',
-    'role_permiso',
-    'usuario_role',
-    'division',
-    'personal',
-    'contratos',
-    'alcances',
-    'actividades'
+    'usuario' => ['Id_usuario', 'email', 'pass', 'estado_usuario'],
+    'roles' => ['Id_role', 'Nombre', 'Estado'],
+    'permisos' => ['Id_permiso', 'Nombre', 'Modulo', 'Accion', 'Estado'],
+    'role_permiso' => ['Id_role', 'Id_permiso', 'Estado'],
+    'usuario_role' => ['Id_usuario', 'Id_role', 'Estado'],
+    'division' => ['Id_Division', 'Nombre', 'Siglas', 'Estado_division'],
+    'personal' => ['Id_personal', 'Nombre_Completo', 'Apellido_Completo', 'Id_usuario', 'Estado'],
+    'contratos' => ['Id_contrato', 'Descripcion', 'Inicio_contrato', 'Fin_contrato', 'Contrato_activo', 'Estado'],
+    'alcances' => ['Id_alcance', 'Id_contrato', 'Descripcion', 'es_recurrente', 'Estado'],
+    'actividades' => ['Id_actividad', 'Id_personal', 'Id_alcance', 'Fecha_ingreso', 'Estado_actividad', 'Estado']
 ];
 
 $tables_ok = 0;
 if (isset($conn) && !$conn->connect_error) {
-    foreach ($tables as $table) {
+    foreach ($tables as $table => $required_columns) {
         $result = $conn->query("SHOW TABLES LIKE '$table'");
         if ($result && $result->num_rows > 0) {
-            $check3['table_details'][] = ['name' => $table, 'status' => 'success'];
-            $tables_ok++;
+            // Tabla existe, ahora verificar columnas
+            $columns_result = $conn->query("SHOW COLUMNS FROM `$table`");
+            $existing_columns = [];
+            
+            if ($columns_result) {
+                while ($row = $columns_result->fetch_assoc()) {
+                    $existing_columns[] = $row['Field'];
+                }
+            }
+            
+            // Verificar columnas requeridas
+            $missing_columns = [];
+            foreach ($required_columns as $required) {
+                if (!in_array($required, $existing_columns)) {
+                    $missing_columns[] = $required;
+                }
+            }
+            
+            if (empty($missing_columns)) {
+                $check3['table_details'][] = [
+                    'name' => $table, 
+                    'status' => 'success',
+                    'columns' => count($existing_columns),
+                    'details' => 'Todas las columnas correctas'
+                ];
+                $tables_ok++;
+            } else {
+                $check3['table_details'][] = [
+                    'name' => $table, 
+                    'status' => 'warning',
+                    'columns' => count($existing_columns),
+                    'details' => 'Faltan: ' . implode(', ', $missing_columns)
+                ];
+                $issues[] = "Tabla '$table' tiene columnas faltantes: " . implode(', ', $missing_columns);
+            }
         } else {
-            $check3['table_details'][] = ['name' => $table, 'status' => 'error'];
+            $check3['table_details'][] = [
+                'name' => $table, 
+                'status' => 'error',
+                'details' => 'Tabla no existe'
+            ];
             $issues[] = "Tabla '$table' no existe";
         }
     }
@@ -111,11 +157,17 @@ if (isset($conn) && !$conn->connect_error) {
 
 if ($tables_ok == count($tables)) {
     $check3['status'] = 'success';
-    $check3['message'] = "Todas las tablas existen (" . count($tables) . ")";
+    $check3['message'] = "Todas las tablas y estructuras son correctas (" . count($tables) . ")";
     $success_count++;
 } else {
-    $check3['status'] = $tables_ok > 0 ? 'warning' : 'error';
-    $check3['message'] = "$tables_ok de " . count($tables) . " tablas encontradas";
+    $warnings = count($check3['table_details']) - $tables_ok;
+    if ($warnings > 0 && $tables_ok > 0) {
+        $check3['status'] = 'warning';
+        $check3['message'] = "$tables_ok de " . count($tables) . " tablas correctas ($warnings con problemas)";
+    } else {
+        $check3['status'] = 'error';
+        $check3['message'] = "$tables_ok de " . count($tables) . " tablas encontradas";
+    }
 }
 $checks[] = $check3;
 
@@ -162,15 +214,27 @@ if (isset($conn) && !$conn->connect_error) {
     $roles_check = $conn->query("SELECT COUNT(*) as count FROM roles WHERE Estado = 1");
     if ($roles_check) {
         $roles_count = $roles_check->fetch_assoc()['count'];
-        if ($roles_count >= 5) {
+        $expected_roles = 6; // Administrador, Gerente, Jefe, Supervisor, Personal, Visualizador
+        
+        if ($roles_count >= $expected_roles) {
             $check5['status'] = 'success';
             $check5['message'] = "Roles configurados correctamente";
-            $check5['details'][] = "Total de roles activos: " . $roles_count;
+            $check5['details'][] = "Total de roles activos: " . $roles_count . " (se esperaban mínimo $expected_roles)";
+            
+            // Listar roles existentes
+            $roles_list = $conn->query("SELECT Nombre FROM roles WHERE Estado = 1 ORDER BY Nombre");
+            if ($roles_list && $roles_list->num_rows > 0) {
+                $check5['details'][] = "Roles: ";
+                while ($role = $roles_list->fetch_assoc()) {
+                    $check5['details'][] = "  • " . $role['Nombre'];
+                }
+            }
             $success_count++;
         } else {
             $check5['status'] = 'warning';
-            $check5['message'] = "Solo hay $roles_count roles (se esperaban 5 o más)";
-            $issues[] = "Roles insuficientes";
+            $check5['message'] = "Roles insuficientes: $roles_count encontrados (se esperaban $expected_roles)";
+            $check5['details'][] = "Solo hay $roles_count roles (se esperaban $expected_roles o más)";
+            $issues[] = "Roles insuficientes: $roles_count de $expected_roles";
         }
     }
 } else {
@@ -192,15 +256,27 @@ if (isset($conn) && !$conn->connect_error) {
     $permisos_check = $conn->query("SELECT COUNT(*) as count FROM permisos WHERE Estado = 1");
     if ($permisos_check) {
         $permisos_count = $permisos_check->fetch_assoc()['count'];
-        if ($permisos_count >= 30) {
+        $expected_permisos = 30; // Aproximadamente 30 permisos iniciales
+        
+        if ($permisos_count >= $expected_permisos) {
             $check6['status'] = 'success';
             $check6['message'] = "Permisos configurados correctamente";
-            $check6['details'][] = "Total de permisos activos: " . $permisos_count;
+            $check6['details'][] = "Total de permisos activos: " . $permisos_count . " (se esperaban mínimo $expected_permisos)";
+            
+            // Agrupar permisos por módulo
+            $modulos_check = $conn->query("SELECT DISTINCT Modulo, COUNT(*) as total FROM permisos WHERE Estado = 1 GROUP BY Modulo ORDER BY Modulo");
+            if ($modulos_check && $modulos_check->num_rows > 0) {
+                $check6['details'][] = "Permisos por módulo: ";
+                while ($modulo = $modulos_check->fetch_assoc()) {
+                    $check6['details'][] = "  • " . $modulo['Modulo'] . ": " . $modulo['total'] . " permisos";
+                }
+            }
             $success_count++;
         } else {
             $check6['status'] = 'warning';
-            $check6['message'] = "Solo hay $permisos_count permisos (se esperaban 30 o más)";
-            $issues[] = "Permisos insuficientes";
+            $check6['message'] = "Permisos insuficientes: $permisos_count encontrados (se esperaban $expected_permisos)";
+            $check6['details'][] = "Solo hay $permisos_count permisos (se esperaban $expected_permisos o más)";
+            $issues[] = "Permisos insuficientes: $permisos_count de $expected_permisos";
         }
     }
 } else {
@@ -246,26 +322,92 @@ if (isset($conn) && !$conn->connect_error) {
 }
 $checks[] = $check7;
 
-// 8. Verificar archivo config.php
+// 8. Verificar integridad de relaciones (Foreign Keys)
 $check8 = [
     'number' => 8,
+    'title' => 'Relaciones entre Tablas',
+    'status' => 'pending',
+    'message' => '',
+    'details' => []
+];
+
+if (isset($conn) && !$conn->connect_error) {
+    $fk_checks = [
+        ['usuario_role', 'usuario'],
+        ['usuario_role', 'roles'],
+        ['role_permiso', 'roles'],
+        ['role_permiso', 'permisos'],
+        ['personal', 'usuario'],
+        ['personal', 'division'],
+        ['contratos', 'division'],
+        ['alcances', 'contratos'],
+        ['actividades', 'personal'],
+        ['actividades', 'alcances']
+    ];
+    
+    $fk_ok = 0;
+    $fk_issues = [];
+    
+    foreach ($fk_checks as $fk_check) {
+        $table = $fk_check[0];
+        $referenced = $fk_check[1];
+        
+        $constraint_check = $conn->query("
+            SELECT CONSTRAINT_NAME
+            FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS
+            WHERE CONSTRAINT_SCHEMA = '$db_name'
+            AND TABLE_NAME = '$table'
+            AND REFERENCED_TABLE_NAME = '$referenced'
+            LIMIT 1
+        ");
+        
+        if ($constraint_check && $constraint_check->num_rows > 0) {
+            $fk_ok++;
+            $check8['details'][] = "✓ $table → $referenced";
+        } else {
+            $fk_issues[] = "$table → $referenced";
+            $check8['details'][] = "✗ FALTA: $table → $referenced";
+        }
+    }
+    
+    if (empty($fk_issues)) {
+        $check8['status'] = 'success';
+        $check8['message'] = "Todas las relaciones están correctas";
+        $success_count++;
+    } else {
+        $check8['status'] = 'warning';
+        $check8['message'] = "$fk_ok/" . count($fk_checks) . " relaciones correctas";
+        $issues[] = "Algunas relaciones (Foreign Keys) pueden estar incompletas";
+    }
+} else {
+    $check8['status'] = 'error';
+    $check8['message'] = "No se pudo verificar las relaciones";
+}
+$checks[] = $check8;
+
+// 9. Verificar archivo config.php
+$check9 = [
+    'number' => 9,
     'title' => 'Archivo de Configuración',
     'status' => 'pending',
     'message' => '',
     'details' => []
 ];
 
-if (file_exists(__DIR__ . '/config/config.php')) {
-    $check8['status'] = 'success';
-    $check8['message'] = "Archivo config/config.php existe";
-    $check8['details'][] = __DIR__ . '/config/config.php';
+if ($configLoaded) {
+    $check9['status'] = 'success';
+    $check9['message'] = "Archivo config/config.php existe";
+    $check9['details'][] = $configPath;
+    $check9['details'][] = "Host configurado: " . $db_host;
+    $check9['details'][] = "Usuario configurado: " . $db_user;
+    $check9['details'][] = "Base de datos configurada: " . $db_name;
     $success_count++;
 } else {
-    $check8['status'] = 'error';
-    $check8['message'] = "Archivo config/config.php no encontrado";
+    $check9['status'] = 'error';
+    $check9['message'] = "Archivo config/config.php no encontrado";
     $issues[] = "Archivo de configuración faltante";
 }
-$checks[] = $check8;
+$checks[] = $check9;
 
 $total_checks = count($checks);
 $percentage = ($success_count / $total_checks) * 100;
@@ -728,9 +870,17 @@ if (isset($conn)) {
                         <div class="table-details">
                             <?php foreach ($check['table_details'] as $table): ?>
                                 <div class="table-item">
-                                    <span class="status-icon"><?php echo $table['status'] === 'success' ? '✓' : '✗'; ?></span>
-                                    <span><?php echo htmlspecialchars($table['name']); ?></span>
+                                    <span class="status-icon"><?php echo $table['status'] === 'success' ? '✓' : ($table['status'] === 'warning' ? '⚠' : '✗'); ?></span>
+                                    <span style="flex: 1;"><strong><?php echo htmlspecialchars($table['name']); ?></strong></span>
+                                    <?php if (isset($table['columns'])): ?>
+                                        <span style="color: #666; font-size: 0.85em;">cols: <?php echo $table['columns']; ?></span>
+                                    <?php endif; ?>
                                 </div>
+                                <?php if (!empty($table['details']) && $table['details'] !== 'Todas las columnas correctas'): ?>
+                                    <div style="margin-left: 45px; padding: 6px 0; font-size: 0.85em; color: #e65100;">
+                                        → <?php echo htmlspecialchars($table['details']); ?>
+                                    </div>
+                                <?php endif; ?>
                             <?php endforeach; ?>
                         </div>
                     <?php endif; ?>
