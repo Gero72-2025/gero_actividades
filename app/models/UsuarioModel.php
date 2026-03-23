@@ -173,4 +173,91 @@ class UsuarioModel {
         }
         return true;
     }
+
+    // ══════════════════════════════════════════════════════════════════
+    //  RECUPERACIÓN DE CONTRASEÑA
+    // ══════════════════════════════════════════════════════════════════
+
+    /**
+     * Obtiene un usuario activo por email (con todos sus campos).
+     * Devuelve false si no existe o está inactivo.
+     */
+    public function getUsuarioActivoByEmail($email){
+        $this->db->query('SELECT Id_usuario, email, pass, reset_token, token_expira, password_temp
+                          FROM usuario
+                          WHERE email = :email AND estado_usuario = 1');
+        $this->db->bind(':email', $email);
+        $row = $this->db->single();
+        if($this->db->rowCount() > 0) return $row;
+        return false;
+    }
+
+    /**
+     * Guarda token, expiración y contraseña hasheada temporal.
+     * Invalida cualquier token anterior al sobrescribirlo.
+     *
+     * @param int    $id_usuario
+     * @param string $token          Token SHA-256 hexadecimal (64 chars)
+     * @param string $passHasheada   bcrypt hash de la contraseña temporal
+     * @param string $expira         Fecha/hora en formato 'Y-m-d H:i:s'
+     */
+    public function guardarTokenRecuperacion($id_usuario, $token, $passHasheada, $expira){
+        $this->db->query('UPDATE usuario
+                          SET reset_token   = :token,
+                              token_expira  = :expira,
+                              pass          = :pass,
+                              password_temp = 1,
+                              Fecha_actualizacion = NOW()
+                          WHERE Id_usuario = :id');
+        $this->db->bind(':token',  $token);
+        $this->db->bind(':expira', $expira);
+        $this->db->bind(':pass',   $passHasheada);
+        $this->db->bind(':id',     $id_usuario, PDO::PARAM_INT);
+        return $this->db->execute();
+    }
+
+    /**
+     * Busca un usuario por token válido (no expirado).
+     * Retorna el objeto o false si el token es inválido/expirado.
+     */
+    public function getUsuarioByToken($token){
+        $this->db->query('SELECT Id_usuario, email, reset_token, token_expira, password_temp
+                          FROM usuario
+                          WHERE reset_token  = :token
+                            AND token_expira >= NOW()
+                            AND estado_usuario = 1');
+        $this->db->bind(':token', $token);
+        $row = $this->db->single();
+        if($this->db->rowCount() > 0) return $row;
+        return false;
+    }
+
+    /**
+     * Actualiza la contraseña del usuario y limpia los campos de recuperación.
+     *
+     * @param int    $id_usuario
+     * @param string $passHasheada  bcrypt hash de la nueva contraseña
+     */
+    public function actualizarPasswordYLimpiarToken($id_usuario, $passHasheada){
+        $this->db->query('UPDATE usuario
+                          SET pass          = :pass,
+                              reset_token   = NULL,
+                              token_expira  = NULL,
+                              password_temp = 0,
+                              Fecha_actualizacion = NOW()
+                          WHERE Id_usuario = :id');
+        $this->db->bind(':pass', $passHasheada);
+        $this->db->bind(':id',   $id_usuario, PDO::PARAM_INT);
+        return $this->db->execute();
+    }
+
+    /**
+     * Verifica si el usuario tiene una contraseña temporal pendiente de cambio.
+     */
+    public function tienePasswordTemporal($id_usuario){
+        $this->db->query('SELECT password_temp FROM usuario WHERE Id_usuario = :id AND estado_usuario = 1');
+        $this->db->bind(':id', $id_usuario, PDO::PARAM_INT);
+        $row = $this->db->single();
+        return $row && (int)$row->password_temp === 1;
+    }
 }

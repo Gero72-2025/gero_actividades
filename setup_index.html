@@ -271,9 +271,11 @@
         <!-- Paso 1: Instalación -->
         <div class="setup-section">
             <h2>📋 Paso 1: Instalar Base de Datos</h2>
-            <p>El script <code>auto_setup.php</code> creará automáticamente:</p>
+            <p>El asistente <code>auto_setup.php</code> solicitará host, usuario, contraseña y nombre de la base de datos. Solo si la conexión es válida actualizará la configuración del sistema y ejecutará la instalación.</p>
             <ul style="margin-left: 20px; color: #555;">
-                <li>✓ Base de datos <code>gestor_actividades</code></li>
+                <li>✓ Validación previa de credenciales MySQL</li>
+                <li>✓ Actualización automática de <code>config/config.php</code></li>
+                <li>✓ Creación o uso de la base de datos indicada</li>
                 <li>✓ 10 tablas necesarias</li>
                 <li>✓ 5 roles predeterminados</li>
                 <li>✓ 32 permisos por módulo</li>
@@ -281,8 +283,8 @@
             </ul>
             
             <div class="button-group">
-                <a href="auto_setup.php" class="btn btn-primary">▶️ Ejecutar Instalación Ahora</a>
-                <a href="auto_setup.php" class="btn btn-secondary">📖 Ver Script</a>
+                <a href="auto_setup.php" class="btn btn-primary">▶️ Abrir Asistente de Instalación</a>
+                <a href="verify_setup.php" class="btn btn-secondary">🔎 Revisar Configuración Actual</a>
             </div>
         </div>
         
@@ -324,7 +326,7 @@
                     <li>Cambiar contraseña del admin después de instalar</li>
                     <li>Eliminar <code>auto_setup.php</code> después de instalar</li>
                     <li>Eliminar <code>verify_setup.php</code> después de instalar</li>
-                    <li>Configurar credenciales de BD en <code>config/config.php</code></li>
+                    <li>Confirmar que <code>config/config.php</code> quedó con las credenciales correctas</li>
                     <li>Hacer backup de la base de datos</li>
                     <li>Usar HTTPS en producción</li>
                 </ul>

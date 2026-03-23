@@ -3,6 +3,7 @@
 $tableroActual = $data['tableroActual'] ?? null;
 $idTableroActual = $tableroActual ? (int)$tableroActual->Id_tablero : 0;
 $reporteAgrupado = $data['reporteAgrupado'] ?? [];
+$resumenTiempoUsuarios = $data['resumenTiempoUsuarios'] ?? [];
 $tableroParam = $idTableroActual > 0 ? ('?tablero_id=' . $idTableroActual) : '';
 $formatSegundos = function($total){
     $sec = max(0, (int)$total);
@@ -93,6 +94,40 @@ $formatSegundos = function($total){
         <div class="alert alert-light border">No hay tarjetas activas para el tablero seleccionado.</div>
     <?php else: ?>
         <div class="card mb-3">
+            <div class="card-header bg-dark text-white">
+                <strong><i class="bi bi-clock-history"></i> Resumen de Tiempo por Usuario</strong>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered mb-0 align-middle">
+                        <thead class="table-secondary">
+                            <tr>
+                                <th style="min-width:240px;">Usuario</th>
+                                <th style="min-width:140px;">Total Tarjetas</th>
+                                <th style="min-width:180px;">Tiempo Acumulado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if(empty($resumenTiempoUsuarios)): ?>
+                                <tr>
+                                    <td colspan="3" class="text-muted">Sin tiempos por usuario para el tablero seleccionado.</td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach($resumenTiempoUsuarios as $item): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars((string)($item['usuario'] ?? 'Usuario sin nombre')); ?></td>
+                                        <td><?php echo (int)($item['total_tarjetas'] ?? 0); ?></td>
+                                        <td><strong><?php echo htmlspecialchars($formatSegundos((int)($item['total_segundos'] ?? 0))); ?></strong></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-sm table-bordered mb-0 align-middle reporte-tabla-sticky">
@@ -106,6 +141,7 @@ $formatSegundos = function($total){
                                 <th style="min-width:220px;">Listado Tareas</th>
                                 <th style="min-width:320px;">Tareas</th>
                                 <th style="min-width:260px;">Tiempo</th>
+                                <th style="min-width:320px;">Tiempo por Usuario</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -123,7 +159,7 @@ $formatSegundos = function($total){
                                     }
                                 ?>
                                 <tr class="table-secondary">
-                                    <td colspan="8">
+                                    <td colspan="9">
                                         <strong>Asignado:</strong> <?php echo htmlspecialchars($asignado); ?>
                                         <span class="badge bg-light text-dark border border-secondary ms-2"><?php echo count($rows); ?> tarjeta(s)</span>
                                         <span class="badge bg-primary ms-2">Prioridad: <?php echo (int)$sumPrioridad; ?></span>
@@ -175,6 +211,17 @@ $formatSegundos = function($total){
                                                 </ul>
                                             <?php else: ?>
                                                 <span class="text-muted">Sin tiempos</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if(!empty($row['tiempo_por_usuario'])): ?>
+                                                <ul class="mb-0 ps-3">
+                                                    <?php foreach($row['tiempo_por_usuario'] as $tu): ?>
+                                                        <li class="small"><?php echo htmlspecialchars($tu); ?></li>
+                                                    <?php endforeach; ?>
+                                                </ul>
+                                            <?php else: ?>
+                                                <span class="text-muted">Sin tiempos por usuario</span>
                                             <?php endif; ?>
                                         </td>
                                     </tr>

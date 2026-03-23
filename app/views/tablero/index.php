@@ -389,20 +389,16 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                                         </button>
                                     </div>
 
+                                    <?php if(!empty($tarjeta->AsignadosDetalle)): ?>
                                     <div class="mb-2">
-                                        <div class="fw-bold small">Asignado</div>
-                                        <select class="form-select form-select-sm" disabled>
-                                            <option value="">Sin asignar</option>
-                                            <?php foreach($data['usuariosAsignados'] as $usuario): ?>
-                                                <option value="<?php echo (int)$usuario->Id_usuario; ?>" <?php echo ((int)$tarjeta->Id_usuario_asignado === (int)$usuario->Id_usuario) ? 'selected' : ''; ?>>
-                                                    <?php echo htmlspecialchars($usuario->email); ?>
-                                                </option>
+                                        <div class="fw-bold small mb-1">Asignados</div>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            <?php foreach($tarjeta->AsignadosDetalle as $asignado): ?>
+                                                <span class="badge bg-secondary-subtle text-secondary border small"><?php echo htmlspecialchars($asignado->Email, ENT_QUOTES, 'UTF-8'); ?></span>
                                             <?php endforeach; ?>
-                                            <?php if(empty($data['usuariosAsignados']) && !empty($tarjeta->Asignado_Email)): ?>
-                                                <option value="" selected><?php echo htmlspecialchars($tarjeta->Asignado_Email); ?></option>
-                                            <?php endif; ?>
-                                        </select>
+                                        </div>
                                     </div>
+                                    <?php endif; ?>
 
                                     <?php $timerEnCurso = isset($tarjeta->Total_Timers_En_Curso) && (int)$tarjeta->Total_Timers_En_Curso > 0; ?>
                                     <div class="border rounded p-2 tarjeta-tiempo-box <?php echo $timerEnCurso ? 'tarjeta-tiempo-running' : 'tarjeta-tiempo-idle'; ?>">
@@ -819,20 +815,6 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <?php if($canAssign): ?>
-                            <div class="col-12 col-md-6">
-                                <label class="form-label">Asignar personal</label>
-                                <select name="id_usuario_asignado" id="createTarjetaAsignado" class="form-select tablero-activo-select">
-                                    <option value="">Seleccione primero</option>
-                                    <?php foreach($data['usuariosAsignados'] as $usuario): ?>
-                                        <option value="<?php echo (int)$usuario->Id_usuario; ?>" data-contrato-id="<?php echo !empty($usuario->Id_contrato) ? (int)$usuario->Id_contrato : ''; ?>"><?php echo htmlspecialchars($usuario->email); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <?php if(empty($data['usuariosAsignados'])): ?>
-                                    <small class="text-muted">No hay usuarios asignados a este tablero.</small>
-                                <?php endif; ?>
-                            </div>
-                        <?php endif; ?>
                         <div class="col-12 col-md-6">
                             <label class="form-label">Alcance (opcional)</label>
                             <select name="id_alcance" id="createTarjetaAlcance" class="form-select tablero-activo-select">
@@ -970,15 +952,6 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                                 <option value="">Seleccione</option>
                                 <?php foreach($data['columnas'] as $col): ?>
                                     <option value="<?php echo (int)$col->Id_columna; ?>"><?php echo htmlspecialchars($col->Nombre); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <label class="form-label">Asignar personal</label>
-                            <select name="id_usuario_asignado" id="editTarjetaAsignado" class="form-select tablero-activo-select">
-                                <option value="">Seleccione primero</option>
-                                <?php foreach($data['usuariosAsignados'] as $usuario): ?>
-                                    <option value="<?php echo (int)$usuario->Id_usuario; ?>" data-contrato-id="<?php echo !empty($usuario->Id_contrato) ? (int)$usuario->Id_contrato : ''; ?>"><?php echo htmlspecialchars($usuario->email); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -1202,6 +1175,20 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                 </div>
                 <div class="row g-3">
                     <div class="col-lg-7">
+                        <div class="row g-2 align-items-end mb-3">
+                            <div class="col-12 col-md-8">
+                                <label class="form-label mb-1">Filtro por usuario asignado</label>
+                                <select class="form-select form-select-sm tablero-select-enhanced" id="filtroDetalleUsuario">
+                                    <option value="">Todos</option>
+                                    <option value="__me__">Mis tareas asignadas</option>
+                                    <option value="__none__">Sin asignar</option>
+                                    <?php foreach($data['usuariosAsignados'] as $usuario): ?>
+                                        <option value="<?php echo (int)$usuario->Id_usuario; ?>"><?php echo htmlspecialchars($usuario->email); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+
                         <?php if($canEditCard): ?>
                             <div class="input-group mb-3">
                                 <input type="text" class="form-control" id="inputNuevaListaTareas" maxlength="180" placeholder="Nombre de nueva lista de tareas">
@@ -1218,6 +1205,42 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEditarTiempoUsuarios" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-clock-history"></i> Editar tiempo por usuario</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="modalTiempoUsuariosDetalleId" value="">
+                <div class="alert alert-light border small mb-3">
+                    Este detalle tiene varios usuarios con tiempo acumulado. Puede editar uno o varios usuarios sin perder los demas registros.
+                </div>
+                <div class="row g-2 align-items-end mb-3">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label mb-1">Aplicar mismo tiempo</label>
+                        <input type="text" id="modalTiempoUsuariosAplicarTodos" class="form-control form-control-sm" placeholder="hh:mm:ss">
+                    </div>
+                    <div class="col-12 col-md-8 d-flex gap-2 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnTiempoUsuariosSeleccionarTodos">Seleccionar todos</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnTiempoUsuariosDeseleccionarTodos">Deseleccionar todos</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnTiempoUsuariosAplicarSeleccionados">Aplicar a seleccionados</button>
+                    </div>
+                </div>
+                <div id="contenedorTiempoUsuariosRows" class="border rounded p-2 bg-light"></div>
+                <div class="mt-3 small">
+                    <strong>Total resultante:</strong> <span id="modalTiempoUsuariosTotal">00:00:00</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnGuardarTiempoUsuarios">Guardar cambios</button>
             </div>
         </div>
     </div>
@@ -1258,9 +1281,24 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
     const canDeleteTask = <?php echo $canDeleteTask ? 'true' : 'false'; ?>;
     const canTrackTime = <?php echo $canTrackTime ? 'true' : 'false'; ?>;
     const canEditTime = <?php echo $canEditTime ? 'true' : 'false'; ?>;
+    const canAssignTaskUser = <?php echo $canAssign ? 'true' : 'false'; ?>;
+    const canTimerAdminOverride = <?php echo isAdministradorRol() ? 'true' : 'false'; ?>;
     const canEditColumn = <?php echo $canEditColumn ? 'true' : 'false'; ?>;
     const canDeleteColumn = <?php echo $canDeleteColumn ? 'true' : 'false'; ?>;
     const canDeleteCard = <?php echo $canDeleteCard ? 'true' : 'false'; ?>;
+    const currentUserId = <?php echo (int)$_SESSION['user_id']; ?>;
+    const usuariosAsignadosTarea = <?php
+        $usuariosDetalle = [];
+        if(!empty($data['usuariosAsignados'])){
+            foreach($data['usuariosAsignados'] as $ua){
+                $usuariosDetalle[] = [
+                    'id' => (int)$ua->Id_usuario,
+                    'email' => (string)$ua->email
+                ];
+            }
+        }
+        echo json_encode($usuariosDetalle, JSON_UNESCAPED_UNICODE);
+    ?>;
     const timerIntervals = {};
     const usuariosAsignadosPermisos = <?php
         $mapPermisos = [];
@@ -1324,6 +1362,7 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
     const modalTarjetaTareasEstadoEl = document.getElementById('modalTarjetaTareasEstado');
     const modalTarjetaTareasEtiquetasEl = document.getElementById('modalTarjetaTareasEtiquetas');
     const modalTarjetaCompletadoEl = document.getElementById('modalTarjetaCompletado');
+    const filtroDetalleUsuarioEl = document.getElementById('filtroDetalleUsuario');
     const contenedorListasTareasEl = document.getElementById('contenedorListasTareas');
     const contenedorHistorialTarjetaEl = document.getElementById('contenedorHistorialTarjeta');
     const inputNuevaListaTareasEl = document.getElementById('inputNuevaListaTareas');
@@ -1369,6 +1408,16 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
     const btnConfirmarAccionTableroEl = document.getElementById('btnConfirmarAccionTablero');
     const btnDeleteTarjetaModalEl = document.getElementById('btnDeleteTarjetaModal');
     const formDeleteTarjetaEl = document.getElementById('formDeleteTarjeta');
+    const modalEditarTiempoUsuariosEl = document.getElementById('modalEditarTiempoUsuarios');
+    const modalTiempoUsuariosDetalleIdEl = document.getElementById('modalTiempoUsuariosDetalleId');
+    const contenedorTiempoUsuariosRowsEl = document.getElementById('contenedorTiempoUsuariosRows');
+    const modalTiempoUsuariosAplicarTodosEl = document.getElementById('modalTiempoUsuariosAplicarTodos');
+    const modalTiempoUsuariosTotalEl = document.getElementById('modalTiempoUsuariosTotal');
+    const btnTiempoUsuariosSeleccionarTodosEl = document.getElementById('btnTiempoUsuariosSeleccionarTodos');
+    const btnTiempoUsuariosDeseleccionarTodosEl = document.getElementById('btnTiempoUsuariosDeseleccionarTodos');
+    const btnTiempoUsuariosAplicarSeleccionadosEl = document.getElementById('btnTiempoUsuariosAplicarSeleccionados');
+    const btnGuardarTiempoUsuariosEl = document.getElementById('btnGuardarTiempoUsuarios');
+    const detalleTiempoUsuarioMap = {};
     let pendingConfirmAction = null;
     let tarjetaTareasActualId = null;
     let tarjetaEditandoId = null;
@@ -1403,6 +1452,95 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
         }
 
         return (hh * 3600) + (mm * 60) + ss;
+    }
+
+    function recalculateModalTiempoUsuariosTotal(){
+        if(!contenedorTiempoUsuariosRowsEl || !modalTiempoUsuariosTotalEl) return;
+
+        let total = 0;
+        contenedorTiempoUsuariosRowsEl.querySelectorAll('.tiempo-usuario-hms').forEach(input => {
+            const seconds = parseDurationToSeconds(input.value || '');
+            if(seconds !== null){
+                total += seconds;
+            }
+        });
+
+        modalTiempoUsuariosTotalEl.textContent = formatSeconds(total);
+    }
+
+    function setRowsCheckedInTiempoUsuarios(checked){
+        if(!contenedorTiempoUsuariosRowsEl) return;
+
+        contenedorTiempoUsuariosRowsEl.querySelectorAll('.tiempo-usuario-check').forEach(chk => {
+            chk.checked = !!checked;
+        });
+    }
+
+    function applySameTimeToSelectedRows(){
+        if(!contenedorTiempoUsuariosRowsEl || !modalTiempoUsuariosAplicarTodosEl) return;
+
+        const value = String(modalTiempoUsuariosAplicarTodosEl.value || '').trim();
+        const seconds = parseDurationToSeconds(value);
+        if(seconds === null){
+            alert('Formato invalido. Use hh:mm:ss, por ejemplo 01:25:30.');
+            return;
+        }
+
+        const checkedRows = contenedorTiempoUsuariosRowsEl.querySelectorAll('.tiempo-usuario-check:checked');
+        if(!checkedRows.length){
+            alert('Seleccione al menos un usuario.');
+            return;
+        }
+
+        checkedRows.forEach(chk => {
+            const row = chk.closest('.tiempo-usuario-row');
+            const input = row ? row.querySelector('.tiempo-usuario-hms') : null;
+            if(input){
+                input.value = value;
+            }
+        });
+
+        recalculateModalTiempoUsuariosTotal();
+    }
+
+    function openModalTiempoUsuarios(detalleId, tiempos){
+        if(!modalEditarTiempoUsuariosEl || !contenedorTiempoUsuariosRowsEl || !modalTiempoUsuariosDetalleIdEl){
+            return;
+        }
+
+        const items = Array.isArray(tiempos) ? tiempos : [];
+        if(items.length < 2){
+            return;
+        }
+
+        modalTiempoUsuariosDetalleIdEl.value = String(detalleId);
+
+        const rowsHtml = items.map(item => {
+            const userId = parseInt(item.Id_usuario || 0, 10) || 0;
+            const email = String(item.email || '').trim();
+            const userLabel = email !== '' ? email : ('Usuario #' + userId);
+            const base = parseInt(item.Tiempo_total_segundos || 0, 10) || 0;
+            const running = parseInt(item.Tiempo_en_curso_segundos || 0, 10) || 0;
+            const total = base + running;
+
+            return `
+                <div class="d-flex align-items-center gap-2 mb-2 tiempo-usuario-row" data-user-id="${userId}">
+                    <input class="form-check-input tiempo-usuario-check" type="checkbox" checked>
+                    <div class="small flex-grow-1">${escapeHtml(userLabel)}</div>
+                    <input type="text" class="form-control form-control-sm tiempo-usuario-hms" value="${formatSeconds(total)}" style="max-width:130px;">
+                </div>
+            `;
+        }).join('');
+
+        contenedorTiempoUsuariosRowsEl.innerHTML = rowsHtml || '<div class="text-muted small">Sin tiempos para editar.</div>';
+
+        contenedorTiempoUsuariosRowsEl.querySelectorAll('.tiempo-usuario-hms').forEach(input => {
+            input.addEventListener('input', recalculateModalTiempoUsuariosTotal);
+            input.addEventListener('change', recalculateModalTiempoUsuariosTotal);
+        });
+
+        recalculateModalTiempoUsuariosTotal();
+        showModal(modalEditarTiempoUsuariosEl);
     }
 
     async function postJson(url, payload){
@@ -1477,14 +1615,23 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
     function updateTarjetaTiempoDisplay(tarjetaId, totalSegundos, enCurso = null){
         const display = document.querySelector(`.timer-display[data-tarjeta-id="${tarjetaId}"]`);
         if(!display) return;
-        display.dataset.baseSeconds = String(parseInt(totalSegundos || 0, 10));
+        const safeTotal = parseInt(totalSegundos || 0, 10) || 0;
+        display.dataset.baseSeconds = String(safeTotal);
 
         if(enCurso !== null){
             display.dataset.running = enCurso ? '1' : '0';
         }
 
+        const isRunning = String(display.dataset.running || '0') === '1';
+        display.dataset.renderedAtMs = isRunning ? String(Date.now()) : '';
+
         updateTarjetaTiempoState(display.closest('.tarjeta-tiempo-box'));
-        display.textContent = formatSeconds(totalSegundos || 0);
+
+        if(isRunning){
+            startLocalTimer(tarjetaId);
+        } else {
+            stopLocalTimer(tarjetaId, safeTotal);
+        }
     }
 
     function updateTarjetaTiempoState(boxEl){
@@ -1526,14 +1673,42 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
         display.textContent = formatSeconds(total);
     }
 
+    function refreshTiempoUsuarioBadge(badge){
+        if(!badge) return;
+
+        const baseSeconds = parseInt(badge.dataset.baseSeconds || '0', 10) || 0;
+        const isRunning = String(badge.dataset.running || '0') === '1';
+        const renderedAtMs = parseInt(badge.dataset.renderedAtMs || '0', 10) || 0;
+
+        let total = baseSeconds;
+        if(isRunning && renderedAtMs > 0){
+            const elapsed = Math.floor((Date.now() - renderedAtMs) / 1000);
+            total += Math.max(0, elapsed);
+        }
+
+        const label = badge.dataset.userLabel || 'Usuario';
+        badge.textContent = `${label}: ${formatSeconds(total)}${isRunning ? ' (en curso)' : ''}`;
+    }
+
+    function refreshTiempoUsuarioBadgesForDetalle(detailContainer){
+        if(!detailContainer) return;
+        detailContainer.querySelectorAll('.tiempo-usuario-badge').forEach(refreshTiempoUsuarioBadge);
+    }
+
     function initDetailTimers(){
         clearDetailTimerIntervals();
 
         document.querySelectorAll('.detalle-timer-display').forEach(display => {
+            const detailContainer = display.closest('.tarea-detalle-item');
             refreshDetailTimerDisplay(display);
+            refreshTiempoUsuarioBadgesForDetalle(detailContainer);
+
             if(display.dataset.runningStart){
                 const intervalKey = `detalle-${display.dataset.detalleId}`;
-                timerIntervals[intervalKey] = setInterval(() => refreshDetailTimerDisplay(display), 1000);
+                timerIntervals[intervalKey] = setInterval(() => {
+                    refreshDetailTimerDisplay(display);
+                    refreshTiempoUsuarioBadgesForDetalle(detailContainer);
+                }, 1000);
             }
         });
     }
@@ -1623,6 +1798,12 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
 
     function filterAlcanceOptionsByUser(alcanceSelectEl, userSelectEl){
         if(!alcanceSelectEl) return;
+
+        if(!userSelectEl){
+            alcanceSelectEl.disabled = false;
+            Array.from(alcanceSelectEl.options).forEach(opt => { opt.hidden = false; });
+            return;
+        }
 
         const contratoId = getContratoIdFromUserSelect(userSelectEl);
         let selectedStillValid = false;
@@ -1824,8 +2005,88 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
         contenedorHistorialTarjetaEl.innerHTML = html;
     }
 
+    function buildDetalleUsuarioOptions(selectedId){
+        const selected = selectedId !== null && selectedId !== undefined ? String(selectedId) : '';
+        let html = '<option value="">Sin asignar</option>';
+
+        (usuariosAsignadosTarea || []).forEach(usuario => {
+            const id = String(usuario.id || '');
+            if(id === '') return;
+
+            const selectedAttr = id === selected ? ' selected' : '';
+            html += `<option value="${escapeHtml(id)}"${selectedAttr}>${escapeHtml(usuario.email || ('Usuario #' + id))}</option>`;
+        });
+
+        return html;
+    }
+
+    function renderTiempoPorUsuarioBadges(tiempos, runningUserId = null){
+        const items = Array.isArray(tiempos) ? tiempos : [];
+        if(!items.length){
+            return '<span class="text-muted">Sin tiempo por usuario</span>';
+        }
+
+        return items.map(item => {
+            const email = String(item.email || '').trim();
+            const usuarioLabel = email !== '' ? email : `Usuario #${parseInt(item.Id_usuario || 0, 10)}`;
+            const userId = parseInt(item.Id_usuario || 0, 10) || 0;
+            const totalBase = parseInt(item.Tiempo_total_segundos || 0, 10) || 0;
+            const totalRunning = parseInt(item.Tiempo_en_curso_segundos || 0, 10) || 0;
+            const total = totalBase + totalRunning;
+            const isRunning = runningUserId
+                ? (userId > 0 && userId === parseInt(runningUserId, 10))
+                : (totalRunning > 0);
+
+            return `<span class="badge bg-light text-dark border tiempo-usuario-badge" data-user-id="${userId}" data-user-label="${escapeHtml(usuarioLabel)}" data-base-seconds="${total}" data-running="${isRunning ? '1' : '0'}" data-rendered-at-ms="${Date.now()}">${escapeHtml(usuarioLabel)}: ${formatSeconds(total)}${isRunning ? ' (en curso)' : ''}</span>`;
+        }).join(' ');
+    }
+
+    function getDetalleUsuarioFiltroValue(){
+        return filtroDetalleUsuarioEl ? String(filtroDetalleUsuarioEl.value || '') : '';
+    }
+
+    function resolveAssignedUserForNewDetail(){
+        const filtro = getDetalleUsuarioFiltroValue();
+        if(filtro === '__me__'){
+            return currentUserId;
+        }
+        if(filtro === '__none__' || filtro === ''){
+            return null;
+        }
+
+        const parsed = parseInt(filtro, 10);
+        return Number.isNaN(parsed) || parsed <= 0 ? null : parsed;
+    }
+
+    function filterDetallesByUsuario(detalles){
+        const filtro = getDetalleUsuarioFiltroValue();
+        const rows = Array.isArray(detalles) ? detalles : [];
+        if(filtro === ''){
+            return rows;
+        }
+
+        if(filtro === '__me__'){
+            return rows.filter(det => parseInt(det.Id_usuario_asignado || 0, 10) === currentUserId);
+        }
+
+        if(filtro === '__none__'){
+            return rows.filter(det => !det.Id_usuario_asignado || parseInt(det.Id_usuario_asignado, 10) <= 0);
+        }
+
+        const target = parseInt(filtro, 10);
+        if(Number.isNaN(target) || target <= 0){
+            return rows;
+        }
+
+        return rows.filter(det => parseInt(det.Id_usuario_asignado || 0, 10) === target);
+    }
+
     function renderTareas(tareas){
         if(!contenedorListasTareasEl) return;
+
+        Object.keys(detalleTiempoUsuarioMap).forEach(key => {
+            delete detalleTiempoUsuarioMap[key];
+        });
 
         if(!tareas || !tareas.length){
             contenedorListasTareasEl.innerHTML = '<div class="alert alert-light border">Sin listas de tareas en esta tarjeta.</div>';
@@ -1835,7 +2096,7 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
         const html = tareas.map(tarea => {
             const total = parseInt(tarea.Total_detalles || 0, 10);
             const done = parseInt(tarea.Total_detalles_completados || 0, 10);
-            const detalles = Array.isArray(tarea.detalles) ? tarea.detalles : [];
+            const detalles = filterDetallesByUsuario(Array.isArray(tarea.detalles) ? tarea.detalles : []);
 
             const detallesHtml = detalles.map(det => {
                 const checked = parseInt(det.Completado || 0, 10) === 1;
@@ -1844,8 +2105,20 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                 const runningInicio = det.Running_inicio || '';
                 const hasRunning = !!(det.Running_tiempo_detalle_id && runningInicio);
                 const editableTimer = canEditTime && !hasRunning;
+                const runningUserId = parseInt(det.Running_usuario_id || 0, 10) || 0;
+                const idUsuarioAsignado = det.Id_usuario_asignado ? parseInt(det.Id_usuario_asignado, 10) : null;
+                const usuarioAsignadoEmail = String(det.Usuario_asignado_email || '').trim();
+                const tiempoPorUsuario = Array.isArray(det.Tiempo_por_usuario) ? det.Tiempo_por_usuario : [];
+                detalleTiempoUsuarioMap[String(parseInt(det.Id_tarea_detalle || 0, 10))] = tiempoPorUsuario;
+                const timerActionAllowed = !idUsuarioAsignado || idUsuarioAsignado === currentUserId || canTimerAdminOverride;
+                let timerActionReason = '';
+                if(!timerActionAllowed){
+                    timerActionReason = 'title="Solo el usuario asignado puede operar el cronometro"';
+                } else if(idUsuarioAsignado && idUsuarioAsignado !== currentUserId && canTimerAdminOverride){
+                    timerActionReason = 'title="Modo administrador: operara el cronometro para el usuario asignado"';
+                }
                 return `
-                    <div class="border rounded px-2 py-2 mb-2 bg-white">
+                    <div class="border rounded px-2 py-2 mb-2 bg-white tarea-detalle-item">
                         <div class="d-flex justify-content-between align-items-start gap-2">
                             <div class="form-check mb-0 flex-grow-1">
                                 <input class="form-check-input tarea-detalle-toggle" type="checkbox" data-detalle-id="${parseInt(det.Id_tarea_detalle || 0, 10)}" ${checked ? 'checked' : ''} ${canMarkDone ? '' : 'disabled'}>
@@ -1856,10 +2129,19 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                                 ${canDeleteTask ? `<button class="btn btn-sm btn-outline-danger btn-delete-detalle" type="button" data-detalle-id="${parseInt(det.Id_tarea_detalle || 0, 10)}" title="Eliminar tarea"><i class="bi bi-trash"></i></button>` : ''}
                                 <span class="badge detalle-timer-display ${editableTimer ? 'detalle-timer-display--editable' : ''}" style="background:#fff3cd;color:#7a4b00;border:1px solid #f1d58a;font-weight:700;min-width:78px;" data-detalle-id="${parseInt(det.Id_tarea_detalle || 0, 10)}" data-base-seconds="${totalDetalle}" data-running-start="${escapeHtml(runningInicio)}" data-manual-editable="${editableTimer ? '1' : '0'}" title="${editableTimer ? 'Click para editar (hh:mm:ss)' : (hasRunning ? 'Cronometro en curso' : 'Sin permiso para editar tiempo')}">00:00:00</span>
                                 ${canTrackTime ? `
-                                    <button class="btn btn-sm btn-success btn-start-detalle-timer" type="button" data-detalle-id="${parseInt(det.Id_tarea_detalle || 0, 10)}" ${hasRunning ? 'disabled' : ''}><i class="bi bi-play-fill"></i></button>
-                                    <button class="btn btn-sm btn-danger btn-stop-detalle-timer" type="button" data-detalle-id="${parseInt(det.Id_tarea_detalle || 0, 10)}" ${hasRunning ? '' : 'disabled'}><i class="bi bi-stop-fill"></i></button>
+                                    <button class="btn btn-sm btn-success btn-start-detalle-timer" type="button" data-detalle-id="${parseInt(det.Id_tarea_detalle || 0, 10)}" ${hasRunning || !timerActionAllowed ? 'disabled' : ''} ${timerActionReason}><i class="bi bi-play-fill"></i></button>
+                                    <button class="btn btn-sm btn-danger btn-stop-detalle-timer" type="button" data-detalle-id="${parseInt(det.Id_tarea_detalle || 0, 10)}" ${hasRunning && timerActionAllowed ? '' : 'disabled'} ${timerActionReason}><i class="bi bi-stop-fill"></i></button>
                                 ` : ''}
                             </div>
+                        </div>
+                        <div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
+                            <span class="small text-muted">Asignado:</span>
+                            ${canAssignTaskUser
+                                ? `<select class="form-select form-select-sm detalle-usuario-asignado tablero-select-enhanced" style="max-width:280px;" data-detalle-id="${parseInt(det.Id_tarea_detalle || 0, 10)}" data-prev-value="${idUsuarioAsignado ? String(idUsuarioAsignado) : ''}">${buildDetalleUsuarioOptions(idUsuarioAsignado)}</select>`
+                                : `<span class="badge bg-light text-dark border">${usuarioAsignadoEmail !== '' ? escapeHtml(usuarioAsignadoEmail) : 'Sin asignar'}</span>`}
+                        </div>
+                        <div class="mt-2 d-flex flex-wrap gap-1 small">
+                            ${renderTiempoPorUsuarioBadges(tiempoPorUsuario, runningUserId)}
                         </div>
                     </div>
                 `;
@@ -1995,12 +2277,13 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
         if(!display) return;
 
         const baseSeconds = parseInt(display.dataset.baseSeconds || '0', 10);
-        const runningStart = parseDateToTimestamp(display.dataset.runningStart || '');
+        const isRunning = String(display.dataset.running || '0') === '1';
+        const renderedAtMs = parseInt(display.dataset.renderedAtMs || '0', 10) || 0;
 
         let total = baseSeconds;
-        if(runningStart){
-            const now = Math.floor(Date.now() / 1000);
-            total += Math.max(0, now - runningStart);
+        if(isRunning && renderedAtMs > 0){
+            const elapsed = Math.floor((Date.now() - renderedAtMs) / 1000);
+            total += Math.max(0, elapsed);
         }
 
         display.textContent = formatSeconds(total);
@@ -2009,6 +2292,14 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
     function startLocalTimer(tarjetaId){
         const tarjetaEl = document.querySelector(`.tablero-tarjeta[data-tarjeta-id="${tarjetaId}"]`);
         if(!tarjetaEl) return;
+
+        const display = tarjetaEl.querySelector('.timer-display');
+        if(display){
+            display.dataset.running = '1';
+            if(!display.dataset.renderedAtMs){
+                display.dataset.renderedAtMs = String(Date.now());
+            }
+        }
 
         if(timerIntervals[tarjetaId]) clearInterval(timerIntervals[tarjetaId]);
         refreshTimerDisplayForCard(tarjetaEl);
@@ -2022,7 +2313,8 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
         const display = tarjetaEl.querySelector('.timer-display');
         if(display){
             display.dataset.baseSeconds = String(baseSeconds || 0);
-            display.dataset.runningStart = '';
+            display.dataset.running = '0';
+            display.dataset.renderedAtMs = '';
             display.textContent = formatSeconds(baseSeconds || 0);
         }
 
@@ -2036,8 +2328,11 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
         const tarjetaEl = display.closest('.tablero-tarjeta');
         if(!tarjetaEl) return;
         updateTarjetaTiempoState(display.closest('.tarjeta-tiempo-box'));
+        if(String(display.dataset.running || '0') === '1' && !display.dataset.renderedAtMs){
+            display.dataset.renderedAtMs = String(Date.now());
+        }
         refreshTimerDisplayForCard(tarjetaEl);
-        if(display.dataset.runningStart) startLocalTimer(display.dataset.tarjetaId);
+        if(String(display.dataset.running || '0') === '1') startLocalTimer(display.dataset.tarjetaId);
     });
 
     if(filtroTarjetaNombreEl){
@@ -2178,7 +2473,8 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                     });
                     if(display){
                         display.dataset.baseSeconds = String(data.total_segundos || 0);
-                        display.dataset.runningStart = data.inicio_timestamp || '';
+                        display.dataset.running = '1';
+                        display.dataset.renderedAtMs = String(Date.now());
                     }
                     startLocalTimer(idTarjeta);
                     this.disabled = true;
@@ -2207,6 +2503,78 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                     alert(err.message);
                 }
             });
+        });
+    }
+
+    if(btnTiempoUsuariosSeleccionarTodosEl){
+        btnTiempoUsuariosSeleccionarTodosEl.addEventListener('click', function(){
+            setRowsCheckedInTiempoUsuarios(true);
+        });
+    }
+
+    if(btnTiempoUsuariosDeseleccionarTodosEl){
+        btnTiempoUsuariosDeseleccionarTodosEl.addEventListener('click', function(){
+            setRowsCheckedInTiempoUsuarios(false);
+        });
+    }
+
+    if(btnTiempoUsuariosAplicarSeleccionadosEl){
+        btnTiempoUsuariosAplicarSeleccionadosEl.addEventListener('click', function(){
+            applySameTimeToSelectedRows();
+        });
+    }
+
+    if(btnGuardarTiempoUsuariosEl){
+        btnGuardarTiempoUsuariosEl.addEventListener('click', async function(){
+            const idDetalle = parseInt(modalTiempoUsuariosDetalleIdEl ? (modalTiempoUsuariosDetalleIdEl.value || '0') : '0', 10);
+            if(!idDetalle || !contenedorTiempoUsuariosRowsEl || !tarjetaTareasActualId){
+                return;
+            }
+
+            const updates = [];
+            const checkedRows = contenedorTiempoUsuariosRowsEl.querySelectorAll('.tiempo-usuario-check:checked');
+            if(!checkedRows.length){
+                alert('Seleccione al menos un usuario para editar.');
+                return;
+            }
+
+            for(const chk of checkedRows){
+                const row = chk.closest('.tiempo-usuario-row');
+                if(!row) continue;
+
+                const userId = parseInt(row.dataset.userId || '0', 10);
+                const input = row.querySelector('.tiempo-usuario-hms');
+                const value = input ? String(input.value || '').trim() : '';
+                const parsed = parseDurationToSeconds(value);
+
+                if(userId <= 0){
+                    continue;
+                }
+
+                if(parsed === null){
+                    alert('Formato invalido en uno de los tiempos. Use hh:mm:ss.');
+                    return;
+                }
+
+                updates.push({ id_usuario: userId, tiempo_hms: value });
+            }
+
+            if(!updates.length){
+                alert('No hay cambios validos para guardar.');
+                return;
+            }
+
+            try {
+                await postJson(`${APP_URL_ROOT}/tablero/update_tarea_detalle_tiempo_manual_usuarios`, {
+                    id_tablero: idTableroActual,
+                    id_tarea_detalle: idDetalle,
+                    updates: updates
+                });
+                hideModal(modalEditarTiempoUsuariosEl);
+                await cargarModalTareas();
+            } catch(err){
+                alert(err.message);
+            }
         });
     }
 
@@ -2559,6 +2927,13 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                 }
 
                 const idDetalle = parseInt(timerBadge.dataset.detalleId || '0', 10);
+                const tiemposUsuarios = detalleTiempoUsuarioMap[String(idDetalle)] || [];
+
+                if(Array.isArray(tiemposUsuarios) && tiemposUsuarios.length >= 2){
+                    openModalTiempoUsuarios(idDetalle, tiemposUsuarios);
+                    return;
+                }
+
                 const actual = String(timerBadge.textContent || '').trim();
                 const input = window.prompt('Ingrese el tiempo en formato hh:mm:ss', actual);
 
@@ -2636,7 +3011,8 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                 await postJson(`${APP_URL_ROOT}/tablero/create_tarjeta_tarea_detalle`, {
                     id_tablero: idTableroActual,
                     id_tarea: idTarea,
-                    descripcion: descripcion
+                    descripcion: descripcion,
+                    id_usuario_asignado: resolveAssignedUserForNewDetail()
                 });
                 if(input) input.value = '';
                 await cargarModalTareas();
@@ -2646,6 +3022,27 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
         });
 
         contenedorListasTareasEl.addEventListener('change', async function(evt){
+            const selectAsignado = evt.target.closest('.detalle-usuario-asignado');
+            if(selectAsignado && canAssignTaskUser && tarjetaTareasActualId){
+                const idDetalle = parseInt(selectAsignado.dataset.detalleId || '0', 10);
+                const prevValue = String(selectAsignado.dataset.prevValue || '');
+                const nuevoValor = String(selectAsignado.value || '');
+
+                try {
+                    await postJson(`${APP_URL_ROOT}/tablero/assign_tarea_detalle_usuario`, {
+                        id_tablero: idTableroActual,
+                        id_tarea_detalle: idDetalle,
+                        id_usuario_asignado: nuevoValor
+                    });
+                    selectAsignado.dataset.prevValue = nuevoValor;
+                    await cargarModalTareas();
+                } catch(err){
+                    selectAsignado.value = prevValue;
+                    alert(err.message);
+                }
+                return;
+            }
+
             const checkbox = evt.target.closest('.tarea-detalle-toggle');
             if(!checkbox || !canMarkDone || !tarjetaTareasActualId) return;
 
@@ -2659,6 +3056,14 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                 await cargarModalTareas();
             } catch(err){
                 alert(err.message);
+            }
+        });
+    }
+
+    if(filtroDetalleUsuarioEl){
+        filtroDetalleUsuarioEl.addEventListener('change', function(){
+            if(tarjetaTareasActualId){
+                cargarModalTareas();
             }
         });
     }

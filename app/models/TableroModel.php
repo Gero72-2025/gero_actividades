@@ -1,9 +1,47 @@
 <?php
 class TableroModel {
     private $db;
+    private $schemaCache = [];
 
     public function __construct(){
         $this->db = new Database;
+    }
+
+    private function tableExists($tableName){
+        $cacheKey = 'table:' . strtolower((string)$tableName);
+        if(isset($this->schemaCache[$cacheKey])){
+            return $this->schemaCache[$cacheKey];
+        }
+
+        try {
+            $this->db->query('SELECT COUNT(*) AS total FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table_name');
+            $this->db->bind(':table_name', (string)$tableName);
+            $row = $this->db->single();
+            $this->schemaCache[$cacheKey] = $row && (int)$row->total > 0;
+        } catch(Throwable $e){
+            $this->schemaCache[$cacheKey] = false;
+        }
+
+        return $this->schemaCache[$cacheKey];
+    }
+
+    private function columnExists($tableName, $columnName){
+        $cacheKey = 'column:' . strtolower((string)$tableName . ':' . (string)$columnName);
+        if(isset($this->schemaCache[$cacheKey])){
+            return $this->schemaCache[$cacheKey];
+        }
+
+        try {
+            $this->db->query('SELECT COUNT(*) AS total FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table_name AND COLUMN_NAME = :column_name');
+            $this->db->bind(':table_name', (string)$tableName);
+            $this->db->bind(':column_name', (string)$columnName);
+            $row = $this->db->single();
+            $this->schemaCache[$cacheKey] = $row && (int)$row->total > 0;
+        } catch(Throwable $e){
+            $this->schemaCache[$cacheKey] = false;
+        }
+
+        return $this->schemaCache[$cacheKey];
     }
 
     public function getTablerosByUsuario($id_usuario){
@@ -579,6 +617,32 @@ class TableroModel {
             WHERE te.Id_tarjeta IN (' . $in . ')
               AND te.Estado = 1
             ORDER BY e.Nombre ASC, e.Id_etiqueta ASC
+        ');
+        return $this->db->resultSet();
+    }
+
+    public function getAsignadosByTarjetas($id_tarjetas){
+        $id_tarjetas = array_values(array_unique(array_map('intval', is_array($id_tarjetas) ? $id_tarjetas : [])));
+        $id_tarjetas = array_filter($id_tarjetas, function($id){ return $id > 0; });
+
+        if(empty($id_tarjetas)){
+            return [];
+        }
+
+        $in = implode(',', $id_tarjetas);
+        $this->db->query('
+            SELECT DISTINCT
+                tt.Id_tarjeta,
+                d.Id_usuario_asignado,
+                u.email AS Usuario_email
+            FROM tablero_tarjetas_tarea_detalle d
+            INNER JOIN tablero_tarjetas_tarea tt ON tt.Id_tarea = d.Id_tarea
+            LEFT JOIN usuario u ON u.Id_usuario = d.Id_usuario_asignado
+            WHERE tt.Id_tarjeta IN (' . $in . ')
+              AND tt.Estado = 1
+              AND d.Estado = 1
+              AND d.Id_usuario_asignado IS NOT NULL
+            ORDER BY tt.Id_tarjeta ASC, u.email ASC
         ');
         return $this->db->resultSet();
     }
@@ -1241,46 +1305,153 @@ class TableroModel {
     }
 
     public function getDetallesByTarea($id_tarea, $id_usuario = null){
-        $this->db->query('
-            SELECT
-                d.*,
-                u.email AS Usuario_check_email,
-                (
+                $hasAssignedColumn = $this->columnExists('tablero_tarjetas_tarea_detalle', 'Id_usuario_asignado');
+                $hasUserTimeTable = $this->tableExists('tablero_tarjetas_tareas_detalle_tiempo_usuario');
+
+                $assignedUserEmailSql = $hasAssignedColumn
+                        ? 'ua.email AS Usuario_asignado_email,'
+                        : 'NULL AS Usuario_asignado_email,';
+                $assignedUserTimeSql = ($hasAssignedColumn && $hasUserTimeTable)
+                        ? '(
+                                        SELECT COALESCE(SUM(tttdtu.Tiempo_total_segundos), 0)
+                                        FROM tablero_tarjetas_tareas_detalle_tiempo_usuario tttdtu
+                                        WHERE tttdtu.Id_tarea_detalle = d.Id_tarea_detalle
+                                            AND tttdtu.Id_usuario = d.Id_usuario_asignado
+                                            AND tttdtu.Estado = 1
+                                ) AS Tiempo_Usuario_Asignado_Segundos,'
+                        : '0 AS Tiempo_Usuario_Asignado_Segundos,';
+
+                $assignedJoinSql = $hasAssignedColumn
+                        ? 'LEFT JOIN usuario ua ON ua.Id_usuario = d.Id_usuario_asignado'
+                        : '';
+
+                $this->db->query('
+                        SELECT
+                                d.*,
+                                u.email AS Usuario_check_email,
+                                ' . $assignedUserEmailSql . '
+                                (
                                         SELECT COALESCE(SUM(COALESCE(tdti.duracion_segundos, 0)), 0)
-                    FROM tablero_tarjetas_tarea_detalle_tiempo tdti
-                    WHERE tdti.Id_tarea_detalle = d.Id_tarea_detalle
-                      AND tdti.Estado = 1
-                ) AS Tiempo_Total_Segundos,
-                (
-                    SELECT tdti.inicio_timestamp
-                    FROM tablero_tarjetas_tarea_detalle_tiempo tdti
-                    WHERE tdti.Id_tarea_detalle = d.Id_tarea_detalle
-                      AND tdti.Id_usuario = :id_usuario_running
-                      AND tdti.fin_timestamp IS NULL
-                      AND tdti.Estado = 1
-                    ORDER BY tdti.Id_tiempo_detalle DESC
-                    LIMIT 1
-                ) AS Running_inicio,
-                (
-                    SELECT tdti.Id_tiempo_detalle
-                    FROM tablero_tarjetas_tarea_detalle_tiempo tdti
-                    WHERE tdti.Id_tarea_detalle = d.Id_tarea_detalle
-                      AND tdti.Id_usuario = :id_usuario_running_id
-                      AND tdti.fin_timestamp IS NULL
-                      AND tdti.Estado = 1
-                    ORDER BY tdti.Id_tiempo_detalle DESC
-                    LIMIT 1
-                ) AS Running_tiempo_detalle_id
-            FROM tablero_tarjetas_tarea_detalle d
-            LEFT JOIN usuario u ON u.Id_usuario = d.Id_usuario_check
-            WHERE d.Id_tarea = :id_tarea
-              AND d.Estado = 1
-            ORDER BY d.Orden_detalle ASC, d.Id_tarea_detalle ASC
-        ');
-        $this->db->bind(':id_usuario_running', $id_usuario !== null ? (int)$id_usuario : 0);
-        $this->db->bind(':id_usuario_running_id', $id_usuario !== null ? (int)$id_usuario : 0);
+                                        FROM tablero_tarjetas_tarea_detalle_tiempo tdti
+                                        WHERE tdti.Id_tarea_detalle = d.Id_tarea_detalle
+                                            AND tdti.Estado = 1
+                                ) AS Tiempo_Total_Segundos,
+                                ' . $assignedUserTimeSql . '
+                                (
+                                        SELECT tdti.inicio_timestamp
+                                        FROM tablero_tarjetas_tarea_detalle_tiempo tdti
+                                        WHERE tdti.Id_tarea_detalle = d.Id_tarea_detalle
+                                            AND tdti.fin_timestamp IS NULL
+                                            AND tdti.Estado = 1
+                                        ORDER BY tdti.Id_tiempo_detalle DESC
+                                        LIMIT 1
+                                ) AS Running_inicio,
+                                (
+                                        SELECT tdti.Id_tiempo_detalle
+                                        FROM tablero_tarjetas_tarea_detalle_tiempo tdti
+                                        WHERE tdti.Id_tarea_detalle = d.Id_tarea_detalle
+                                            AND tdti.fin_timestamp IS NULL
+                                            AND tdti.Estado = 1
+                                        ORDER BY tdti.Id_tiempo_detalle DESC
+                                        LIMIT 1
+                                ) AS Running_tiempo_detalle_id,
+                                (
+                                        SELECT tdti.Id_usuario
+                                        FROM tablero_tarjetas_tarea_detalle_tiempo tdti
+                                        WHERE tdti.Id_tarea_detalle = d.Id_tarea_detalle
+                                            AND tdti.fin_timestamp IS NULL
+                                            AND tdti.Estado = 1
+                                        ORDER BY tdti.Id_tiempo_detalle DESC
+                                        LIMIT 1
+                                ) AS Running_usuario_id
+                        FROM tablero_tarjetas_tarea_detalle d
+                        LEFT JOIN usuario u ON u.Id_usuario = d.Id_usuario_check
+                        ' . $assignedJoinSql . '
+                        WHERE d.Id_tarea = :id_tarea
+                            AND d.Estado = 1
+                        ORDER BY d.Orden_detalle ASC, d.Id_tarea_detalle ASC
+                ');
         $this->db->bind(':id_tarea', (int)$id_tarea);
         return $this->db->resultSet();
+    }
+
+    public function getTiempoDetallePorUsuario($id_tarea_detalle){
+        if(!$this->tableExists('tablero_tarjetas_tareas_detalle_tiempo_usuario')){
+            $this->db->query('
+                SELECT
+                    tdti.Id_usuario,
+                    u.email,
+                    COALESCE(SUM(COALESCE(tdti.duracion_segundos, 0)), 0) AS Tiempo_total_segundos,
+                    COALESCE(SUM(CASE WHEN tdti.fin_timestamp IS NULL THEN TIMESTAMPDIFF(SECOND, tdti.inicio_timestamp, NOW()) ELSE 0 END), 0) AS Tiempo_en_curso_segundos
+                FROM tablero_tarjetas_tarea_detalle_tiempo tdti
+                INNER JOIN usuario u ON u.Id_usuario = tdti.Id_usuario
+                WHERE tdti.Id_tarea_detalle = :id_tarea_detalle
+                  AND tdti.Estado = 1
+                GROUP BY tdti.Id_usuario, u.email
+                ORDER BY (COALESCE(SUM(COALESCE(tdti.duracion_segundos, 0)), 0) + COALESCE(SUM(CASE WHEN tdti.fin_timestamp IS NULL THEN TIMESTAMPDIFF(SECOND, tdti.inicio_timestamp, NOW()) ELSE 0 END), 0)) DESC, u.email ASC
+            ');
+            $this->db->bind(':id_tarea_detalle', (int)$id_tarea_detalle);
+            return $this->db->resultSet();
+        }
+
+        $this->db->query('
+            SELECT
+                                usr.Id_usuario,
+                                u.email,
+                                COALESCE(tttdtu.Tiempo_total_segundos, 0) AS Tiempo_total_segundos,
+                                COALESCE(running.Tiempo_en_curso_segundos, 0) AS Tiempo_en_curso_segundos
+                        FROM (
+                                SELECT DISTINCT Id_usuario
+                                FROM tablero_tarjetas_tareas_detalle_tiempo_usuario
+                                WHERE Id_tarea_detalle = :id_tarea_detalle_acumulado
+                                    AND Estado = 1
+
+                                UNION
+
+                                SELECT DISTINCT Id_usuario
+                                FROM tablero_tarjetas_tarea_detalle_tiempo
+                                WHERE Id_tarea_detalle = :id_tarea_detalle_running
+                                    AND fin_timestamp IS NULL
+                                    AND Estado = 1
+                        ) usr
+                        INNER JOIN usuario u ON u.Id_usuario = usr.Id_usuario
+                        LEFT JOIN tablero_tarjetas_tareas_detalle_tiempo_usuario tttdtu
+                                ON tttdtu.Id_tarea_detalle = :id_tarea_detalle_join
+                             AND tttdtu.Id_usuario = usr.Id_usuario
+                             AND tttdtu.Estado = 1
+                        LEFT JOIN (
+                                SELECT Id_usuario, COALESCE(SUM(TIMESTAMPDIFF(SECOND, inicio_timestamp, NOW())), 0) AS Tiempo_en_curso_segundos
+                                FROM tablero_tarjetas_tarea_detalle_tiempo
+                                WHERE Id_tarea_detalle = :id_tarea_detalle_running_sum
+                                    AND fin_timestamp IS NULL
+                                    AND Estado = 1
+                                GROUP BY Id_usuario
+                        ) running ON running.Id_usuario = usr.Id_usuario
+                        ORDER BY (COALESCE(tttdtu.Tiempo_total_segundos, 0) + COALESCE(running.Tiempo_en_curso_segundos, 0)) DESC, u.email ASC
+        ');
+                $this->db->bind(':id_tarea_detalle_acumulado', (int)$id_tarea_detalle);
+                $this->db->bind(':id_tarea_detalle_running', (int)$id_tarea_detalle);
+                $this->db->bind(':id_tarea_detalle_join', (int)$id_tarea_detalle);
+                $this->db->bind(':id_tarea_detalle_running_sum', (int)$id_tarea_detalle);
+        return $this->db->resultSet();
+    }
+
+    public function updateDetalleUsuarioAsignado($id_tarea_detalle, $id_usuario_asignado){
+        if(!$this->columnExists('tablero_tarjetas_tarea_detalle', 'Id_usuario_asignado')){
+            return false;
+        }
+
+        $this->db->query('
+            UPDATE tablero_tarjetas_tarea_detalle
+            SET
+                Id_usuario_asignado = :id_usuario_asignado,
+                Fecha_actualizacion = NOW()
+            WHERE Id_tarea_detalle = :id_tarea_detalle
+              AND Estado = 1
+        ');
+        $this->db->bind(':id_usuario_asignado', $id_usuario_asignado !== null ? (int)$id_usuario_asignado : null);
+        $this->db->bind(':id_tarea_detalle', (int)$id_tarea_detalle);
+        return $this->db->execute();
     }
 
     public function getRunningDetalleTimer($id_tarea_detalle, $id_usuario){
@@ -1335,6 +1506,15 @@ class TableroModel {
             return false;
         }
 
+        $this->db->query('SELECT duracion_segundos FROM tablero_tarjetas_tarea_detalle_tiempo WHERE Id_tiempo_detalle = :id_tiempo_detalle LIMIT 1');
+        $this->db->bind(':id_tiempo_detalle', (int)$running->Id_tiempo_detalle);
+        $rowDuracion = $this->db->single();
+        $duracion = $rowDuracion ? max(0, (int)$rowDuracion->duracion_segundos) : 0;
+
+        if($duracion > 0){
+            $this->incrementarTiempoDetalleUsuario($id_tarea_detalle, $id_usuario, $duracion);
+        }
+
         return $running->Id_tiempo_detalle;
     }
 
@@ -1363,7 +1543,14 @@ class TableroModel {
         return $row && (int)$row->total > 0;
     }
 
-    public function replaceDetalleTiempoTotal($id_tarea_detalle, $duracion_segundos, $id_usuario){
+    public function replaceDetalleTiempoTotal($id_tarea_detalle, $duracion_segundos, $id_usuario_editor, $id_usuario_tiempo = null){
+        $id_usuario_registro = $id_usuario_tiempo !== null ? (int)$id_usuario_tiempo : (int)$id_usuario_editor;
+        return $this->replaceDetalleTiempoPorUsuarios($id_tarea_detalle, [
+            $id_usuario_registro => (int)$duracion_segundos
+        ]);
+    }
+
+    public function replaceDetalleTiempoPorUsuarios($id_tarea_detalle, $tiempos_por_usuario = []){
         $this->db->query('
             UPDATE tablero_tarjetas_tarea_detalle_tiempo
             SET
@@ -1376,26 +1563,92 @@ class TableroModel {
             return false;
         }
 
+        if($this->tableExists('tablero_tarjetas_tareas_detalle_tiempo_usuario')){
+            $this->db->query('
+                UPDATE tablero_tarjetas_tareas_detalle_tiempo_usuario
+                SET
+                    Estado = 0,
+                    Fecha_actualizacion = NOW()
+                WHERE Id_tarea_detalle = :id_tarea_detalle
+                  AND Estado = 1
+            ');
+            $this->db->bind(':id_tarea_detalle', (int)$id_tarea_detalle);
+            if(!$this->db->execute()){
+                return false;
+            }
+        }
+
+        $rows = is_array($tiempos_por_usuario) ? $tiempos_por_usuario : [];
+        foreach($rows as $id_usuario => $duracion_segundos){
+            $uid = (int)$id_usuario;
+            $duracion = max(0, (int)$duracion_segundos);
+
+            if($uid <= 0 || $duracion <= 0){
+                continue;
+            }
+
+            if(!$this->incrementarTiempoDetalleUsuario($id_tarea_detalle, $uid, $duracion)){
+                return false;
+            }
+
+            $this->db->query('
+                INSERT INTO tablero_tarjetas_tarea_detalle_tiempo (
+                    Id_tarea_detalle,
+                    Id_usuario,
+                    inicio_timestamp,
+                    fin_timestamp,
+                    duracion_segundos,
+                    Estado
+                ) VALUES (
+                    :id_tarea_detalle,
+                    :id_usuario,
+                    NOW(),
+                    NOW(),
+                    :duracion_segundos,
+                    1
+                )
+            ');
+            $this->db->bind(':id_tarea_detalle', (int)$id_tarea_detalle);
+            $this->db->bind(':id_usuario', $uid);
+            $this->db->bind(':duracion_segundos', $duracion);
+            if(!$this->db->execute()){
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function incrementarTiempoDetalleUsuario($id_tarea_detalle, $id_usuario, $duracion_segundos){
+        $duracion = max(0, (int)$duracion_segundos);
+        if($id_tarea_detalle <= 0 || $id_usuario <= 0 || $duracion <= 0){
+            return true;
+        }
+
+        if(!$this->tableExists('tablero_tarjetas_tareas_detalle_tiempo_usuario')){
+            return true;
+        }
+
         $this->db->query('
-            INSERT INTO tablero_tarjetas_tarea_detalle_tiempo (
+            INSERT INTO tablero_tarjetas_tareas_detalle_tiempo_usuario (
                 Id_tarea_detalle,
                 Id_usuario,
-                inicio_timestamp,
-                fin_timestamp,
-                duracion_segundos,
+                Tiempo_total_segundos,
                 Estado
             ) VALUES (
                 :id_tarea_detalle,
                 :id_usuario,
-                NOW(),
-                NOW(),
                 :duracion_segundos,
                 1
             )
+            ON DUPLICATE KEY UPDATE
+                Tiempo_total_segundos = Tiempo_total_segundos + VALUES(Tiempo_total_segundos),
+                Estado = 1,
+                Fecha_actualizacion = NOW()
         ');
         $this->db->bind(':id_tarea_detalle', (int)$id_tarea_detalle);
         $this->db->bind(':id_usuario', (int)$id_usuario);
-        $this->db->bind(':duracion_segundos', (int)$duracion_segundos);
+        $this->db->bind(':duracion_segundos', $duracion);
         return $this->db->execute();
     }
 
@@ -1419,17 +1672,28 @@ class TableroModel {
         return $inserted ? (int)$inserted->id_tarea : false;
     }
 
-    public function addDetalleTarea($id_tarea, $descripcion){
+    public function addDetalleTarea($id_tarea, $descripcion, $id_usuario_asignado = null){
         $this->db->query('SELECT COALESCE(MAX(Orden_detalle), 0) + 1 AS siguiente FROM tablero_tarjetas_tarea_detalle WHERE Id_tarea = :id_tarea AND Estado = 1');
         $this->db->bind(':id_tarea', (int)$id_tarea);
         $row = $this->db->single();
         $orden = $row ? (int)$row->siguiente : 1;
 
-        $this->db->query('
-            INSERT INTO tablero_tarjetas_tarea_detalle (Id_tarea, Descripcion, Completado, Orden_detalle, Estado)
-            VALUES (:id_tarea, :descripcion, 0, :orden_detalle, 1)
-        ');
+        $hasAssignedColumn = $this->columnExists('tablero_tarjetas_tarea_detalle', 'Id_usuario_asignado');
+        if($hasAssignedColumn){
+            $this->db->query('
+                INSERT INTO tablero_tarjetas_tarea_detalle (Id_tarea, Id_usuario_asignado, Descripcion, Completado, Orden_detalle, Estado)
+                VALUES (:id_tarea, :id_usuario_asignado, :descripcion, 0, :orden_detalle, 1)
+            ');
+        } else {
+            $this->db->query('
+                INSERT INTO tablero_tarjetas_tarea_detalle (Id_tarea, Descripcion, Completado, Orden_detalle, Estado)
+                VALUES (:id_tarea, :descripcion, 0, :orden_detalle, 1)
+            ');
+        }
         $this->db->bind(':id_tarea', (int)$id_tarea);
+        if($hasAssignedColumn){
+            $this->db->bind(':id_usuario_asignado', $id_usuario_asignado !== null ? (int)$id_usuario_asignado : null);
+        }
         $this->db->bind(':descripcion', $descripcion);
         $this->db->bind(':orden_detalle', $orden);
 

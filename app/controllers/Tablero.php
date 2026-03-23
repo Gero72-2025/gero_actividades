@@ -115,6 +115,18 @@ class Tablero extends Controller {
             $tarjetaIds[] = (int)$tarjeta->Id_tarjeta;
         }
 
+        $asignadosPorTarjeta = [];
+        foreach($this->tableroModel->getAsignadosByTarjetas($tarjetaIds) as $row){
+            $idTarjeta = (int)$row->Id_tarjeta;
+            if(!isset($asignadosPorTarjeta[$idTarjeta])){
+                $asignadosPorTarjeta[$idTarjeta] = [];
+            }
+            $asignadosPorTarjeta[$idTarjeta][] = (object)[
+                'Id_usuario' => (int)$row->Id_usuario_asignado,
+                'Email' => $row->Usuario_email ?? ''
+            ];
+        }
+
         $etiquetasPorTarjeta = [];
         $etiquetaIdsPorTarjeta = [];
         foreach($this->tableroModel->getEtiquetasByTarjetas($tarjetaIds) as $etiquetaTarjeta){
@@ -144,6 +156,7 @@ class Tablero extends Controller {
             $tarjeta->Tiempo_Total_Segundos = isset($tarjeta->Tiempo_Total_Segundos) ? (int)$tarjeta->Tiempo_Total_Segundos : 0;
             $tarjeta->Etiquetas = $etiquetasPorTarjeta[(int)$tarjeta->Id_tarjeta] ?? [];
             $tarjeta->EtiquetaIds = $etiquetaIdsPorTarjeta[(int)$tarjeta->Id_tarjeta] ?? [];
+            $tarjeta->AsignadosDetalle = $asignadosPorTarjeta[(int)$tarjeta->Id_tarjeta] ?? [];
             $tarjeta->Can_Delete =
                 empty($tarjeta->Id_usuario_asignado)
                 && empty($tarjeta->Id_alcance)
@@ -204,6 +217,8 @@ class Tablero extends Controller {
             'permisosTablero' => $context['permisosTablero'],
             'reporteAgrupado' => $this->buildReporteAgrupado($context['id_tablero'])
         ];
+
+        $data['resumenTiempoUsuarios'] = $this->buildResumenTiempoUsuarios($data['reporteAgrupado']);
 
         $this->view('tablero/reporteria', $data);
     }
@@ -424,6 +439,8 @@ class Tablero extends Controller {
             $listasTexto = [];
             $tareasTexto = [];
             $tiempoTexto = [];
+            $tiempoPorUsuarioTexto = [];
+            $tiempoPorUsuarioSegundos = [];
             $totalTareasTarjeta = 0;
             $totalTiempoTarjetaSegundos = 0;
             $totalTiempoEnCursoTarjetaSegundos = $this->tableroModel->getTiempoEnCursoTarjeta($idTarjeta);
@@ -449,6 +466,26 @@ class Tablero extends Controller {
                     $segundos = isset($detalle->Tiempo_Total_Segundos) ? (int)$detalle->Tiempo_Total_Segundos : 0;
                     $totalTiempoTarjetaSegundos += $segundos;
                     $tiempoTexto[] = '[' . $nombreLista . '] ' . $descripcionDetalle . ': ' . $this->formatSegundosReporte($segundos);
+
+                    $tiempoUsuariosDetalle = $this->tableroModel->getTiempoDetallePorUsuario((int)$detalle->Id_tarea_detalle);
+                    foreach($tiempoUsuariosDetalle as $tiempoUsuario){
+                        $emailUsuario = trim((string)($tiempoUsuario->email ?? ''));
+                        $idUsuarioTiempo = isset($tiempoUsuario->Id_usuario) ? (int)$tiempoUsuario->Id_usuario : 0;
+                        $labelUsuario = $emailUsuario !== '' ? $emailUsuario : ('Usuario #' . $idUsuarioTiempo);
+                        $segBase = isset($tiempoUsuario->Tiempo_total_segundos) ? (int)$tiempoUsuario->Tiempo_total_segundos : 0;
+                        $segEnCurso = isset($tiempoUsuario->Tiempo_en_curso_segundos) ? (int)$tiempoUsuario->Tiempo_en_curso_segundos : 0;
+                        $segTotalUsuario = max(0, $segBase + $segEnCurso);
+
+                        if($segTotalUsuario <= 0){
+                            continue;
+                        }
+
+                        $tiempoPorUsuarioTexto[] = '[' . $nombreLista . '] ' . $descripcionDetalle . ' / ' . $labelUsuario . ': ' . $this->formatSegundosReporte($segTotalUsuario);
+                        if(!isset($tiempoPorUsuarioSegundos[$labelUsuario])){
+                            $tiempoPorUsuarioSegundos[$labelUsuario] = 0;
+                        }
+                        $tiempoPorUsuarioSegundos[$labelUsuario] += $segTotalUsuario;
+                    }
                 }
             }
 
@@ -467,6 +504,8 @@ class Tablero extends Controller {
                 'listas_tareas' => $listasTexto,
                 'tareas' => $tareasTexto,
                 'tiempos' => $tiempoTexto,
+                'tiempo_por_usuario' => $tiempoPorUsuarioTexto,
+                'tiempo_por_usuario_segundos' => $tiempoPorUsuarioSegundos,
                 'total_tareas' => $totalTareasTarjeta,
                 'total_tiempo_segundos' => $totalTiempoTarjetaSegundos,
                 'total_tiempo_en_curso_segundos' => $totalTiempoEnCursoTarjetaSegundos
@@ -476,6 +515,58 @@ class Tablero extends Controller {
         ksort($reporteAgrupado);
 
         return $reporteAgrupado;
+    }
+
+    private function buildResumenTiempoUsuarios($reporteAgrupado){
+        $summary = [];
+
+        foreach($reporteAgrupado as $items){
+            foreach((array)$items as $row){
+                $tiempoUsuarios = isset($row['tiempo_por_usuario_segundos']) && is_array($row['tiempo_por_usuario_segundos'])
+                    ? $row['tiempo_por_usuario_segundos']
+                    : [];
+
+                foreach($tiempoUsuarios as $usuario => $segundos){
+                    $label = trim((string)$usuario);
+                    if($label === ''){
+                        $label = 'Usuario sin nombre';
+                    }
+
+                    if(!isset($summary[$label])){
+                        $summary[$label] = [
+                            'usuario' => $label,
+                            'total_segundos' => 0,
+                            'tarjetas' => []
+                        ];
+                    }
+
+                    $seg = max(0, (int)$segundos);
+                    $summary[$label]['total_segundos'] += $seg;
+
+                    $tituloTarjeta = trim((string)($row['descripcion'] ?? 'Tarjeta sin titulo'));
+                    if($tituloTarjeta === ''){
+                        $tituloTarjeta = 'Tarjeta sin titulo';
+                    }
+                    $summary[$label]['tarjetas'][$tituloTarjeta] = true;
+                }
+            }
+        }
+
+        foreach($summary as &$item){
+            $item['total_tarjetas'] = count($item['tarjetas']);
+            unset($item['tarjetas']);
+        }
+        unset($item);
+
+        usort($summary, function($left, $right){
+            $cmp = (int)$right['total_segundos'] <=> (int)$left['total_segundos'];
+            if($cmp !== 0){
+                return $cmp;
+            }
+            return strcmp((string)$left['usuario'], (string)$right['usuario']);
+        });
+
+        return $summary;
     }
 
     private function buildDashboardMetrics($id_tablero){
@@ -966,6 +1057,7 @@ class Tablero extends Controller {
                     'Listado tareas' => implode(' | ', (array)($row['listas_tareas'] ?? [])),
                     'Tareas' => implode(' | ', (array)($row['tareas'] ?? [])),
                     'Tiempo detalle' => implode(' | ', (array)($row['tiempos'] ?? [])),
+                    'Tiempo por usuario' => implode(' | ', (array)($row['tiempo_por_usuario'] ?? [])),
                     'Tiempo total' => $this->formatSegundosReporte((int)($row['total_tiempo_segundos'] ?? 0)),
                     'Tiempo en curso' => $this->formatSegundosReporte((int)($row['total_tiempo_en_curso_segundos'] ?? 0))
                 ];
@@ -987,6 +1079,7 @@ class Tablero extends Controller {
             'Listado tareas',
             'Tareas',
             'Tiempo detalle',
+            'Tiempo por usuario',
             'Tiempo total',
             'Tiempo en curso'
         ];
@@ -2308,6 +2401,9 @@ class Tablero extends Controller {
         $tareas = $this->tableroModel->getTareasByTarjeta($id_tarjeta);
         foreach($tareas as $t){
             $t->detalles = $this->tableroModel->getDetallesByTarea((int)$t->Id_tarea, (int)$_SESSION['user_id']);
+            foreach($t->detalles as $detalleItem){
+                $detalleItem->Tiempo_por_usuario = $this->tableroModel->getTiempoDetallePorUsuario((int)$detalleItem->Id_tarea_detalle);
+            }
         }
 
         $etiquetas = $this->tableroModel->getEtiquetasByTarjetas([$id_tarjeta]);
@@ -2393,6 +2489,9 @@ class Tablero extends Controller {
         $payload = $this->getJsonInput();
         $id_tablero = isset($payload['id_tablero']) ? (int)$payload['id_tablero'] : 0;
         $id_tarea = isset($payload['id_tarea']) ? (int)$payload['id_tarea'] : 0;
+        $id_usuario_asignado = isset($payload['id_usuario_asignado']) && $payload['id_usuario_asignado'] !== ''
+            ? (int)$payload['id_usuario_asignado']
+            : null;
         $descripcion = trim($payload['descripcion'] ?? '');
 
         if(!$this->hasBoardPermission($id_tablero, 'tarea_crear')){
@@ -2413,7 +2512,19 @@ class Tablero extends Controller {
             return $this->jsonResponse(['success' => false, 'error' => 'Tarea fuera del tablero activo'], 403);
         }
 
-        $id_detalle = $this->tableroModel->addDetalleTarea($id_tarea, $descripcion);
+        if($id_usuario_asignado === null && !empty($tarjeta->Id_usuario_asignado)){
+            $id_usuario_asignado = (int)$tarjeta->Id_usuario_asignado;
+        }
+
+        if($id_usuario_asignado !== null && !$this->hasBoardPermission($id_tablero, 'tarjeta_asignar')){
+            return $this->jsonResponse(['success' => false, 'error' => 'Sin permiso para asignar tareas en este tablero'], 403);
+        }
+
+        if($id_usuario_asignado !== null && !$this->tableroModel->usuarioEstaAsignadoATablero($id_tablero, $id_usuario_asignado)){
+            return $this->jsonResponse(['success' => false, 'error' => 'El usuario asignado no pertenece al tablero activo'], 400);
+        }
+
+        $id_detalle = $this->tableroModel->addDetalleTarea($id_tarea, $descripcion, $id_usuario_asignado);
         if(!$id_detalle){
             return $this->jsonResponse(['success' => false, 'error' => 'No se pudo agregar el detalle'], 500);
         }
@@ -2426,6 +2537,69 @@ class Tablero extends Controller {
         );
 
         return $this->jsonResponse(['success' => true, 'id_tarea_detalle' => (int)$id_detalle]);
+    }
+
+    public function assign_tarea_detalle_usuario(){
+        $this->verificarAcceso('tablero', 'asignar');
+
+        if($_SERVER['REQUEST_METHOD'] !== 'POST'){
+            return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
+        }
+
+        $payload = $this->getJsonInput();
+        $id_tablero = isset($payload['id_tablero']) ? (int)$payload['id_tablero'] : 0;
+        $id_tarea_detalle = isset($payload['id_tarea_detalle']) ? (int)$payload['id_tarea_detalle'] : 0;
+        $id_usuario_asignado = isset($payload['id_usuario_asignado']) && $payload['id_usuario_asignado'] !== ''
+            ? (int)$payload['id_usuario_asignado']
+            : null;
+
+        if(!$this->hasBoardPermission($id_tablero, 'tarjeta_asignar')){
+            return $this->jsonResponse(['success' => false, 'error' => 'Sin permiso para asignar tareas en este tablero'], 403);
+        }
+
+        if($id_tarea_detalle <= 0){
+            return $this->jsonResponse(['success' => false, 'error' => 'Detalle invalido'], 400);
+        }
+
+        $detalle = $this->tableroModel->getDetalleById($id_tarea_detalle);
+        if(!$detalle){
+            return $this->jsonResponse(['success' => false, 'error' => 'Detalle no encontrado'], 404);
+        }
+
+        $tarea = $this->tableroModel->getTareaById((int)$detalle->Id_tarea);
+        $tarjeta = $tarea ? $this->tableroModel->getTarjetaById((int)$tarea->Id_tarjeta) : null;
+        if(!$tarea || !$tarjeta || (int)$tarjeta->Id_tablero !== $id_tablero){
+            return $this->jsonResponse(['success' => false, 'error' => 'Detalle fuera del tablero activo'], 403);
+        }
+
+        if($this->tableroModel->detalleTieneTimerEnCurso($id_tarea_detalle)){
+            return $this->jsonResponse(['success' => false, 'error' => 'No se puede reasignar mientras existe un cronometro en curso.'], 400);
+        }
+
+        if($id_usuario_asignado !== null && !$this->tableroModel->usuarioEstaAsignadoATablero($id_tablero, $id_usuario_asignado)){
+            return $this->jsonResponse(['success' => false, 'error' => 'El usuario seleccionado no pertenece al tablero activo'], 400);
+        }
+
+        $ok = $this->tableroModel->updateDetalleUsuarioAsignado($id_tarea_detalle, $id_usuario_asignado);
+        if(!$ok){
+            return $this->jsonResponse(['success' => false, 'error' => 'No se pudo actualizar la asignacion'], 500);
+        }
+
+        $mensaje = $id_usuario_asignado === null
+            ? 'Se retiro el usuario asignado de una tarea.'
+            : 'Se asigno usuario a una tarea.';
+        $this->tableroModel->addHistorialTarjeta(
+            (int)$tarjeta->Id_tarjeta,
+            (int)$_SESSION['user_id'],
+            'tarea_detalle_asignacion',
+            $mensaje,
+            ['id_tarea_detalle' => (int)$id_tarea_detalle, 'id_usuario_asignado' => $id_usuario_asignado]
+        );
+
+        return $this->jsonResponse([
+            'success' => true,
+            'tiempo_por_usuario' => $this->tableroModel->getTiempoDetallePorUsuario((int)$id_tarea_detalle)
+        ]);
     }
 
     public function update_tarjeta_tarea(){
@@ -2697,7 +2871,18 @@ class Tablero extends Controller {
             return $this->jsonResponse(['success' => false, 'error' => 'Detalle fuera del tablero activo'], 403);
         }
 
-        $timer = $this->tableroModel->startDetalleTimer($id_tarea_detalle, (int)$_SESSION['user_id']);
+        $id_usuario_asignado = !empty($detalle->Id_usuario_asignado) ? (int)$detalle->Id_usuario_asignado : null;
+        $id_usuario_actual = (int)$_SESSION['user_id'];
+        if($id_usuario_asignado !== null && $id_usuario_asignado !== $id_usuario_actual){
+            $esAdministrador = isAdministradorRol();
+            if(!$esAdministrador){
+                return $this->jsonResponse(['success' => false, 'error' => 'Solo el usuario asignado puede iniciar el cronometro de esta tarea.'], 403);
+            }
+        }
+
+        $id_usuario_timer = $id_usuario_asignado !== null ? $id_usuario_asignado : $id_usuario_actual;
+
+        $timer = $this->tableroModel->startDetalleTimer($id_tarea_detalle, $id_usuario_timer);
         if(!$timer){
             return $this->jsonResponse(['success' => false, 'error' => 'No se pudo iniciar el cronometro'], 500);
         }
@@ -2750,7 +2935,18 @@ class Tablero extends Controller {
             return $this->jsonResponse(['success' => false, 'error' => 'Detalle fuera del tablero activo'], 403);
         }
 
-        $stopped = $this->tableroModel->stopDetalleTimer($id_tarea_detalle, (int)$_SESSION['user_id']);
+        $id_usuario_asignado = !empty($detalle->Id_usuario_asignado) ? (int)$detalle->Id_usuario_asignado : null;
+        $id_usuario_actual = (int)$_SESSION['user_id'];
+        if($id_usuario_asignado !== null && $id_usuario_asignado !== $id_usuario_actual){
+            $esAdministrador = isAdministradorRol();
+            if(!$esAdministrador){
+                return $this->jsonResponse(['success' => false, 'error' => 'Solo el usuario asignado puede detener el cronometro de esta tarea.'], 403);
+            }
+        }
+
+        $id_usuario_timer = $id_usuario_asignado !== null ? $id_usuario_asignado : $id_usuario_actual;
+
+        $stopped = $this->tableroModel->stopDetalleTimer($id_tarea_detalle, $id_usuario_timer);
         if(!$stopped){
             return $this->jsonResponse(['success' => false, 'error' => 'No hay cronometro en curso para esta tarea'], 400);
         }
@@ -2808,12 +3004,21 @@ class Tablero extends Controller {
             return $this->jsonResponse(['success' => false, 'error' => 'Detalle fuera del tablero activo'], 403);
         }
 
+        $id_usuario_asignado = !empty($detalle->Id_usuario_asignado) ? (int)$detalle->Id_usuario_asignado : null;
+        $id_usuario_actual = (int)$_SESSION['user_id'];
+        if($id_usuario_asignado !== null && $id_usuario_asignado !== $id_usuario_actual && !isAdministradorRol()){
+            return $this->jsonResponse(['success' => false, 'error' => 'Solo el usuario asignado puede editar manualmente este cronometro.'], 403);
+        }
+
         if($this->tableroModel->detalleTieneTimerEnCurso($id_tarea_detalle)){
             return $this->jsonResponse(['success' => false, 'error' => 'No se puede editar mientras el cronometro esta en curso.'], 400);
         }
 
         $totalAnterior = $this->tableroModel->getTiempoTotalDetalle($id_tarea_detalle);
-        $ok = $this->tableroModel->replaceDetalleTiempoTotal($id_tarea_detalle, $seconds, (int)$_SESSION['user_id']);
+        $id_usuario_tiempo = !empty($detalle->Id_usuario_asignado)
+            ? (int)$detalle->Id_usuario_asignado
+            : (int)$_SESSION['user_id'];
+        $ok = $this->tableroModel->replaceDetalleTiempoTotal($id_tarea_detalle, $seconds, (int)$_SESSION['user_id'], $id_usuario_tiempo);
         if(!$ok){
             return $this->jsonResponse(['success' => false, 'error' => 'No se pudo actualizar el tiempo manualmente'], 500);
         }
@@ -2835,6 +3040,121 @@ class Tablero extends Controller {
             'total_detalle_segundos' => $this->tableroModel->getTiempoTotalDetalle($id_tarea_detalle),
             'total_tarjeta_segundos' => $this->tableroModel->getTiempoTotalTarjeta((int)$tarjeta->Id_tarjeta),
             'en_curso_tiempo' => $this->tableroModel->tarjetaTieneTimerDetalleEnCurso((int)$tarjeta->Id_tarjeta)
+        ]);
+    }
+
+    public function update_tarea_detalle_tiempo_manual_usuarios(){
+        $this->verificarAcceso('tablero', 'tiempo_editar');
+
+        if($_SERVER['REQUEST_METHOD'] !== 'POST'){
+            return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
+        }
+
+        $payload = $this->getJsonInput();
+        $id_tablero = isset($payload['id_tablero']) ? (int)$payload['id_tablero'] : 0;
+        $id_tarea_detalle = isset($payload['id_tarea_detalle']) ? (int)$payload['id_tarea_detalle'] : 0;
+        $updates = isset($payload['updates']) && is_array($payload['updates']) ? $payload['updates'] : [];
+
+        if(!$this->hasBoardPermission($id_tablero, 'tarea_tiempo_editar')){
+            return $this->jsonResponse(['success' => false, 'error' => 'Sin permiso en este tablero'], 403);
+        }
+
+        if($id_tarea_detalle <= 0){
+            return $this->jsonResponse(['success' => false, 'error' => 'Detalle invalido'], 400);
+        }
+
+        if(empty($updates)){
+            return $this->jsonResponse(['success' => false, 'error' => 'No se recibieron usuarios para editar'], 400);
+        }
+
+        $detalle = $this->tableroModel->getDetalleById($id_tarea_detalle);
+        if(!$detalle){
+            return $this->jsonResponse(['success' => false, 'error' => 'Detalle no encontrado'], 404);
+        }
+
+        $tarea = $this->tableroModel->getTareaById((int)$detalle->Id_tarea);
+        $tarjeta = $tarea ? $this->tableroModel->getTarjetaById((int)$tarea->Id_tarjeta) : null;
+        if(!$tarea || !$tarjeta || (int)$tarjeta->Id_tablero !== $id_tablero){
+            return $this->jsonResponse(['success' => false, 'error' => 'Detalle fuera del tablero activo'], 403);
+        }
+
+        $id_usuario_asignado = !empty($detalle->Id_usuario_asignado) ? (int)$detalle->Id_usuario_asignado : null;
+        $id_usuario_actual = (int)$_SESSION['user_id'];
+        if($id_usuario_asignado !== null && $id_usuario_asignado !== $id_usuario_actual && !isAdministradorRol()){
+            return $this->jsonResponse(['success' => false, 'error' => 'Solo el usuario asignado puede editar manualmente este cronometro.'], 403);
+        }
+
+        if($this->tableroModel->detalleTieneTimerEnCurso($id_tarea_detalle)){
+            return $this->jsonResponse(['success' => false, 'error' => 'No se puede editar mientras el cronometro esta en curso.'], 400);
+        }
+
+        $tiemposActuales = $this->tableroModel->getTiempoDetallePorUsuario($id_tarea_detalle);
+        $mapaFinal = [];
+        foreach($tiemposActuales as $item){
+            $uid = isset($item->Id_usuario) ? (int)$item->Id_usuario : 0;
+            if($uid <= 0){
+                continue;
+            }
+
+            $base = isset($item->Tiempo_total_segundos) ? (int)$item->Tiempo_total_segundos : 0;
+            $running = isset($item->Tiempo_en_curso_segundos) ? (int)$item->Tiempo_en_curso_segundos : 0;
+            $mapaFinal[$uid] = max(0, $base + $running);
+        }
+
+        if(empty($mapaFinal)){
+            return $this->jsonResponse(['success' => false, 'error' => 'No hay tiempos por usuario para editar en este detalle.'], 400);
+        }
+
+        foreach($updates as $row){
+            $uid = isset($row['id_usuario']) ? (int)$row['id_usuario'] : 0;
+            $hms = trim((string)($row['tiempo_hms'] ?? ''));
+
+            if($uid <= 0){
+                continue;
+            }
+
+            if(!array_key_exists($uid, $mapaFinal)){
+                return $this->jsonResponse(['success' => false, 'error' => 'Uno de los usuarios no pertenece al detalle de tiempo.'], 400);
+            }
+
+            $seconds = $this->parseDurationHmsToSeconds($hms);
+            if($seconds === null){
+                return $this->jsonResponse(['success' => false, 'error' => 'Formato invalido. Use hh:mm:ss.'], 400);
+            }
+
+            $mapaFinal[$uid] = (int)$seconds;
+        }
+
+        $totalAnterior = $this->tableroModel->getTiempoTotalDetalle($id_tarea_detalle);
+        $ok = $this->tableroModel->replaceDetalleTiempoPorUsuarios($id_tarea_detalle, $mapaFinal);
+        if(!$ok){
+            return $this->jsonResponse(['success' => false, 'error' => 'No se pudo actualizar el tiempo por usuario'], 500);
+        }
+
+        $totalNuevo = 0;
+        foreach($mapaFinal as $seconds){
+            $totalNuevo += max(0, (int)$seconds);
+        }
+
+        $this->tableroModel->addHistorialTarjeta(
+            (int)$tarjeta->Id_tarjeta,
+            (int)$_SESSION['user_id'],
+            'timer_detalle_manual_usuarios',
+            'Actualizo manualmente tiempos por usuario de una tarea de ' . $this->formatSecondsToHms($totalAnterior) . ' a ' . $this->formatSecondsToHms($totalNuevo) . '.',
+            [
+                'id_tarea_detalle' => $id_tarea_detalle,
+                'segundos_anterior' => (int)$totalAnterior,
+                'segundos_nuevo' => (int)$totalNuevo,
+                'usuarios_actualizados' => count($updates)
+            ]
+        );
+
+        return $this->jsonResponse([
+            'success' => true,
+            'total_detalle_segundos' => $this->tableroModel->getTiempoTotalDetalle($id_tarea_detalle),
+            'total_tarjeta_segundos' => $this->tableroModel->getTiempoTotalTarjeta((int)$tarjeta->Id_tarjeta),
+            'en_curso_tiempo' => $this->tableroModel->tarjetaTieneTimerDetalleEnCurso((int)$tarjeta->Id_tarjeta),
+            'tiempo_por_usuario' => $this->tableroModel->getTiempoDetallePorUsuario($id_tarea_detalle)
         ]);
     }
 
