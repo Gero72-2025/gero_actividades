@@ -415,6 +415,49 @@ function outputSuccess($message) {
     }
 }
 
+function normalizeSqlCompatibilityQuery($query) {
+    $normalized = $query;
+
+    // Compatibilidad con MySQL/MariaDB antiguos (cPanel):
+    // IF NOT EXISTS/IF EXISTS en ALTER TABLE ADD/DROP no siempre esta soportado.
+    $patterns = [
+        '/\bADD\s+COLUMN\s+IF\s+NOT\s+EXISTS\b/i' => 'ADD COLUMN',
+        '/\bADD\s+INDEX\s+IF\s+NOT\s+EXISTS\b/i' => 'ADD INDEX',
+        '/\bADD\s+UNIQUE\s+KEY\s+IF\s+NOT\s+EXISTS\b/i' => 'ADD UNIQUE KEY',
+        '/\bDROP\s+INDEX\s+IF\s+EXISTS\b/i' => 'DROP INDEX'
+    ];
+
+    foreach ($patterns as $pattern => $replacement) {
+        $candidate = preg_replace($pattern, $replacement, $normalized);
+        if ($candidate !== null) {
+            $normalized = $candidate;
+        }
+    }
+
+    return [
+        'query' => $normalized,
+        'changed' => $normalized !== $query
+    ];
+}
+
+function shouldIgnoreCompatibilitySqlError(mysqli $conn, $query, $wasNormalized) {
+    if (!$wasNormalized) {
+        return false;
+    }
+
+    $isAlterTable = preg_match('/^\s*ALTER\s+TABLE\b/i', $query) === 1;
+    if (!$isAlterTable) {
+        return false;
+    }
+
+    // 1060: Duplicate column name
+    // 1061: Duplicate key name
+    // 1091: Can't DROP ... doesn't exist
+    // 1826: Duplicate foreign key constraint name
+    $ignorableErrorCodes = [1060, 1061, 1091, 1826];
+    return in_array((int) $conn->errno, $ignorableErrorCodes, true);
+}
+
 // Ejecuta un archivo SQL en la conexion actual y reporta resultados.
 function runSqlFile(mysqli $conn, $filePath) {
     if (!file_exists($filePath)) {
@@ -435,8 +478,19 @@ function runSqlFile(mysqli $conn, $filePath) {
         if ($query === '') {
             continue;
         }
-        if ($conn->query($query) === false) {
-            throw new Exception("Error en " . basename($filePath) . ": " . $conn->error . " | SQL: " . substr($query, 0, 180));
+
+        $normalizedQueryData = normalizeSqlCompatibilityQuery($query);
+        $queryToExecute = $normalizedQueryData['query'];
+        $wasNormalized = $normalizedQueryData['changed'];
+
+        if ($conn->query($queryToExecute) === false) {
+            if (shouldIgnoreCompatibilitySqlError($conn, $queryToExecute, $wasNormalized)) {
+                // El esquema ya estaba en el estado deseado; continuar instalacion.
+                $executed++;
+                continue;
+            }
+
+            throw new Exception("Error en " . basename($filePath) . ": " . $conn->error . " | SQL: " . substr($queryToExecute, 0, 180));
         }
         $executed++;
     }
