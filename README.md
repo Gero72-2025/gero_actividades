@@ -211,13 +211,13 @@ gero_activities/
 
 ### Roles Predeterminados
 
-| Rol | Acceso |
-|-----|--------|
-| **Administrador** | Acceso completo a toda la plataforma, incluyendo tableros |
-| **Gerente** | Reportes, contratos, actividades, personal y tableros |
-| **Supervisor** | Actividades, personal asignado y tableros de su equipo |
-| **Personal** | Solo sus propias actividades y tableros asignados |
-| **Visualizador** | Solo lectura en reportes y tableros públicos |
+| Rol               | Acceso                                        |
+|-------------------|-----------------------------------------------|
+| **Administrador** | Acceso completo a toda la plataforma          |
+| **Gerente**       | Reportes, contratos, actividades, personal    |
+| **Supervisor**    | Actividades y personal asignado a su división |
+| **Personal**      | Solo sus propias actividades                  |
+| **Visualizador**  | Solo lectura en reportes                      |
 
 ### Módulos y Permisos
 
@@ -281,16 +281,16 @@ define('SITENAME', 'Gero Actividades');
 
 ### Tablas Principales
 
-- **usuario** - Usuarios del sistema
-- **roles** - Roles disponibles
-- **permisos** - Permisos del sistema
-- **role_permiso** - Relación roles-permisos
-- **usuario_role** - Relación usuarios-roles
-- **division** - Divisiones organizacionales
-- **personal** - Registros de personal
-- **contratos** - Contratos
-- **alcances** - Alcances de contratos
-- **actividades** - Actividades del sistema
+- **usuario**       - Usuarios del sistema
+- **roles**         - Roles disponibles
+- **permisos**      - Permisos del sistema
+- **role_permiso**  - Relación roles-permisos
+- **usuario_role**  - Relación usuarios-roles
+- **division**      - Divisiones organizacionales
+- **personal**      - Registros de personal
+- **contratos**     - Contratos
+- **alcances**      - Alcances de contratos
+- **actividades**   - Actividades del sistema
 
 ### Diagrama de relaciones
 
