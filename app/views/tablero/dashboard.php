@@ -15,6 +15,8 @@ $chartData = $dashboardMetrics['chart_data'] ?? [
     'priorities' => ['labels' => [], 'time_seconds' => [], 'card_counts' => [], 'colors' => []],
     'assigned' => ['labels' => [], 'time_seconds' => [], 'card_counts' => [], 'completion_percent' => []]
 ];
+$canCalendarioGlobal = tienePermiso('tablero.calendario');
+$canReporteriaGlobal = tienePermiso('tablero.reporteria');
 $formatSegundos = function($total){
     $sec = max(0, (int)$total);
     $hh = str_pad((string)floor($sec / 3600), 2, '0', STR_PAD_LEFT);
@@ -47,16 +49,20 @@ $formatPercent = function($value){
                     <i class="bi bi-graph-up-arrow"></i> Dashboard
                 </a>
             </li>
+            <?php if($canCalendarioGlobal): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo URLROOT; ?>/tablero/calendario<?php echo $tableroParam; ?>">
                     <i class="bi bi-calendar3"></i> Calendario
                 </a>
             </li>
+            <?php endif; ?>
+            <?php if($canReporteriaGlobal): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo URLROOT; ?>/tablero/reporteria<?php echo $tableroParam; ?>">
                     <i class="bi bi-table"></i> Reporte
                 </a>
             </li>
+            <?php endif; ?>
         </ul>
     </div>
 </div>

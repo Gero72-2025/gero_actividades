@@ -5,6 +5,8 @@ $idTableroActual = $tableroActual ? (int)$tableroActual->Id_tablero : 0;
 $reporteAgrupado = $data['reporteAgrupado'] ?? [];
 $resumenTiempoUsuarios = $data['resumenTiempoUsuarios'] ?? [];
 $tableroParam = $idTableroActual > 0 ? ('?tablero_id=' . $idTableroActual) : '';
+$canDashboardGlobal = tienePermiso('tablero.dashboard');
+$canCalendarioGlobal = tienePermiso('tablero.calendario');
 $formatSegundos = function($total){
     $sec = max(0, (int)$total);
     $hh = str_pad((string)floor($sec / 3600), 2, '0', STR_PAD_LEFT);
@@ -29,16 +31,20 @@ $formatSegundos = function($total){
                     <i class="bi bi-kanban"></i> Tablero
                 </a>
             </li>
+            <?php if($canDashboardGlobal): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo URLROOT; ?>/tablero/dashboard<?php echo $tableroParam; ?>">
                     <i class="bi bi-graph-up-arrow"></i> Dashboard
                 </a>
             </li>
+            <?php endif; ?>
+            <?php if($canCalendarioGlobal): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo URLROOT; ?>/tablero/calendario<?php echo $tableroParam; ?>">
                     <i class="bi bi-calendar3"></i> Calendario
                 </a>
             </li>
+            <?php endif; ?>
             <li class="nav-item">
                 <a class="nav-link active" href="<?php echo URLROOT; ?>/tablero/reporteria<?php echo $tableroParam; ?>">
                     <i class="bi bi-table"></i> Reporte

@@ -32,7 +32,14 @@ class Tablero extends Controller {
                 'actividadesAgrupadas' => [],
                 'alcances' => [],
                 'alcancesAgrupados' => [],
-                'permisosTablero' => $this->getEmptyBoardPermissions()
+                'permisosTablero' => $this->getEmptyBoardPermissions(),
+                'tableroDeleteSummary' => (object)[
+                    'total_columnas' => 0,
+                    'total_tarjetas' => 0,
+                    'total_listas' => 0,
+                    'total_tareas' => 0
+                ],
+                'canDeleteTablero' => false
             ];
             return $this->view('tablero/index', $data);
         }
@@ -61,6 +68,9 @@ class Tablero extends Controller {
             flashMessage('tablero_error', 'No tiene permiso para ver este tablero.', 'danger');
             redirect('tablero/index');
         }
+
+        $tableroDeleteSummary = $this->tableroModel->getTableroDeletionSummary($id_tablero);
+        $canDeleteTablero = $this->tableroModel->canDeleteTablero($id_tablero);
 
         $columnas = $this->tableroModel->getColumnasActivasByTablero($id_tablero);
         $tarjetas = $this->tableroModel->getTarjetasActivasByTablero($id_tablero);
@@ -182,14 +192,16 @@ class Tablero extends Controller {
             'actividadesAgrupadas' => array_values($actividadesAgrupadas),
             'alcances' => $alcances,
             'alcancesAgrupados' => array_values($alcancesAgrupados),
-            'permisosTablero' => $permisosTablero
+            'permisosTablero' => $permisosTablero,
+            'tableroDeleteSummary' => $tableroDeleteSummary,
+            'canDeleteTablero' => $canDeleteTablero
         ];
 
         $this->view('tablero/index', $data);
     }
 
     public function reporteria(){
-        $this->verificarAcceso('tablero', 'ver');
+        $this->verificarAcceso('tablero', 'reporteria');
 
         $id_usuario = (int)$_SESSION['user_id'];
         $context = $this->resolveReporteriaContext($id_usuario);
@@ -224,7 +236,7 @@ class Tablero extends Controller {
     }
 
     public function dashboard(){
-        $this->verificarAcceso('tablero', 'ver');
+        $this->verificarAcceso('tablero', 'dashboard');
 
         $id_usuario = (int)$_SESSION['user_id'];
         $context = $this->resolveReporteriaContext($id_usuario);
@@ -257,7 +269,7 @@ class Tablero extends Controller {
     }
 
     public function calendario(){
-        $this->verificarAcceso('tablero', 'ver');
+        $this->verificarAcceso('tablero', 'calendario');
 
         $id_usuario = (int)$_SESSION['user_id'];
         $context = $this->resolveReporteriaContext($id_usuario);
@@ -290,7 +302,7 @@ class Tablero extends Controller {
     }
 
     public function export_reporteria(){
-        $this->verificarAcceso('tablero', 'ver');
+        $this->verificarAcceso('tablero', 'reporteria');
 
         if($_SERVER['REQUEST_METHOD'] !== 'GET'){
             redirect('tablero/reporteria');
@@ -1128,9 +1140,14 @@ class Tablero extends Controller {
             'tablero_editar' => false,
             'tablero_eliminar' => false,
             'tablero_asignar' => false,
+            'columna_crear' => false,
+            'columna_editar' => false,
+            'columna_eliminar' => false,
+            'columna_ordenar' => false,
             'tarjeta_ver' => false,
             'tarjeta_crear' => false,
             'tarjeta_editar' => false,
+            'tarjeta_mover' => false,
             'tarjeta_eliminar' => false,
             'tarjeta_asignar' => false,
             'lista_crear' => false,
@@ -1153,6 +1170,10 @@ class Tablero extends Controller {
         $tableroEditar = (int)($permObj->Permiso_tablero_editar ?? $permObj->Permiso_editar ?? 0) === 1;
         $tableroEliminar = (int)($permObj->Permiso_tablero_eliminar ?? $permObj->Permiso_eliminar ?? 0) === 1;
         $tableroAsignar = (int)($permObj->Permiso_tablero_asignar ?? $permObj->Permiso_editar ?? 0) === 1;
+        $columnaCrear = (int)($permObj->Permiso_columna_crear ?? $permObj->Permiso_tablero_editar ?? $permObj->Permiso_editar ?? 0) === 1;
+        $columnaEditar = (int)($permObj->Permiso_columna_editar ?? $permObj->Permiso_tablero_editar ?? $permObj->Permiso_editar ?? 0) === 1;
+        $columnaEliminar = (int)($permObj->Permiso_columna_eliminar ?? $permObj->Permiso_tablero_eliminar ?? $permObj->Permiso_eliminar ?? 0) === 1;
+        $columnaOrdenar = (int)($permObj->Permiso_columna_ordenar ?? $permObj->Permiso_tablero_editar ?? $permObj->Permiso_editar ?? 0) === 1;
 
         return [
             'tablero_ver' => $tableroVer,
@@ -1160,9 +1181,14 @@ class Tablero extends Controller {
             'tablero_editar' => $tableroEditar,
             'tablero_eliminar' => $tableroEliminar,
             'tablero_asignar' => $tableroAsignar,
+            'columna_crear' => $columnaCrear,
+            'columna_editar' => $columnaEditar,
+            'columna_eliminar' => $columnaEliminar,
+            'columna_ordenar' => $columnaOrdenar,
             'tarjeta_ver' => (int)($permObj->Permiso_tarjeta_ver ?? $permObj->Permiso_ver ?? 0) === 1,
             'tarjeta_crear' => (int)($permObj->Permiso_tarjeta_crear ?? $permObj->Permiso_crear ?? 0) === 1,
             'tarjeta_editar' => (int)($permObj->Permiso_tarjeta_editar ?? $permObj->Permiso_editar ?? 0) === 1,
+            'tarjeta_mover' => (int)($permObj->Permiso_tarjeta_mover ?? $permObj->Permiso_tarjeta_editar ?? $permObj->Permiso_editar ?? 0) === 1,
             'tarjeta_eliminar' => (int)($permObj->Permiso_tarjeta_eliminar ?? $permObj->Permiso_eliminar ?? 0) === 1,
             'tarjeta_asignar' => (int)($permObj->Permiso_tarjeta_asignar ?? $permObj->Permiso_editar ?? 0) === 1,
             'lista_crear' => (int)($permObj->Permiso_lista_crear ?? $permObj->Permiso_editar ?? 0) === 1,
@@ -1226,7 +1252,7 @@ class Tablero extends Controller {
     }
 
     public function create_tablero(){
-        $this->verificarAcceso('tablero', 'crear');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             redirect('tablero/index');
@@ -1265,9 +1291,14 @@ class Tablero extends Controller {
             'permiso_tablero_editar' => 1,
             'permiso_tablero_eliminar' => 1,
             'permiso_tablero_asignar' => 1,
+            'permiso_columna_crear' => 1,
+            'permiso_columna_editar' => 1,
+            'permiso_columna_eliminar' => 1,
+            'permiso_columna_ordenar' => 1,
             'permiso_tarjeta_ver' => 1,
             'permiso_tarjeta_crear' => 1,
             'permiso_tarjeta_editar' => 1,
+            'permiso_tarjeta_mover' => 1,
             'permiso_tarjeta_eliminar' => 1,
             'permiso_tarjeta_asignar' => 1,
             'permiso_lista_crear' => 1,
@@ -1316,8 +1347,102 @@ class Tablero extends Controller {
         redirect('tablero/index?tablero_id=' . $id_tablero);
     }
 
+    public function update_tablero($id = null){
+        $this->verificarAcceso('tablero', 'ver');
+
+        if($_SERVER['REQUEST_METHOD'] !== 'POST' || !is_numeric($id)){
+            redirect('tablero/index');
+        }
+
+        $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
+
+        $id_tablero = (int)$id;
+        $id_tablero_post = (int)($_POST['id_tablero'] ?? 0);
+        $nombre = trim($_POST['nombre'] ?? '');
+        $descripcion = trim($_POST['descripcion'] ?? '');
+
+        if($id_tablero <= 0 || $id_tablero_post !== $id_tablero){
+            flashMessage('tablero_error', 'Solicitud invalida para editar tablero.', 'danger');
+            redirect('tablero/index');
+        }
+
+        if(!$this->hasBoardPermission($id_tablero, 'tablero_editar')){
+            flashMessage('tablero_error', 'No tiene permisos para editar este tablero.', 'danger');
+            redirect('tablero/index?tablero_id=' . $id_tablero);
+        }
+
+        if($nombre === ''){
+            flashMessage('tablero_error', 'El nombre del tablero es obligatorio.', 'danger');
+            redirect('tablero/index?tablero_id=' . $id_tablero);
+        }
+
+        $tablero = $this->tableroModel->getTableroById($id_tablero);
+        if(!$tablero){
+            flashMessage('tablero_error', 'El tablero no existe o ya no esta activo.', 'danger');
+            redirect('tablero/index');
+        }
+
+        if($this->tableroModel->updateTablero($id_tablero, $nombre, $descripcion)){
+            flashMessage('tablero_message', 'Tablero actualizado correctamente.', 'success');
+        } else {
+            flashMessage('tablero_error', 'No se pudo actualizar el tablero.', 'danger');
+        }
+
+        redirect('tablero/index?tablero_id=' . $id_tablero);
+    }
+
+    public function delete_tablero($id = null){
+        $this->verificarAcceso('tablero', 'ver');
+
+        if($_SERVER['REQUEST_METHOD'] !== 'POST' || !is_numeric($id)){
+            redirect('tablero/index');
+        }
+
+        $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
+
+        $id_tablero = (int)$id;
+        $id_tablero_post = (int)($_POST['id_tablero'] ?? 0);
+
+        if($id_tablero <= 0 || $id_tablero_post !== $id_tablero){
+            flashMessage('tablero_error', 'Solicitud invalida para eliminar tablero.', 'danger');
+            redirect('tablero/index');
+        }
+
+        if(!$this->hasBoardPermission($id_tablero, 'tablero_eliminar')){
+            flashMessage('tablero_error', 'No tiene permisos para eliminar este tablero.', 'danger');
+            redirect('tablero/index?tablero_id=' . $id_tablero);
+        }
+
+        $tablero = $this->tableroModel->getTableroById($id_tablero);
+        if(!$tablero){
+            flashMessage('tablero_error', 'El tablero no existe o ya no esta activo.', 'danger');
+            redirect('tablero/index');
+        }
+
+        $summary = $this->tableroModel->getTableroDeletionSummary($id_tablero);
+        if(!$this->tableroModel->canDeleteTablero($id_tablero)){
+            flashMessage(
+                'tablero_error',
+                'No se puede eliminar el tablero. Debe estar vacio (Columnas: ' . (int)$summary->total_columnas .
+                ', Tarjetas: ' . (int)$summary->total_tarjetas .
+                ', Listas: ' . (int)$summary->total_listas .
+                ', Tareas: ' . (int)$summary->total_tareas . ').',
+                'danger'
+            );
+            redirect('tablero/index?tablero_id=' . $id_tablero);
+        }
+
+        if($this->tableroModel->deleteTablero($id_tablero)){
+            flashMessage('tablero_message', 'Tablero eliminado correctamente.', 'success');
+            redirect('tablero/index');
+        }
+
+        flashMessage('tablero_error', 'No se pudo eliminar el tablero.', 'danger');
+        redirect('tablero/index?tablero_id=' . $id_tablero);
+    }
+
     public function assign_usuario_tablero(){
-        $this->verificarAcceso('tablero', 'asignar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             redirect('tablero/index');
@@ -1332,10 +1457,15 @@ class Tablero extends Controller {
         $permiso_tablero_editar = !empty($_POST['permiso_tablero_editar']) ? 1 : 0;
         $permiso_tablero_eliminar = !empty($_POST['permiso_tablero_eliminar']) ? 1 : 0;
         $permiso_tablero_asignar = !empty($_POST['permiso_tablero_asignar']) ? 1 : 0;
+        $permiso_columna_crear = !empty($_POST['permiso_columna_crear']) ? 1 : 0;
+        $permiso_columna_editar = !empty($_POST['permiso_columna_editar']) ? 1 : 0;
+        $permiso_columna_eliminar = !empty($_POST['permiso_columna_eliminar']) ? 1 : 0;
+        $permiso_columna_ordenar = !empty($_POST['permiso_columna_ordenar']) ? 1 : 0;
 
         $permiso_tarjeta_ver = !empty($_POST['permiso_tarjeta_ver']) ? 1 : 0;
         $permiso_tarjeta_crear = !empty($_POST['permiso_tarjeta_crear']) ? 1 : 0;
         $permiso_tarjeta_editar = !empty($_POST['permiso_tarjeta_editar']) ? 1 : 0;
+        $permiso_tarjeta_mover = !empty($_POST['permiso_tarjeta_mover']) ? 1 : 0;
         $permiso_tarjeta_eliminar = !empty($_POST['permiso_tarjeta_eliminar']) ? 1 : 0;
         $permiso_tarjeta_asignar = !empty($_POST['permiso_tarjeta_asignar']) ? 1 : 0;
 
@@ -1370,9 +1500,14 @@ class Tablero extends Controller {
             'permiso_tablero_editar' => $permiso_tablero_editar,
             'permiso_tablero_eliminar' => $permiso_tablero_eliminar,
             'permiso_tablero_asignar' => $permiso_tablero_asignar,
+            'permiso_columna_crear' => $permiso_columna_crear,
+            'permiso_columna_editar' => $permiso_columna_editar,
+            'permiso_columna_eliminar' => $permiso_columna_eliminar,
+            'permiso_columna_ordenar' => $permiso_columna_ordenar,
             'permiso_tarjeta_ver' => $permiso_tarjeta_ver,
             'permiso_tarjeta_crear' => $permiso_tarjeta_crear,
             'permiso_tarjeta_editar' => $permiso_tarjeta_editar,
+            'permiso_tarjeta_mover' => $permiso_tarjeta_mover,
             'permiso_tarjeta_eliminar' => $permiso_tarjeta_eliminar,
             'permiso_tarjeta_asignar' => $permiso_tarjeta_asignar,
             'permiso_lista_crear' => $permiso_lista_crear,
@@ -1394,7 +1529,7 @@ class Tablero extends Controller {
     }
 
     public function get_usuario_permiso_tablero(){
-        $this->verificarAcceso('tablero', 'asignar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'GET'){
             return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
@@ -1427,8 +1562,46 @@ class Tablero extends Controller {
         ]);
     }
 
+    public function get_tablero_sync_status(){
+        $this->verificarAcceso('tablero', 'ver');
+
+        if($_SERVER['REQUEST_METHOD'] !== 'GET'){
+            return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
+        }
+
+        $id_tablero = isset($_GET['id_tablero']) ? (int)$_GET['id_tablero'] : 0;
+        $since_historial = isset($_GET['since_historial']) ? (int)$_GET['since_historial'] : 0;
+        if($since_historial < 0){
+            $since_historial = 0;
+        }
+
+        if($id_tablero <= 0){
+            return $this->jsonResponse(['success' => false, 'error' => 'Parametros invalidos'], 400);
+        }
+
+        if(!$this->hasBoardPermission($id_tablero, 'tablero_ver')){
+            return $this->jsonResponse(['success' => false, 'error' => 'Sin permiso en este tablero'], 403);
+        }
+
+        $latestHistorialId = (int)$this->tableroModel->getLatestHistorialIdByTablero($id_tablero);
+        $hasChanges = false;
+        if($since_historial > 0 && $latestHistorialId > $since_historial){
+            $hasChanges = $this->tableroModel->hasHistorialChangesByOtherUser(
+                $id_tablero,
+                $since_historial,
+                (int)($_SESSION['user_id'] ?? 0)
+            );
+        }
+
+        return $this->jsonResponse([
+            'success' => true,
+            'latest_historial_id' => $latestHistorialId,
+            'has_changes' => (bool)$hasChanges
+        ]);
+    }
+
     public function create_columna(){
-        $this->verificarAcceso('tablero', 'columnas');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             redirect('tablero/index');
@@ -1440,7 +1613,7 @@ class Tablero extends Controller {
         $nombre = trim($_POST['nombre'] ?? '');
         $color = trim($_POST['color'] ?? '#0d6efd');
 
-        if(!$this->hasBoardPermission($id_tablero, 'tablero_editar')){
+        if(!$this->hasBoardPermission($id_tablero, 'columna_crear')){
             flashMessage('tablero_error', 'No tiene permisos para crear columnas en este tablero.', 'danger');
             redirect('tablero/index?tablero_id=' . $id_tablero);
         }
@@ -1467,7 +1640,7 @@ class Tablero extends Controller {
     }
 
     public function create_etiqueta(){
-        $this->verificarAcceso('tablero', 'editar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             redirect('tablero/index');
@@ -1500,7 +1673,7 @@ class Tablero extends Controller {
     }
 
     public function update_etiqueta($id = null){
-        $this->verificarAcceso('tablero', 'editar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST' || !is_numeric($id)){
             redirect('tablero/index');
@@ -1535,7 +1708,7 @@ class Tablero extends Controller {
     }
 
     public function delete_etiqueta($id = null){
-        $this->verificarAcceso('tablero', 'editar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST' || !is_numeric($id)){
             redirect('tablero/index');
@@ -1573,7 +1746,7 @@ class Tablero extends Controller {
     }
 
     public function create_prioridad(){
-        $this->verificarAcceso('tablero', 'editar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             redirect('tablero/index');
@@ -1613,7 +1786,7 @@ class Tablero extends Controller {
     }
 
     public function update_prioridad($id = null){
-        $this->verificarAcceso('tablero', 'editar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST' || !is_numeric($id)){
             redirect('tablero/index');
@@ -1660,7 +1833,7 @@ class Tablero extends Controller {
     }
 
     public function delete_prioridad($id = null){
-        $this->verificarAcceso('tablero', 'editar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST' || !is_numeric($id)){
             redirect('tablero/index');
@@ -1698,7 +1871,7 @@ class Tablero extends Controller {
     }
 
     public function create_tarjeta(){
-        $this->verificarAcceso('tablero', 'crear');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             redirect('tablero/index');
@@ -1759,7 +1932,7 @@ class Tablero extends Controller {
         }
 
         if($id_usuario_asignado !== null){
-            $this->verificarAcceso('tablero', 'asignar');
+            $this->verificarAcceso('tablero', 'ver');
 
             if(!$this->hasBoardPermission($id_tablero, 'tarjeta_asignar')){
                 flashMessage('tablero_error', 'No tiene permisos para asignar usuarios a tarjetas en este tablero.', 'danger');
@@ -1871,7 +2044,7 @@ class Tablero extends Controller {
     }
 
     public function update_tarjeta($id = null){
-        $this->verificarAcceso('tablero', 'editar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST' || !is_numeric($id)){
             redirect('tablero/index');
@@ -1939,7 +2112,7 @@ class Tablero extends Controller {
             }
 
             if($id_usuario_asignado !== null){
-                $this->verificarAcceso('tablero', 'asignar');
+                $this->verificarAcceso('tablero', 'ver');
             }
         }
 
@@ -2044,7 +2217,7 @@ class Tablero extends Controller {
     }
 
     public function delete_tarjeta($id = null){
-        $this->verificarAcceso('tablero', 'eliminar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST' || !is_numeric($id)){
             redirect('tablero/index');
@@ -2090,7 +2263,7 @@ class Tablero extends Controller {
     }
 
     public function move_tarjeta(){
-        $this->verificarAcceso('tablero', 'editar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
@@ -2103,7 +2276,7 @@ class Tablero extends Controller {
         $id_columna = isset($payload['id_columna']) ? (int)$payload['id_columna'] : 0;
         $posicion = isset($payload['posicion']) ? (int)$payload['posicion'] : 0;
 
-        if(!$this->hasBoardPermission($id_tablero, 'tarjeta_editar')){
+        if(!$this->hasBoardPermission($id_tablero, 'tarjeta_mover')){
             return $this->jsonResponse(['success' => false, 'error' => 'Sin permiso en este tablero'], 403);
         }
 
@@ -2143,7 +2316,7 @@ class Tablero extends Controller {
     }
 
     public function update_checklist(){
-        $this->verificarAcceso('tablero', 'editar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
@@ -2237,7 +2410,7 @@ class Tablero extends Controller {
     }
 
     public function assign_personal(){
-        $this->verificarAcceso('tablero', 'asignar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
@@ -2287,7 +2460,7 @@ class Tablero extends Controller {
     }
 
     public function start_timer(){
-        $this->verificarAcceso('tablero', 'tiempo');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
@@ -2333,7 +2506,7 @@ class Tablero extends Controller {
     }
 
     public function stop_timer(){
-        $this->verificarAcceso('tablero', 'tiempo');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
@@ -2440,7 +2613,7 @@ class Tablero extends Controller {
     }
 
     public function create_tarjeta_tarea(){
-        $this->verificarAcceso('tablero', 'editar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
@@ -2480,7 +2653,7 @@ class Tablero extends Controller {
     }
 
     public function create_tarjeta_tarea_detalle(){
-        $this->verificarAcceso('tablero', 'editar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
@@ -2540,7 +2713,7 @@ class Tablero extends Controller {
     }
 
     public function assign_tarea_detalle_usuario(){
-        $this->verificarAcceso('tablero', 'asignar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
@@ -2603,7 +2776,7 @@ class Tablero extends Controller {
     }
 
     public function update_tarjeta_tarea(){
-        $this->verificarAcceso('tablero', 'editar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
@@ -2649,7 +2822,7 @@ class Tablero extends Controller {
     }
 
     public function update_tarjeta_tarea_detalle(){
-        $this->verificarAcceso('tablero', 'editar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
@@ -2747,7 +2920,7 @@ class Tablero extends Controller {
     }
 
     public function delete_tarjeta_tarea(){
-        $this->verificarAcceso('tablero', 'editar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
@@ -2796,7 +2969,7 @@ class Tablero extends Controller {
     }
 
     public function delete_tarjeta_tarea_detalle(){
-        $this->verificarAcceso('tablero', 'editar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
@@ -2842,7 +3015,7 @@ class Tablero extends Controller {
     }
 
     public function start_tarea_detalle_timer(){
-        $this->verificarAcceso('tablero', 'tiempo');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
@@ -2873,14 +3046,15 @@ class Tablero extends Controller {
 
         $id_usuario_asignado = !empty($detalle->Id_usuario_asignado) ? (int)$detalle->Id_usuario_asignado : null;
         $id_usuario_actual = (int)$_SESSION['user_id'];
-        if($id_usuario_asignado !== null && $id_usuario_asignado !== $id_usuario_actual){
-            $esAdministrador = isAdministradorRol();
-            if(!$esAdministrador){
-                return $this->jsonResponse(['success' => false, 'error' => 'Solo el usuario asignado puede iniciar el cronometro de esta tarea.'], 403);
-            }
+        if($id_usuario_asignado === null){
+            return $this->jsonResponse(['success' => false, 'error' => 'Debe asignar un usuario a la tarea para iniciar el cronometro.'], 403);
         }
 
-        $id_usuario_timer = $id_usuario_asignado !== null ? $id_usuario_asignado : $id_usuario_actual;
+        if($id_usuario_asignado !== $id_usuario_actual){
+            return $this->jsonResponse(['success' => false, 'error' => 'Solo el usuario asignado puede iniciar el cronometro de esta tarea.'], 403);
+        }
+
+        $id_usuario_timer = $id_usuario_asignado;
 
         $timer = $this->tableroModel->startDetalleTimer($id_tarea_detalle, $id_usuario_timer);
         if(!$timer){
@@ -2906,7 +3080,7 @@ class Tablero extends Controller {
     }
 
     public function stop_tarea_detalle_timer(){
-        $this->verificarAcceso('tablero', 'tiempo');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
@@ -2937,14 +3111,15 @@ class Tablero extends Controller {
 
         $id_usuario_asignado = !empty($detalle->Id_usuario_asignado) ? (int)$detalle->Id_usuario_asignado : null;
         $id_usuario_actual = (int)$_SESSION['user_id'];
-        if($id_usuario_asignado !== null && $id_usuario_asignado !== $id_usuario_actual){
-            $esAdministrador = isAdministradorRol();
-            if(!$esAdministrador){
-                return $this->jsonResponse(['success' => false, 'error' => 'Solo el usuario asignado puede detener el cronometro de esta tarea.'], 403);
-            }
+        if($id_usuario_asignado === null){
+            return $this->jsonResponse(['success' => false, 'error' => 'Debe asignar un usuario a la tarea para detener el cronometro.'], 403);
         }
 
-        $id_usuario_timer = $id_usuario_asignado !== null ? $id_usuario_asignado : $id_usuario_actual;
+        if($id_usuario_asignado !== $id_usuario_actual){
+            return $this->jsonResponse(['success' => false, 'error' => 'Solo el usuario asignado puede detener el cronometro de esta tarea.'], 403);
+        }
+
+        $id_usuario_timer = $id_usuario_asignado;
 
         $stopped = $this->tableroModel->stopDetalleTimer($id_tarea_detalle, $id_usuario_timer);
         if(!$stopped){
@@ -2969,7 +3144,7 @@ class Tablero extends Controller {
     }
 
     public function update_tarea_detalle_tiempo_manual(){
-        $this->verificarAcceso('tablero', 'tiempo_editar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
@@ -3006,8 +3181,18 @@ class Tablero extends Controller {
 
         $id_usuario_asignado = !empty($detalle->Id_usuario_asignado) ? (int)$detalle->Id_usuario_asignado : null;
         $id_usuario_actual = (int)$_SESSION['user_id'];
-        if($id_usuario_asignado !== null && $id_usuario_asignado !== $id_usuario_actual && !isAdministradorRol()){
-            return $this->jsonResponse(['success' => false, 'error' => 'Solo el usuario asignado puede editar manualmente este cronometro.'], 403);
+        if($id_usuario_asignado !== null && $id_usuario_asignado !== $id_usuario_actual){
+            $tienetiempoEnDetalle = false;
+            $tiemposExistentes = $this->tableroModel->getTiempoDetallePorUsuario($id_tarea_detalle);
+            foreach($tiemposExistentes as $_t){
+                if((int)($_t->Id_usuario ?? 0) === $id_usuario_actual){
+                    $tienetiempoEnDetalle = true;
+                    break;
+                }
+            }
+            if(!$tienetiempoEnDetalle && !isSupervisorOrJefeRol() && !isAdministradorRol()){
+                return $this->jsonResponse(['success' => false, 'error' => 'Sin permiso para editar manualmente el cronometro de otro usuario.'], 403);
+            }
         }
 
         if($this->tableroModel->detalleTieneTimerEnCurso($id_tarea_detalle)){
@@ -3044,7 +3229,7 @@ class Tablero extends Controller {
     }
 
     public function update_tarea_detalle_tiempo_manual_usuarios(){
-        $this->verificarAcceso('tablero', 'tiempo_editar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST'){
             return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
@@ -3080,8 +3265,18 @@ class Tablero extends Controller {
 
         $id_usuario_asignado = !empty($detalle->Id_usuario_asignado) ? (int)$detalle->Id_usuario_asignado : null;
         $id_usuario_actual = (int)$_SESSION['user_id'];
-        if($id_usuario_asignado !== null && $id_usuario_asignado !== $id_usuario_actual && !isAdministradorRol()){
-            return $this->jsonResponse(['success' => false, 'error' => 'Solo el usuario asignado puede editar manualmente este cronometro.'], 403);
+        if($id_usuario_asignado !== null && $id_usuario_asignado !== $id_usuario_actual){
+            $tienetiempoEnDetalle = false;
+            $tiemposExistentesCheck = $this->tableroModel->getTiempoDetallePorUsuario($id_tarea_detalle);
+            foreach($tiemposExistentesCheck as $_t){
+                if((int)($_t->Id_usuario ?? 0) === $id_usuario_actual){
+                    $tienetiempoEnDetalle = true;
+                    break;
+                }
+            }
+            if(!$tienetiempoEnDetalle && !isSupervisorOrJefeRol() && !isAdministradorRol()){
+                return $this->jsonResponse(['success' => false, 'error' => 'Sin permiso para editar manualmente el cronometro de otro usuario.'], 403);
+            }
         }
 
         if($this->tableroModel->detalleTieneTimerEnCurso($id_tarea_detalle)){
@@ -3159,7 +3354,7 @@ class Tablero extends Controller {
     }
 
     public function update_columna($id = null){
-        $this->verificarAcceso('tablero', 'columnas');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST' || !is_numeric($id)){
             redirect('tablero/index');
@@ -3171,7 +3366,7 @@ class Tablero extends Controller {
         $nombre = trim($_POST['nombre'] ?? '');
         $color  = trim($_POST['color']  ?? '#0d6efd');
 
-        if(!$this->hasBoardPermission($id_tablero, 'tablero_editar')){
+        if(!$this->hasBoardPermission($id_tablero, 'columna_editar')){
             flashMessage('tablero_error', 'No tiene permisos para editar columnas de este tablero.', 'danger');
             redirect('tablero/index?tablero_id=' . $id_tablero);
         }
@@ -3197,7 +3392,7 @@ class Tablero extends Controller {
     }
 
     public function delete_columna($id = null){
-        $this->verificarAcceso('tablero', 'columnas_eliminar');
+        $this->verificarAcceso('tablero', 'ver');
 
         if($_SERVER['REQUEST_METHOD'] !== 'POST' || !is_numeric($id)){
             redirect('tablero/index');
@@ -3206,7 +3401,7 @@ class Tablero extends Controller {
         $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
         $id_tablero = (int)($_POST['id_tablero'] ?? 0);
 
-        if(!$this->hasBoardPermission($id_tablero, 'tablero_eliminar')){
+        if(!$this->hasBoardPermission($id_tablero, 'columna_eliminar')){
             flashMessage('tablero_error', 'No tiene permisos para eliminar columnas de este tablero.', 'danger');
             redirect('tablero/index?tablero_id=' . $id_tablero);
         }
@@ -3227,6 +3422,47 @@ class Tablero extends Controller {
             flashMessage('tablero_message', 'Columna eliminada correctamente.', 'success');
         } else {
             flashMessage('tablero_error', 'No se pudo eliminar la columna.', 'danger');
+        }
+
+        redirect('tablero/index?tablero_id=' . $id_tablero);
+    }
+
+    public function reorder_columnas(){
+        $this->verificarAcceso('tablero', 'ver');
+
+        if($_SERVER['REQUEST_METHOD'] !== 'POST'){
+            redirect('tablero/index');
+        }
+
+        $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
+
+        $id_tablero = (int)($_POST['id_tablero'] ?? 0);
+        $rawOrden = trim((string)($_POST['orden_columnas'] ?? ''));
+
+        if(!$this->hasBoardPermission($id_tablero, 'columna_ordenar')){
+            flashMessage('tablero_error', 'No tiene permisos para ordenar columnas en este tablero.', 'danger');
+            redirect('tablero/index?tablero_id=' . $id_tablero);
+        }
+
+        if($id_tablero <= 0 || $rawOrden === ''){
+            flashMessage('tablero_error', 'Datos invalidos para ordenar columnas.', 'danger');
+            redirect('tablero/index?tablero_id=' . $id_tablero);
+        }
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', explode(',', $rawOrden)), function($v){
+            return $v > 0;
+        })));
+
+        if(empty($ids)){
+            flashMessage('tablero_error', 'No se recibio un orden valido de columnas.', 'danger');
+            redirect('tablero/index?tablero_id=' . $id_tablero);
+        }
+
+        $ok = $this->tableroModel->reorderColumnas($id_tablero, $ids);
+        if($ok){
+            flashMessage('tablero_message', 'Orden de columnas actualizado correctamente.', 'success');
+        } else {
+            flashMessage('tablero_error', 'No se pudo actualizar el orden de columnas.', 'danger');
         }
 
         redirect('tablero/index?tablero_id=' . $id_tablero);
@@ -3404,3 +3640,4 @@ class Tablero extends Controller {
         exit;
     }
 }
+

@@ -4,6 +4,8 @@ $tableroActual = $data['tableroActual'] ?? null;
 $idTableroActual = $tableroActual ? (int)$tableroActual->Id_tablero : 0;
 $tableroParam = $idTableroActual > 0 ? ('?tablero_id=' . $idTableroActual) : '';
 $calendarEvents = $data['calendarEvents'] ?? [];
+$canDashboardGlobal = tienePermiso('tablero.dashboard');
+$canReporteriaGlobal = tienePermiso('tablero.reporteria');
 ?>
 
 <div class="mb-3">
@@ -21,21 +23,25 @@ $calendarEvents = $data['calendarEvents'] ?? [];
                     <i class="bi bi-kanban"></i> Tablero
                 </a>
             </li>
+            <?php if($canDashboardGlobal): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo URLROOT; ?>/tablero/dashboard<?php echo $tableroParam; ?>">
                     <i class="bi bi-graph-up-arrow"></i> Dashboard
                 </a>
             </li>
+            <?php endif; ?>
             <li class="nav-item">
                 <a class="nav-link active" href="<?php echo URLROOT; ?>/tablero/calendario<?php echo $tableroParam; ?>">
                     <i class="bi bi-calendar3"></i> Calendario
                 </a>
             </li>
+            <?php if($canReporteriaGlobal): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo URLROOT; ?>/tablero/reporteria<?php echo $tableroParam; ?>">
                     <i class="bi bi-table"></i> Reporte
                 </a>
             </li>
+            <?php endif; ?>
         </ul>
     </div>
 </div>

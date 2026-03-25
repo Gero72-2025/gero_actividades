@@ -76,6 +76,35 @@ function isAdministradorRol(){
     return false;
 }
 
+function isSupervisorOrJefeRol(){
+    if(!isLoggedIn()) return false;
+
+    static $isSupervisorOrJefeCache = null;
+    if($isSupervisorOrJefeCache !== null){
+        return $isSupervisorOrJefeCache;
+    }
+
+    require_once APPROOT . '/models/RoleModel.php';
+    $roleModel = new RoleModel();
+    $userRoles = $roleModel->getRolesByUser($_SESSION['user_id']);
+
+    if(!$userRoles){
+        $isSupervisorOrJefeCache = false;
+        return false;
+    }
+
+    foreach($userRoles as $role){
+        $roleName = strtolower(trim((string)($role->Nombre ?? '')));
+        if(strpos($roleName, 'supervisor') !== false || strpos($roleName, 'jefe') !== false || strpos($roleName, 'gerente') !== false){
+            $isSupervisorOrJefeCache = true;
+            return true;
+        }
+    }
+
+    $isSupervisorOrJefeCache = false;
+    return false;
+}
+
 // Variable estática para cachear la instancia de PermisoModel
 static $permisoModelCache = null;
 
