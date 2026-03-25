@@ -4,6 +4,13 @@ $tableroActual = $data['tableroActual'] ?? null;
 $idTableroActual = $tableroActual ? (int)$tableroActual->Id_tablero : 0;
 $etiquetasTablero = $data['etiquetas'] ?? [];
 $prioridadesTablero = $data['prioridades'] ?? [];
+$tableroDeleteSummary = $data['tableroDeleteSummary'] ?? (object)[
+    'total_columnas' => 0,
+    'total_tarjetas' => 0,
+    'total_listas' => 0,
+    'total_tareas' => 0
+];
+$canDeleteTableroData = !empty($data['canDeleteTablero']);
 $usuariosAsignadosById = [];
 if(!empty($data['usuariosAsignados'])){
     foreach($data['usuariosAsignados'] as $ua){
@@ -13,9 +20,14 @@ if(!empty($data['usuariosAsignados'])){
             'tablero_editar' => (int)($ua->Permiso_tablero_editar ?? 0) === 1,
             'tablero_eliminar' => (int)($ua->Permiso_tablero_eliminar ?? 0) === 1,
             'tablero_asignar' => (int)($ua->Permiso_tablero_asignar ?? 0) === 1,
+            'columna_crear' => (int)($ua->Permiso_columna_crear ?? 0) === 1,
+            'columna_editar' => (int)($ua->Permiso_columna_editar ?? 0) === 1,
+            'columna_eliminar' => (int)($ua->Permiso_columna_eliminar ?? 0) === 1,
+            'columna_ordenar' => (int)($ua->Permiso_columna_ordenar ?? 0) === 1,
             'tarjeta_ver' => (int)($ua->Permiso_tarjeta_ver ?? 0) === 1,
             'tarjeta_crear' => (int)($ua->Permiso_tarjeta_crear ?? 0) === 1,
             'tarjeta_editar' => (int)($ua->Permiso_tarjeta_editar ?? 0) === 1,
+            'tarjeta_mover' => (int)($ua->Permiso_tarjeta_mover ?? $ua->Permiso_tarjeta_editar ?? 0) === 1,
             'tarjeta_eliminar' => (int)($ua->Permiso_tarjeta_eliminar ?? 0) === 1,
             'tarjeta_asignar' => (int)($ua->Permiso_tarjeta_asignar ?? 0) === 1,
             'lista_crear' => (int)($ua->Permiso_lista_crear ?? 0) === 1,
@@ -39,9 +51,14 @@ $permTablero = $data['permisosTablero'] ?? [
     'tablero_editar' => false,
     'tablero_eliminar' => false,
     'tablero_asignar' => false,
+    'columna_crear' => false,
+    'columna_editar' => false,
+    'columna_eliminar' => false,
+    'columna_ordenar' => false,
     'tarjeta_ver' => false,
     'tarjeta_crear' => false,
     'tarjeta_editar' => false,
+    'tarjeta_mover' => false,
     'tarjeta_eliminar' => false,
     'tarjeta_asignar' => false,
     'lista_crear' => false,
@@ -53,34 +70,33 @@ $permTablero = $data['permisosTablero'] ?? [
     'tarea_tiempo_editar' => false
 ];
 
-$canCreateBoardGlobal = tienePermiso('tablero.crear');
-$canAssignGlobal = tienePermiso('tablero.asignar');
-$canCreateColumnGlobal = tienePermiso('tablero.columnas');
-$canDeleteColumnGlobal = tienePermiso('tablero.columnas_eliminar');
-$canTrackTimeGlobal = tienePermiso('tablero.tiempo');
-$canEditTimeGlobal = tienePermiso('tablero.tiempo_editar');
-$canEditGlobal = tienePermiso('tablero.editar');
-$canDeleteCardGlobal = tienePermiso('tablero.eliminar');
+$canDashboardGlobal = tienePermiso('tablero.dashboard');
+$canCalendarioGlobal = tienePermiso('tablero.calendario');
+$canReporteriaGlobal = tienePermiso('tablero.reporteria');
 
-$canEditBoard = $canEditGlobal && !empty($permTablero['tablero_editar']);
-$canAssignBoard = $canAssignGlobal && !empty($permTablero['tablero_asignar']);
-$canCreateCard = $canCreateBoardGlobal && !empty($permTablero['tarjeta_crear']);
-$canEditCard = $canEditGlobal && !empty($permTablero['tarjeta_editar']);
+$canEditBoard = !empty($permTablero['tablero_editar']);
+$canAssignBoard = !empty($permTablero['tablero_asignar']);
+$canCreateCard = !empty($permTablero['tarjeta_crear']);
+$canEditCard = !empty($permTablero['tarjeta_editar']);
+$canMoveCard = !empty($permTablero['tarjeta_mover']);
 $canMarkDone = !empty($permTablero['tablero_ver']);
-$canAssign = $canAssignGlobal && !empty($permTablero['tarjeta_asignar']);
-$canTrackTime = $canTrackTimeGlobal && !empty($permTablero['tablero_ver']);
-$canEditTime = $canEditTimeGlobal && !empty($permTablero['tarea_tiempo_editar']);
-$canCreateList = $canEditGlobal && !empty($permTablero['lista_crear']);
-$canEditList = $canEditGlobal && !empty($permTablero['lista_editar']);
-$canDeleteList = $canDeleteCardGlobal && !empty($permTablero['lista_eliminar']);
-$canCreateTask = $canEditGlobal && !empty($permTablero['tarea_crear']);
-$canEditTask = $canEditGlobal && !empty($permTablero['tarea_editar']);
-$canDeleteTask = $canDeleteCardGlobal && !empty($permTablero['tarea_eliminar']);
-$canCreateColumn = $canCreateColumnGlobal && !empty($permTablero['tablero_editar']);
-$canEditColumn = $canCreateColumn;
-$canDeleteColumn = $canDeleteColumnGlobal && !empty($permTablero['tablero_eliminar']);
-$canDeleteCard = $canDeleteCardGlobal && !empty($permTablero['tarjeta_eliminar']);
-$canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($permTablero['tablero_crear']));
+$canAssign = !empty($permTablero['tarjeta_asignar']);
+$canTrackTime = !empty($permTablero['tablero_ver']);
+$canEditTime = !empty($permTablero['tarea_tiempo_editar']);
+$canCreateList = !empty($permTablero['lista_crear']);
+$canEditList = !empty($permTablero['lista_editar']);
+$canDeleteList = !empty($permTablero['lista_eliminar']);
+$canCreateTask = !empty($permTablero['tarea_crear']);
+$canEditTask = !empty($permTablero['tarea_editar']);
+$canDeleteTask = !empty($permTablero['tarea_eliminar']);
+$canCreateColumn = !empty($permTablero['columna_crear']);
+$canEditColumn = !empty($permTablero['columna_editar']);
+$canDeleteColumn = !empty($permTablero['columna_eliminar']);
+$canOrderColumn = !empty($permTablero['columna_ordenar']);
+$canDeleteCard = !empty($permTablero['tarjeta_eliminar']);
+$canCreateBoard = !empty($permTablero['tablero_crear']);
+$canDeleteBoard = !empty($permTablero['tablero_eliminar']);
+$canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
 ?>
 
 <div class="mb-3">
@@ -96,21 +112,27 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                     <i class="bi bi-kanban"></i> Tablero
                 </a>
             </li>
+            <?php if($canDashboardGlobal): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo URLROOT; ?>/tablero/dashboard<?php echo $tableroParam; ?>">
                     <i class="bi bi-graph-up-arrow"></i> Dashboard
                 </a>
             </li>
+            <?php endif; ?>
+            <?php if($canCalendarioGlobal): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo URLROOT; ?>/tablero/calendario<?php echo $tableroParam; ?>">
                     <i class="bi bi-calendar3"></i> Calendario
                 </a>
             </li>
+            <?php endif; ?>
+            <?php if($canReporteriaGlobal): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo URLROOT; ?>/tablero/reporteria<?php echo $tableroParam; ?>">
                     <i class="bi bi-table"></i> Reporte
                 </a>
             </li>
+            <?php endif; ?>
         </ul>
     </div>
 </div>
@@ -142,9 +164,21 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                             </button>
                         <?php endif; ?>
 
+                        <?php if($canEditBoard && $idTableroActual > 0): ?>
+                            <button class="btn btn-outline-info" data-toggle="modal" data-target="#modalEditTablero">
+                                <i class="bi bi-pencil-square"></i> Editar Tablero
+                            </button>
+                        <?php endif; ?>
+
                         <?php if($canCreateColumn && $idTableroActual > 0): ?>
                             <button class="btn btn-outline-secondary" data-toggle="modal" data-target="#modalCreateColumna">
                                 <i class="bi bi-layout-three-columns"></i> Nueva Columna
+                            </button>
+                        <?php endif; ?>
+
+                        <?php if($canOrderColumn && $idTableroActual > 0): ?>
+                            <button class="btn btn-outline-secondary" data-toggle="modal" data-target="#modalOrdenarColumnas">
+                                <i class="bi bi-arrow-left-right"></i> Ordenar Columnas
                             </button>
                         <?php endif; ?>
 
@@ -234,10 +268,17 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
 <?php endif; ?>
 
 <?php if($idTableroActual > 0): ?>
-<div class="tablero-wrapper pb-2">
-    <div class="d-flex gap-3 tablero-columns" style="overflow-x:auto;">
-        <?php foreach($data['columnas'] as $columna): ?>
-            <div class="card tablero-columna" style="min-width:320px; max-width:320px;">
+<div class="tablero-interactive-shell" id="tableroInteractiveShell">
+    <div class="tablero-scroll-sync tablero-scroll-sync-x tablero-scroll-sync--top js-tablero-scroll-x" aria-label="Barra de desplazamiento horizontal superior">
+        <div class="tablero-scroll-sync-inner-x js-tablero-scroll-x-inner"></div>
+    </div>
+
+    <div class="tablero-content-band">
+        <div class="tablero-wrapper pb-2">
+            <div class="tablero-viewport js-tablero-viewport">
+                <div class="d-flex gap-3 tablero-columns js-tablero-columns">
+                    <?php foreach($data['columnas'] as $columna): ?>
+                        <div class="card tablero-columna">
                 <div class="card-header text-white" style="background: <?php echo htmlspecialchars($columna->Color); ?>;">
                     <div class="d-flex justify-content-between align-items-center gap-1">
                         <div class="d-flex align-items-center gap-1 flex-grow-1 overflow-hidden">
@@ -258,14 +299,20 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                         <div class="d-flex align-items-center gap-1">
                             <?php $tarjetasEnColumna = count($data['tarjetasPorColumna'][$columna->Id_columna] ?? []); ?>
                             <span class="badge bg-light text-dark"><?php echo $tarjetasEnColumna; ?></span>
-                            <?php if($canDeleteColumn && $tarjetasEnColumna === 0): ?>
+                            <?php if($canDeleteColumn): ?>
                                 <button type="button"
-                                    class="btn btn-sm btn-link p-0 lh-1 text-white btn-delete-columna"
-                                    data-toggle="modal"
-                                    data-target="#modalDeleteColumna"
-                                    data-columna-id="<?php echo (int)$columna->Id_columna; ?>"
-                                    data-columna-nombre="<?php echo htmlspecialchars($columna->Nombre, ENT_QUOTES); ?>"
-                                    title="Eliminar columna">
+                                    class="btn btn-sm btn-link p-0 lh-1 text-white btn-delete-columna<?php echo $tarjetasEnColumna > 0 ? ' disabled' : ''; ?>"
+                                    <?php if($tarjetasEnColumna === 0): ?>
+                                        data-toggle="modal"
+                                        data-target="#modalDeleteColumna"
+                                        data-columna-id="<?php echo (int)$columna->Id_columna; ?>"
+                                        data-columna-nombre="<?php echo htmlspecialchars($columna->Nombre, ENT_QUOTES); ?>"
+                                        title="Eliminar columna"
+                                    <?php else: ?>
+                                        aria-disabled="true"
+                                        tabindex="-1"
+                                        title="No se puede eliminar: la columna tiene tarjetas activas"
+                                    <?php endif; ?>>
                                     <i class="bi bi-trash"></i>
                                 </button>
                             <?php endif; ?>
@@ -416,9 +463,20 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                         <small class="text-muted empty-column-msg">Sin tarjetas</small>
                     <?php endif; ?>
                 </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
             </div>
-        <?php endforeach; ?>
+        </div>
     </div>
+
+    <div class="tablero-scroll-sync tablero-scroll-sync-x tablero-scroll-sync--bottom js-tablero-scroll-x" aria-label="Barra de desplazamiento horizontal inferior">
+        <div class="tablero-scroll-sync-inner-x js-tablero-scroll-x-inner"></div>
+    </div>
+
+    <div class="tablero-edge-zone tablero-edge-zone--left" data-autoscroll-dir="left" aria-hidden="true" title="Mantenga el cursor para desplazarse a la izquierda"></div>
+    <div class="tablero-edge-zone tablero-edge-zone--right" data-autoscroll-dir="right" aria-hidden="true" title="Mantenga el cursor para desplazarse a la derecha"></div>
+
 </div>
 <?php endif; ?>
 
@@ -451,6 +509,69 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
 </div>
 <?php endif; ?>
 
+<?php if($canEditBoard && $idTableroActual > 0): ?>
+<div class="modal fade" id="modalEditTablero" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Editar Tablero</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <form action="<?php echo URLROOT; ?>/tablero/update_tablero/<?php echo $idTableroActual; ?>" method="post">
+                <input type="hidden" name="id_tablero" value="<?php echo $idTableroActual; ?>">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre del tablero</label>
+                        <input
+                            type="text"
+                            name="nombre"
+                            class="form-control"
+                            maxlength="150"
+                            value="<?php echo htmlspecialchars($tableroActual->Nombre ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                            required
+                        >
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Descripcion</label>
+                        <textarea name="descripcion" class="form-control" rows="3"><?php echo htmlspecialchars($tableroActual->Descripcion ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
+                    </div>
+
+                    <?php if($canDeleteBoard && !$canDeleteBoardFromModal): ?>
+                        <div class="alert alert-warning small mb-0">
+                            Para habilitar <strong>Eliminar tablero</strong> debe estar totalmente vacio: sin columnas, sin tarjetas, sin listas y sin tareas.
+                            <hr class="my-2">
+                            <div>Columnas activas: <strong><?php echo (int)($tableroDeleteSummary->total_columnas ?? 0); ?></strong></div>
+                            <div>Tarjetas activas: <strong><?php echo (int)($tableroDeleteSummary->total_tarjetas ?? 0); ?></strong></div>
+                            <div>Listas activas: <strong><?php echo (int)($tableroDeleteSummary->total_listas ?? 0); ?></strong></div>
+                            <div>Tareas activas: <strong><?php echo (int)($tableroDeleteSummary->total_tareas ?? 0); ?></strong></div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <div class="modal-footer">
+                    <?php if($canDeleteBoardFromModal): ?>
+                        <button
+                            type="button"
+                            id="btnDeleteTableroModal"
+                            class="btn btn-outline-danger mr-auto"
+                        >
+                            <i class="bi bi-trash"></i> Eliminar tablero
+                        </button>
+                    <?php endif; ?>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-info text-white">Guardar cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php if($canDeleteBoardFromModal): ?>
+<form id="formDeleteTablero" action="<?php echo URLROOT; ?>/tablero/delete_tablero/<?php echo $idTableroActual; ?>" method="post" class="d-none">
+    <input type="hidden" name="id_tablero" value="<?php echo $idTableroActual; ?>">
+</form>
+<?php endif; ?>
+
 <?php if($canCreateColumn && $idTableroActual > 0): ?>
 <div class="modal fade" id="modalCreateColumna" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
@@ -474,6 +595,41 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-success">Crear Columna</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php if($canOrderColumn && $idTableroActual > 0): ?>
+<div class="modal fade" id="modalOrdenarColumnas" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title"><i class="bi bi-arrow-left-right"></i> Ordenar Columnas</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <form action="<?php echo URLROOT; ?>/tablero/reorder_columnas" method="post" id="formReorderColumnas">
+                <input type="hidden" name="id_tablero" value="<?php echo $idTableroActual; ?>">
+                <input type="hidden" name="orden_columnas" id="inputOrdenColumnas" value="">
+                <div class="modal-body">
+                    <div class="alert alert-light border small mb-3">
+                        Arrastre y suelte las columnas para definir el orden de visualizacion del tablero.
+                    </div>
+                    <div id="listaOrdenColumnas" class="list-group">
+                        <?php foreach($data['columnas'] as $columna): ?>
+                            <div class="list-group-item d-flex align-items-center gap-2 reorder-columna-item" data-columna-id="<?php echo (int)$columna->Id_columna; ?>">
+                                <span class="text-muted" style="cursor:grab;"><i class="bi bi-grip-vertical"></i></span>
+                                <span class="badge" style="background: <?php echo htmlspecialchars($columna->Color); ?>; color:#fff; min-width:14px;">&nbsp;</span>
+                                <span class="flex-grow-1"><?php echo htmlspecialchars($columna->Nombre); ?></span>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Guardar orden</button>
                 </div>
             </form>
         </div>
@@ -512,44 +668,92 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                     <div class="border rounded bg-light p-3">
                         <label class="form-label d-block mb-2">Permisos del usuario en este tablero</label>
 
+                        <div class="mb-3 d-none" id="modalGlobalSelectAllWrap">
+                            <label class="mb-0 d-inline-flex align-items-center" style="cursor:pointer;">
+                                <input class="mr-2" type="checkbox" id="modal_perm_select_all_global" value="1">
+                                <span>Seleccionar todos los permisos</span>
+                            </label>
+                        </div>
+
                         <div class="mb-3">
-                            <h6 class="mb-2">Seccion 1: Tablero</h6>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="mb-0">Seccion 1: Tablero</h6>
+                                <label class="mb-0 d-inline-flex align-items-center" style="cursor:pointer;">
+                                    <input class="mr-2 js-select-all-section" type="checkbox" data-section="tablero" value="1">
+                                    <span>Seleccionar todos</span>
+                                </label>
+                            </div>
                             <div class="row">
-                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tablero_ver" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tablero_ver" id="modal_perm_tablero_ver" value="1" checked><span>Ver tablero</span></label></div>
-                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tablero_crear" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tablero_crear" id="modal_perm_tablero_crear" value="1"><span>Crear tablero</span></label></div>
-                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tablero_editar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tablero_editar" id="modal_perm_tablero_editar" value="1"><span>Editar tablero</span></label></div>
-                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tablero_eliminar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tablero_eliminar" id="modal_perm_tablero_eliminar" value="1"><span>Eliminar tablero</span></label></div>
-                                <div class="col-12 col-md-6"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tablero_asignar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tablero_asignar" id="modal_perm_tablero_asignar" value="1"><span>Asignar usuarios a tablero</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tablero_ver" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tablero_ver" id="modal_perm_tablero_ver" data-perm-section="tablero" value="1" checked><span>Ver tablero</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tablero_crear" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tablero_crear" id="modal_perm_tablero_crear" data-perm-section="tablero" value="1"><span>Crear tablero</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tablero_editar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tablero_editar" id="modal_perm_tablero_editar" data-perm-section="tablero" value="1"><span>Editar tablero</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tablero_eliminar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tablero_eliminar" id="modal_perm_tablero_eliminar" data-perm-section="tablero" value="1"><span>Eliminar tablero</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tablero_asignar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tablero_asignar" id="modal_perm_tablero_asignar" data-perm-section="tablero" value="1"><span>Asignar usuarios a tablero</span></label></div>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <h6 class="mb-2">Seccion 2: Tarjetas</h6>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="mb-0">Seccion 2: Columnas</h6>
+                                <label class="mb-0 d-inline-flex align-items-center" style="cursor:pointer;">
+                                    <input class="mr-2 js-select-all-section" type="checkbox" data-section="columna" value="1">
+                                    <span>Seleccionar todos</span>
+                                </label>
+                            </div>
                             <div class="row">
-                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarjeta_ver" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarjeta_ver" id="modal_perm_tarjeta_ver" value="1" checked><span>Ver tarjetas</span></label></div>
-                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarjeta_crear" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarjeta_crear" id="modal_perm_tarjeta_crear" value="1"><span>Crear tarjetas</span></label></div>
-                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarjeta_editar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarjeta_editar" id="modal_perm_tarjeta_editar" value="1"><span>Editar tarjetas</span></label></div>
-                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarjeta_eliminar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarjeta_eliminar" id="modal_perm_tarjeta_eliminar" value="1"><span>Eliminar tarjetas</span></label></div>
-                                <div class="col-12 col-md-6"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarjeta_asignar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarjeta_asignar" id="modal_perm_tarjeta_asignar" value="1"><span>Asignar usuario a tarjeta</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_columna_crear" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_columna_crear" id="modal_perm_columna_crear" data-perm-section="columna" value="1"><span>Crear columnas</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_columna_editar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_columna_editar" id="modal_perm_columna_editar" data-perm-section="columna" value="1"><span>Editar columnas</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_columna_eliminar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_columna_eliminar" id="modal_perm_columna_eliminar" data-perm-section="columna" value="1"><span>Eliminar columnas</span></label></div>
+                                <div class="col-12 col-md-6"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_columna_ordenar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_columna_ordenar" id="modal_perm_columna_ordenar" data-perm-section="columna" value="1"><span>Ordenar columnas</span></label></div>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <h6 class="mb-2">Seccion 3: Lista de tareas</h6>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="mb-0">Seccion 3: Tarjetas</h6>
+                                <label class="mb-0 d-inline-flex align-items-center" style="cursor:pointer;">
+                                    <input class="mr-2 js-select-all-section" type="checkbox" data-section="tarjeta" value="1">
+                                    <span>Seleccionar todos</span>
+                                </label>
+                            </div>
                             <div class="row">
-                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_lista_crear" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_lista_crear" id="modal_perm_lista_crear" value="1"><span>Crear lista</span></label></div>
-                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_lista_editar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_lista_editar" id="modal_perm_lista_editar" value="1"><span>Editar lista</span></label></div>
-                                <div class="col-12 col-md-6"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_lista_eliminar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_lista_eliminar" id="modal_perm_lista_eliminar" value="1"><span>Eliminar lista</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarjeta_ver" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarjeta_ver" id="modal_perm_tarjeta_ver" data-perm-section="tarjeta" value="1" checked><span>Ver tarjetas</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarjeta_crear" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarjeta_crear" id="modal_perm_tarjeta_crear" data-perm-section="tarjeta" value="1"><span>Crear tarjetas</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarjeta_editar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarjeta_editar" id="modal_perm_tarjeta_editar" data-perm-section="tarjeta" value="1"><span>Editar tarjetas</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarjeta_mover" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarjeta_mover" id="modal_perm_tarjeta_mover" data-perm-section="tarjeta" value="1"><span>Mover Tarjetas</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarjeta_eliminar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarjeta_eliminar" id="modal_perm_tarjeta_eliminar" data-perm-section="tarjeta" value="1"><span>Eliminar tarjetas</span></label></div>
+                                <div class="col-12 col-md-6"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarjeta_asignar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarjeta_asignar" id="modal_perm_tarjeta_asignar" data-perm-section="tarjeta" value="1"><span>Asignar usuario a tarjeta</span></label></div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="mb-0">Seccion 4: Lista de tareas</h6>
+                                <label class="mb-0 d-inline-flex align-items-center" style="cursor:pointer;">
+                                    <input class="mr-2 js-select-all-section" type="checkbox" data-section="lista" value="1">
+                                    <span>Seleccionar todos</span>
+                                </label>
+                            </div>
+                            <div class="row">
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_lista_crear" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_lista_crear" id="modal_perm_lista_crear" data-perm-section="lista" value="1"><span>Crear lista</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_lista_editar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_lista_editar" id="modal_perm_lista_editar" data-perm-section="lista" value="1"><span>Editar lista</span></label></div>
+                                <div class="col-12 col-md-6"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_lista_eliminar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_lista_eliminar" id="modal_perm_lista_eliminar" data-perm-section="lista" value="1"><span>Eliminar lista</span></label></div>
                             </div>
                         </div>
 
                         <div>
-                            <h6 class="mb-2">Seccion 4: Tareas</h6>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="mb-0">Seccion 5: Tareas</h6>
+                                <label class="mb-0 d-inline-flex align-items-center" style="cursor:pointer;">
+                                    <input class="mr-2 js-select-all-section" type="checkbox" data-section="tarea" value="1">
+                                    <span>Seleccionar todos</span>
+                                </label>
+                            </div>
                             <div class="row">
-                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarea_crear" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarea_crear" id="modal_perm_tarea_crear" value="1"><span>Crear tareas</span></label></div>
-                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarea_editar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarea_editar" id="modal_perm_tarea_editar" value="1"><span>Editar tareas</span></label></div>
-                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarea_eliminar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarea_eliminar" id="modal_perm_tarea_eliminar" value="1"><span>Eliminar tareas</span></label></div>
-                                <div class="col-12 col-md-6"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarea_tiempo_editar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarea_tiempo_editar" id="modal_perm_tarea_tiempo_editar" value="1"><span>Editar tiempo en tareas</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarea_crear" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarea_crear" id="modal_perm_tarea_crear" data-perm-section="tarea" value="1"><span>Crear tareas</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarea_editar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarea_editar" id="modal_perm_tarea_editar" data-perm-section="tarea" value="1"><span>Editar tareas</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarea_eliminar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarea_eliminar" id="modal_perm_tarea_eliminar" data-perm-section="tarea" value="1"><span>Eliminar tareas</span></label></div>
+                                <div class="col-12 col-md-6"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarea_tiempo_editar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarea_tiempo_editar" id="modal_perm_tarea_tiempo_editar" data-perm-section="tarea" value="1"><span>Editar tiempo en tareas</span></label></div>
                             </div>
                         </div>
                     </div>
@@ -576,10 +780,15 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                                                 <?php if((int)($ua->Permiso_tablero_editar ?? 0) === 1): ?><span class="badge bg-primary me-1">Tablero: Editar</span><?php endif; ?>
                                                 <?php if((int)($ua->Permiso_tablero_eliminar ?? 0) === 1): ?><span class="badge bg-primary me-1">Tablero: Eliminar</span><?php endif; ?>
                                                 <?php if((int)($ua->Permiso_tablero_asignar ?? 0) === 1): ?><span class="badge bg-primary me-1">Tablero: Asignar</span><?php endif; ?>
+                                                <?php if((int)($ua->Permiso_columna_crear ?? 0) === 1): ?><span class="badge bg-info text-dark me-1">Columnas: Crear</span><?php endif; ?>
+                                                <?php if((int)($ua->Permiso_columna_editar ?? 0) === 1): ?><span class="badge bg-info text-dark me-1">Columnas: Editar</span><?php endif; ?>
+                                                <?php if((int)($ua->Permiso_columna_eliminar ?? 0) === 1): ?><span class="badge bg-info text-dark me-1">Columnas: Eliminar</span><?php endif; ?>
+                                                <?php if((int)($ua->Permiso_columna_ordenar ?? 0) === 1): ?><span class="badge bg-info text-dark me-1">Columnas: Ordenar</span><?php endif; ?>
 
                                                 <?php if((int)($ua->Permiso_tarjeta_ver ?? 0) === 1): ?><span class="badge bg-success me-1">Tarjetas: Ver</span><?php endif; ?>
                                                 <?php if((int)($ua->Permiso_tarjeta_crear ?? 0) === 1): ?><span class="badge bg-success me-1">Tarjetas: Crear</span><?php endif; ?>
                                                 <?php if((int)($ua->Permiso_tarjeta_editar ?? 0) === 1): ?><span class="badge bg-success me-1">Tarjetas: Editar</span><?php endif; ?>
+                                                <?php if((int)($ua->Permiso_tarjeta_mover ?? 0) === 1): ?><span class="badge bg-success me-1">Tarjetas: Mover</span><?php endif; ?>
                                                 <?php if((int)($ua->Permiso_tarjeta_eliminar ?? 0) === 1): ?><span class="badge bg-success me-1">Tarjetas: Eliminar</span><?php endif; ?>
                                                 <?php if((int)($ua->Permiso_tarjeta_asignar ?? 0) === 1): ?><span class="badge bg-success me-1">Tarjetas: Asignar</span><?php endif; ?>
 
@@ -592,7 +801,7 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                                                 <?php if((int)($ua->Permiso_tarea_eliminar ?? 0) === 1): ?><span class="badge bg-danger me-1">Tareas: Eliminar</span><?php endif; ?>
                                                 <?php if((int)($ua->Permiso_tarea_tiempo_editar ?? 0) === 1): ?><span class="badge bg-danger me-1">Tareas: Tiempo</span><?php endif; ?>
 
-                                                <?php if((int)($ua->Permiso_tablero_ver ?? 0) !== 1 && (int)($ua->Permiso_tablero_crear ?? 0) !== 1 && (int)($ua->Permiso_tablero_editar ?? 0) !== 1 && (int)($ua->Permiso_tablero_eliminar ?? 0) !== 1 && (int)($ua->Permiso_tablero_asignar ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_ver ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_crear ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_editar ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_eliminar ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_asignar ?? 0) !== 1 && (int)($ua->Permiso_lista_crear ?? 0) !== 1 && (int)($ua->Permiso_lista_editar ?? 0) !== 1 && (int)($ua->Permiso_lista_eliminar ?? 0) !== 1 && (int)($ua->Permiso_tarea_crear ?? 0) !== 1 && (int)($ua->Permiso_tarea_editar ?? 0) !== 1 && (int)($ua->Permiso_tarea_eliminar ?? 0) !== 1 && (int)($ua->Permiso_tarea_tiempo_editar ?? 0) !== 1): ?>
+                                                <?php if((int)($ua->Permiso_tablero_ver ?? 0) !== 1 && (int)($ua->Permiso_tablero_crear ?? 0) !== 1 && (int)($ua->Permiso_tablero_editar ?? 0) !== 1 && (int)($ua->Permiso_tablero_eliminar ?? 0) !== 1 && (int)($ua->Permiso_tablero_asignar ?? 0) !== 1 && (int)($ua->Permiso_columna_crear ?? 0) !== 1 && (int)($ua->Permiso_columna_editar ?? 0) !== 1 && (int)($ua->Permiso_columna_eliminar ?? 0) !== 1 && (int)($ua->Permiso_columna_ordenar ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_ver ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_crear ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_editar ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_mover ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_eliminar ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_asignar ?? 0) !== 1 && (int)($ua->Permiso_lista_crear ?? 0) !== 1 && (int)($ua->Permiso_lista_editar ?? 0) !== 1 && (int)($ua->Permiso_lista_eliminar ?? 0) !== 1 && (int)($ua->Permiso_tarea_crear ?? 0) !== 1 && (int)($ua->Permiso_tarea_editar ?? 0) !== 1 && (int)($ua->Permiso_tarea_eliminar ?? 0) !== 1 && (int)($ua->Permiso_tarea_tiempo_editar ?? 0) !== 1): ?>
                                                     <span class="text-muted">Sin permisos activos</span>
                                                 <?php endif; ?>
                                             </td>
@@ -1189,7 +1398,7 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                             </div>
                         </div>
 
-                        <?php if($canEditCard): ?>
+                        <?php if($canCreateList): ?>
                             <div class="input-group mb-3">
                                 <input type="text" class="form-control" id="inputNuevaListaTareas" maxlength="180" placeholder="Nombre de nueva lista de tareas">
                                 <button class="btn btn-primary" type="button" id="btnAgregarListaTareas">Agregar lista</button>
@@ -1210,6 +1419,50 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
     </div>
 </div>
 
+<div class="modal fade" id="modalEditarListaTarea" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Editar lista</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <form id="formEditarListaTarea" action="#" method="post">
+                <div class="modal-body">
+                    <label class="form-label" for="inputEditarListaTareaNombre">Nombre de la lista</label>
+                    <input type="text" class="form-control" id="inputEditarListaTareaNombre" maxlength="180" required>
+                    <div class="form-text">Actualice el nombre de la lista de tareas de esta tarjeta.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btnGuardarEditarListaTarea">Guardar cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEditarDetalleTarea" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Editar descripcion de la tarea</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <form id="formEditarDetalleTarea" action="#" method="post">
+                <div class="modal-body">
+                    <label class="form-label" for="inputEditarDetalleTareaDescripcion">Descripcion</label>
+                    <textarea class="form-control" id="inputEditarDetalleTareaDescripcion" rows="4" required></textarea>
+                    <div class="form-text">Actualice la descripcion del item seleccionado.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btnGuardarEditarDetalleTarea">Guardar cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalEditarTiempoUsuarios" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
@@ -1219,7 +1472,7 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
             </div>
             <div class="modal-body">
                 <input type="hidden" id="modalTiempoUsuariosDetalleId" value="">
-                <div class="alert alert-light border small mb-3">
+                <div class="alert alert-light border small mb-3" id="modalTiempoUsuariosInfo">
                     Este detalle tiene varios usuarios con tiempo acumulado. Puede editar uno o varios usuarios sin perder los demas registros.
                 </div>
                 <div class="row g-2 align-items-end mb-3">
@@ -1271,6 +1524,7 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
     const idTableroActual = <?php echo (int)$idTableroActual; ?>;
     const canEditBoard = <?php echo $canEditBoard ? 'true' : 'false'; ?>;
     const canEditCard = <?php echo $canEditCard ? 'true' : 'false'; ?>;
+    const canMoveCard = <?php echo $canMoveCard ? 'true' : 'false'; ?>;
     const canMarkDone = <?php echo $canMarkDone ? 'true' : 'false'; ?>;
     const canAssignBoard = <?php echo $canAssignBoard ? 'true' : 'false'; ?>;
     const canCreateList = <?php echo $canCreateList ? 'true' : 'false'; ?>;
@@ -1285,6 +1539,7 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
     const canTimerAdminOverride = <?php echo isAdministradorRol() ? 'true' : 'false'; ?>;
     const canEditColumn = <?php echo $canEditColumn ? 'true' : 'false'; ?>;
     const canDeleteColumn = <?php echo $canDeleteColumn ? 'true' : 'false'; ?>;
+    const canOrderColumn = <?php echo $canOrderColumn ? 'true' : 'false'; ?>;
     const canDeleteCard = <?php echo $canDeleteCard ? 'true' : 'false'; ?>;
     const currentUserId = <?php echo (int)$_SESSION['user_id']; ?>;
     const usuariosAsignadosTarea = <?php
@@ -1315,9 +1570,14 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                     (int)($ua->Permiso_tablero_editar ?? 0),
                     (int)($ua->Permiso_tablero_eliminar ?? 0),
                     (int)($ua->Permiso_tablero_asignar ?? 0),
+                    (int)($ua->Permiso_columna_crear ?? 0),
+                    (int)($ua->Permiso_columna_editar ?? 0),
+                    (int)($ua->Permiso_columna_eliminar ?? 0),
+                    (int)($ua->Permiso_columna_ordenar ?? 0),
                     (int)($ua->Permiso_tarjeta_ver ?? 0),
                     (int)($ua->Permiso_tarjeta_crear ?? 0),
                     (int)($ua->Permiso_tarjeta_editar ?? 0),
+                    (int)($ua->Permiso_tarjeta_mover ?? 0),
                     (int)($ua->Permiso_tarjeta_eliminar ?? 0),
                     (int)($ua->Permiso_tarjeta_asignar ?? 0),
                     (int)($ua->Permiso_lista_crear ?? 0),
@@ -1337,9 +1597,14 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                     'tablero_editar' => $isLegacyOnly ? $legacyEditar : ((int)($ua->Permiso_tablero_editar ?? 0) === 1),
                     'tablero_eliminar' => $isLegacyOnly ? $legacyEliminar : ((int)($ua->Permiso_tablero_eliminar ?? 0) === 1),
                     'tablero_asignar' => $isLegacyOnly ? $legacyEditar : ((int)($ua->Permiso_tablero_asignar ?? 0) === 1),
+                    'columna_crear' => $isLegacyOnly ? $legacyEditar : ((int)($ua->Permiso_columna_crear ?? 0) === 1),
+                    'columna_editar' => $isLegacyOnly ? $legacyEditar : ((int)($ua->Permiso_columna_editar ?? 0) === 1),
+                    'columna_eliminar' => $isLegacyOnly ? $legacyEliminar : ((int)($ua->Permiso_columna_eliminar ?? 0) === 1),
+                    'columna_ordenar' => $isLegacyOnly ? $legacyEditar : ((int)($ua->Permiso_columna_ordenar ?? 0) === 1),
                     'tarjeta_ver' => $isLegacyOnly ? $legacyVer : ((int)($ua->Permiso_tarjeta_ver ?? 0) === 1),
                     'tarjeta_crear' => $isLegacyOnly ? $legacyCrear : ((int)($ua->Permiso_tarjeta_crear ?? 0) === 1),
                     'tarjeta_editar' => $isLegacyOnly ? $legacyEditar : ((int)($ua->Permiso_tarjeta_editar ?? 0) === 1),
+                    'tarjeta_mover' => $isLegacyOnly ? $legacyEditar : ((int)($ua->Permiso_tarjeta_mover ?? $ua->Permiso_tarjeta_editar ?? 0) === 1),
                     'tarjeta_eliminar' => $isLegacyOnly ? $legacyEliminar : ((int)($ua->Permiso_tarjeta_eliminar ?? 0) === 1),
                     'tarjeta_asignar' => $isLegacyOnly ? $legacyEditar : ((int)($ua->Permiso_tarjeta_asignar ?? 0) === 1),
                     'lista_crear' => $isLegacyOnly ? $legacyEditar : ((int)($ua->Permiso_lista_crear ?? 0) === 1),
@@ -1361,6 +1626,14 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
     const modalTarjetaTareasPrioridadEl = document.getElementById('modalTarjetaTareasPrioridad');
     const modalTarjetaTareasEstadoEl = document.getElementById('modalTarjetaTareasEstado');
     const modalTarjetaTareasEtiquetasEl = document.getElementById('modalTarjetaTareasEtiquetas');
+    const modalEditarListaTareaEl = document.getElementById('modalEditarListaTarea');
+    const formEditarListaTareaEl = document.getElementById('formEditarListaTarea');
+    const inputEditarListaTareaNombreEl = document.getElementById('inputEditarListaTareaNombre');
+    const btnGuardarEditarListaTareaEl = document.getElementById('btnGuardarEditarListaTarea');
+    const modalEditarDetalleTareaEl = document.getElementById('modalEditarDetalleTarea');
+    const formEditarDetalleTareaEl = document.getElementById('formEditarDetalleTarea');
+    const inputEditarDetalleTareaDescripcionEl = document.getElementById('inputEditarDetalleTareaDescripcion');
+    const btnGuardarEditarDetalleTareaEl = document.getElementById('btnGuardarEditarDetalleTarea');
     const modalTarjetaCompletadoEl = document.getElementById('modalTarjetaCompletado');
     const filtroDetalleUsuarioEl = document.getElementById('filtroDetalleUsuario');
     const contenedorListasTareasEl = document.getElementById('contenedorListasTareas');
@@ -1406,10 +1679,14 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
     const modalConfirmarAccionTituloEl = document.getElementById('modalConfirmarAccionTitulo');
     const modalConfirmarAccionMensajeEl = document.getElementById('modalConfirmarAccionMensaje');
     const btnConfirmarAccionTableroEl = document.getElementById('btnConfirmarAccionTablero');
+    const confirmActionDefaultLabel = btnConfirmarAccionTableroEl ? String(btnConfirmarAccionTableroEl.textContent || 'Eliminar').trim() : 'Eliminar';
     const btnDeleteTarjetaModalEl = document.getElementById('btnDeleteTarjetaModal');
     const formDeleteTarjetaEl = document.getElementById('formDeleteTarjeta');
+    const btnDeleteTableroModalEl = document.getElementById('btnDeleteTableroModal');
+    const formDeleteTableroEl = document.getElementById('formDeleteTablero');
     const modalEditarTiempoUsuariosEl = document.getElementById('modalEditarTiempoUsuarios');
     const modalTiempoUsuariosDetalleIdEl = document.getElementById('modalTiempoUsuariosDetalleId');
+    const modalTiempoUsuariosInfoEl = document.getElementById('modalTiempoUsuariosInfo');
     const contenedorTiempoUsuariosRowsEl = document.getElementById('contenedorTiempoUsuariosRows');
     const modalTiempoUsuariosAplicarTodosEl = document.getElementById('modalTiempoUsuariosAplicarTodos');
     const modalTiempoUsuariosTotalEl = document.getElementById('modalTiempoUsuariosTotal');
@@ -1417,10 +1694,254 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
     const btnTiempoUsuariosDeseleccionarTodosEl = document.getElementById('btnTiempoUsuariosDeseleccionarTodos');
     const btnTiempoUsuariosAplicarSeleccionadosEl = document.getElementById('btnTiempoUsuariosAplicarSeleccionados');
     const btnGuardarTiempoUsuariosEl = document.getElementById('btnGuardarTiempoUsuarios');
+    const tableroInteractiveShellEl = document.getElementById('tableroInteractiveShell');
+    const tableroViewportEl = document.querySelector('.js-tablero-viewport');
+    const tableroColumnsEl = document.querySelector('.js-tablero-columns');
+    const tableroSyncXEls = Array.from(document.querySelectorAll('.js-tablero-scroll-x'));
+    const tableroSyncYEls = Array.from(document.querySelectorAll('.js-tablero-scroll-y'));
+    const tableroSyncXInnerEls = Array.from(document.querySelectorAll('.js-tablero-scroll-x-inner'));
+    const tableroSyncYInnerEls = Array.from(document.querySelectorAll('.js-tablero-scroll-y-inner'));
+    const tableroEdgeZonesEls = Array.from(document.querySelectorAll('.tablero-edge-zone[data-autoscroll-dir]'));
+    const TABLERO_AUTOSCROLL_DELAY_MS = 480;
+    const TABLERO_AUTOSCROLL_STEP_PX = 18;
     const detalleTiempoUsuarioMap = {};
     let pendingConfirmAction = null;
     let tarjetaTareasActualId = null;
     let tarjetaEditandoId = null;
+    let tareaEditandoId = 0;
+    let detalleTareaEditandoId = 0;
+    let tableroSyncLocked = false;
+    let tableroAutoScrollIntervalId = null;
+    let tableroAutoScrollDelayId = null;
+
+    function syncTableroScrollMetrics(){
+        if(!tableroViewportEl){
+            return;
+        }
+
+        const contentWidth = Math.max(
+            tableroViewportEl.scrollWidth,
+            tableroColumnsEl ? tableroColumnsEl.scrollWidth : 0
+        );
+        const contentHeight = Math.max(
+            tableroViewportEl.scrollHeight,
+            tableroColumnsEl ? tableroColumnsEl.scrollHeight : 0
+        );
+
+        tableroSyncXInnerEls.forEach(inner => {
+            inner.style.width = `${contentWidth}px`;
+        });
+
+        tableroSyncYInnerEls.forEach(inner => {
+            inner.style.height = `${contentHeight}px`;
+        });
+
+        const canScrollX = contentWidth > (tableroViewportEl.clientWidth + 1);
+        const canScrollY = contentHeight > (tableroViewportEl.clientHeight + 1);
+
+        tableroSyncXEls.forEach(el => {
+            el.style.visibility = canScrollX ? 'visible' : 'hidden';
+            el.style.pointerEvents = canScrollX ? 'auto' : 'none';
+        });
+
+        tableroSyncYEls.forEach(el => {
+            el.style.visibility = canScrollY ? 'visible' : 'hidden';
+            el.style.pointerEvents = canScrollY ? 'auto' : 'none';
+        });
+
+        tableroEdgeZonesEls.forEach(zone => {
+            const dir = zone.dataset.autoscrollDir || '';
+            const needsX = dir === 'left' || dir === 'right';
+            const needsY = dir === 'up' || dir === 'down';
+            const enabled = (needsX && canScrollX) || (needsY && canScrollY);
+            zone.style.display = enabled ? 'flex' : 'none';
+        });
+    }
+
+    function syncTableroFromViewport(){
+        if(!tableroViewportEl || tableroSyncLocked){
+            return;
+        }
+
+        tableroSyncLocked = true;
+        const left = tableroViewportEl.scrollLeft;
+        const top = tableroViewportEl.scrollTop;
+
+        tableroSyncXEls.forEach(el => {
+            if(el.scrollLeft !== left){
+                el.scrollLeft = left;
+            }
+        });
+
+        tableroSyncYEls.forEach(el => {
+            if(el.scrollTop !== top){
+                el.scrollTop = top;
+            }
+        });
+
+        requestAnimationFrame(function(){
+            tableroSyncLocked = false;
+        });
+    }
+
+    function syncTableroFromHorizontalBar(sourceEl){
+        if(!tableroViewportEl || !sourceEl || tableroSyncLocked){
+            return;
+        }
+
+        tableroSyncLocked = true;
+        const left = sourceEl.scrollLeft;
+        tableroViewportEl.scrollLeft = left;
+
+        tableroSyncXEls.forEach(el => {
+            if(el !== sourceEl && el.scrollLeft !== left){
+                el.scrollLeft = left;
+            }
+        });
+
+        requestAnimationFrame(function(){
+            tableroSyncLocked = false;
+        });
+    }
+
+    function syncTableroFromVerticalBar(sourceEl){
+        if(!tableroViewportEl || !sourceEl || tableroSyncLocked){
+            return;
+        }
+
+        tableroSyncLocked = true;
+        const top = sourceEl.scrollTop;
+        tableroViewportEl.scrollTop = top;
+
+        tableroSyncYEls.forEach(el => {
+            if(el !== sourceEl && el.scrollTop !== top){
+                el.scrollTop = top;
+            }
+        });
+
+        requestAnimationFrame(function(){
+            tableroSyncLocked = false;
+        });
+    }
+
+    function stopTableroAutoScroll(){
+        if(tableroAutoScrollDelayId){
+            clearTimeout(tableroAutoScrollDelayId);
+            tableroAutoScrollDelayId = null;
+        }
+
+        if(tableroAutoScrollIntervalId){
+            clearInterval(tableroAutoScrollIntervalId);
+            tableroAutoScrollIntervalId = null;
+        }
+    }
+
+    function beginTableroAutoScroll(direction){
+        if(!tableroViewportEl || !direction){
+            return;
+        }
+
+        stopTableroAutoScroll();
+        tableroAutoScrollDelayId = setTimeout(function(){
+            tableroAutoScrollIntervalId = setInterval(function(){
+                if(direction === 'left'){
+                    tableroViewportEl.scrollLeft -= TABLERO_AUTOSCROLL_STEP_PX;
+                } else if(direction === 'right'){
+                    tableroViewportEl.scrollLeft += TABLERO_AUTOSCROLL_STEP_PX;
+                } else if(direction === 'up'){
+                    tableroViewportEl.scrollTop -= TABLERO_AUTOSCROLL_STEP_PX;
+                } else if(direction === 'down'){
+                    tableroViewportEl.scrollTop += TABLERO_AUTOSCROLL_STEP_PX;
+                }
+            }, 16);
+        }, TABLERO_AUTOSCROLL_DELAY_MS);
+    }
+
+    function initTableroInteractiveScroll(){
+        if(!tableroViewportEl || !tableroInteractiveShellEl){
+            return;
+        }
+
+        if(tableroViewportEl.dataset.interactiveScrollInit === '1'){
+            syncTableroScrollMetrics();
+            syncTableroFromViewport();
+            return;
+        }
+        tableroViewportEl.dataset.interactiveScrollInit = '1';
+
+        tableroViewportEl.addEventListener('scroll', syncTableroFromViewport, { passive: true });
+
+        tableroViewportEl.addEventListener('wheel', function(evt){
+            const canScrollX = tableroViewportEl.scrollWidth > (tableroViewportEl.clientWidth + 1);
+            if(!canScrollX){
+                return;
+            }
+
+            const listEl = evt.target instanceof Element
+                ? evt.target.closest('.tablero-card-list')
+                : null;
+
+            if(listEl && Math.abs(evt.deltaY) > 0){
+                const maxTop = Math.max(0, listEl.scrollHeight - listEl.clientHeight);
+                if(maxTop > 1){
+                    const goingDown = evt.deltaY > 0;
+                    const atTop = listEl.scrollTop <= 0;
+                    const atBottom = listEl.scrollTop >= (maxTop - 1);
+                    const canContinueVertical = (goingDown && !atBottom) || (!goingDown && !atTop);
+
+                    // Si la columna aun puede desplazarse, no convertimos el gesto a horizontal.
+                    if(canContinueVertical){
+                        return;
+                    }
+                }
+            }
+
+            const hasHorizontalGesture = Math.abs(evt.deltaX) > 0;
+            const shouldMapVerticalToHorizontal = !hasHorizontalGesture && Math.abs(evt.deltaY) > 0;
+
+            if(shouldMapVerticalToHorizontal){
+                tableroViewportEl.scrollLeft += evt.deltaY;
+                evt.preventDefault();
+            }
+        }, { passive: false });
+
+        tableroSyncXEls.forEach(el => {
+            el.addEventListener('scroll', function(){
+                syncTableroFromHorizontalBar(el);
+            }, { passive: true });
+        });
+
+        tableroSyncYEls.forEach(el => {
+            el.addEventListener('scroll', function(){
+                syncTableroFromVerticalBar(el);
+            }, { passive: true });
+        });
+
+        tableroEdgeZonesEls.forEach(zone => {
+            zone.addEventListener('mouseenter', function(){
+                beginTableroAutoScroll(zone.dataset.autoscrollDir || '');
+            });
+            zone.addEventListener('mouseleave', stopTableroAutoScroll);
+        });
+
+        tableroInteractiveShellEl.addEventListener('mouseleave', stopTableroAutoScroll);
+        tableroViewportEl.addEventListener('pointerdown', stopTableroAutoScroll);
+        window.addEventListener('resize', syncTableroScrollMetrics);
+
+        if(window.ResizeObserver){
+            const observer = new ResizeObserver(function(){
+                syncTableroScrollMetrics();
+                syncTableroFromViewport();
+            });
+            observer.observe(tableroViewportEl);
+            if(tableroColumnsEl){
+                observer.observe(tableroColumnsEl);
+            }
+        }
+
+        syncTableroScrollMetrics();
+        syncTableroFromViewport();
+    }
 
     function formatSeconds(total){
         const sec = Math.max(0, parseInt(total || 0, 10));
@@ -1509,11 +2030,17 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
         }
 
         const items = Array.isArray(tiempos) ? tiempos : [];
-        if(items.length < 2){
-            return;
-        }
 
         modalTiempoUsuariosDetalleIdEl.value = String(detalleId);
+        if(modalTiempoUsuariosAplicarTodosEl){
+            modalTiempoUsuariosAplicarTodosEl.value = '';
+        }
+
+        if(modalTiempoUsuariosInfoEl){
+            modalTiempoUsuariosInfoEl.textContent = items.length > 1
+                ? 'Este detalle tiene varios usuarios con tiempo acumulado. Puede editar uno o varios usuarios sin perder los demas registros.'
+                : 'Edite manualmente el tiempo del usuario asociado a esta tarea.';
+        }
 
         const rowsHtml = items.map(item => {
             const userId = parseInt(item.Id_usuario || 0, 10) || 0;
@@ -1558,6 +2085,261 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
         return data;
     }
 
+    const BOARD_SYNC_POLL_MS = 6000;
+    let boardSyncLastHistorialId = 0;
+    let boardSyncTimerId = null;
+    let boardSyncPollInFlight = false;
+    let boardSyncReloadScheduled = false;
+    let boardSyncPendingReload = false;
+    let boardSyncPendingNoticeEl = null;
+    let boardSyncPendingNoticeTimerId = null;
+    let boardSyncLastNoticeHistorialId = 0;
+
+    function closeBoardSyncPendingNotice(){
+        if(boardSyncPendingNoticeTimerId){
+            window.clearTimeout(boardSyncPendingNoticeTimerId);
+            boardSyncPendingNoticeTimerId = null;
+        }
+        if(boardSyncPendingNoticeEl){
+            boardSyncPendingNoticeEl.remove();
+            boardSyncPendingNoticeEl = null;
+        }
+    }
+
+    function reloadBoardPreservingOpenTasksModal(){
+        try {
+            const tasksModalOpen = !!tarjetaTareasActualId
+                && modalTarjetaTareasEl
+                && modalTarjetaTareasEl.classList.contains('show');
+
+            if(tasksModalOpen){
+                sessionStorage.setItem('tablero_sync_resume_modal', JSON.stringify({
+                    id_tablero: idTableroActual,
+                    modal: 'tarjeta_tareas',
+                    id_tarjeta: parseInt(tarjetaTareasActualId || '0', 10) || 0
+                }));
+            }
+        } catch(_err){
+            // Silencio intencional: si sessionStorage falla, continuamos con recarga normal.
+        }
+
+        window.location.reload();
+    }
+
+    function restoreBoardModalAfterSyncReload(){
+        try {
+            const raw = sessionStorage.getItem('tablero_sync_resume_modal');
+            if(!raw){
+                return;
+            }
+
+            sessionStorage.removeItem('tablero_sync_resume_modal');
+            const payload = JSON.parse(raw);
+            if(!payload || String(payload.modal || '') !== 'tarjeta_tareas'){
+                return;
+            }
+
+            const tableroPayload = parseInt(payload.id_tablero || '0', 10) || 0;
+            const tarjetaPayload = parseInt(payload.id_tarjeta || '0', 10) || 0;
+            if(tableroPayload !== idTableroActual || tarjetaPayload <= 0){
+                return;
+            }
+
+            const openBtn = document.querySelector(`.btn-open-tareas[data-tarjeta-id="${tarjetaPayload}"]`);
+            if(openBtn){
+                window.setTimeout(() => {
+                    openBtn.click();
+                }, 140);
+            }
+        } catch(_err){
+            // Silencio intencional: no bloquea la carga del tablero.
+        }
+    }
+
+    function notifyBoardExternalChangesAndReload(latestHistorialId){
+        if(boardSyncReloadScheduled){
+            return;
+        }
+
+        const anyModalOpen = !!document.querySelector('.modal.show');
+        const tasksModalOpen = anyModalOpen && !!tarjetaTareasActualId
+            && modalTarjetaTareasEl && modalTarjetaTareasEl.classList.contains('show');
+
+        if(anyModalOpen){
+            boardSyncPendingReload = true;
+
+            if(tasksModalOpen){
+                cargarModalTareas().catch(() => {});
+            }
+
+            const latestId = parseInt(latestHistorialId || '0', 10) || 0;
+            if(!boardSyncPendingNoticeEl && latestId > boardSyncLastNoticeHistorialId){
+                boardSyncLastNoticeHistorialId = latestId;
+
+                boardSyncPendingNoticeEl = document.createElement('div');
+                boardSyncPendingNoticeEl.className = 'alert alert-warning shadow-sm small mb-0';
+                boardSyncPendingNoticeEl.setAttribute('role', 'alert');
+                boardSyncPendingNoticeEl.style.position = 'fixed';
+                boardSyncPendingNoticeEl.style.bottom = '16px';
+                boardSyncPendingNoticeEl.style.right = '16px';
+                boardSyncPendingNoticeEl.style.zIndex = '1090';
+                boardSyncPendingNoticeEl.style.maxWidth = '430px';
+                boardSyncPendingNoticeEl.innerHTML = `
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="flex-grow-1">
+                            <i class="bi bi-clock-history"></i> Hay cambios en el tablero. Se actualizara al cerrar este panel.
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+                            <button type="button" class="btn btn-sm btn-outline-secondary js-sync-notice-dismiss" style="min-width:132px;white-space:nowrap;">Cerrar</button>
+                            <button type="button" class="btn btn-sm btn-primary js-sync-notice-refresh" style="min-width:132px;white-space:nowrap;">Actualizar ahora</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(boardSyncPendingNoticeEl);
+
+                const refreshBtn = boardSyncPendingNoticeEl.querySelector('.js-sync-notice-refresh');
+                if(refreshBtn){
+                    refreshBtn.addEventListener('click', function(){
+                        closeBoardSyncPendingNotice();
+                        reloadBoardPreservingOpenTasksModal();
+                    });
+                }
+
+                const dismissBtn = boardSyncPendingNoticeEl.querySelector('.js-sync-notice-dismiss');
+                if(dismissBtn){
+                    dismissBtn.addEventListener('click', closeBoardSyncPendingNotice);
+                }
+
+                boardSyncPendingNoticeTimerId = window.setTimeout(() => {
+                    closeBoardSyncPendingNotice();
+                }, 10000);
+            }
+
+            return;
+        }
+
+        boardSyncReloadScheduled = true;
+
+        const notice = document.createElement('div');
+        notice.className = 'alert alert-info shadow-sm';
+        notice.setAttribute('role', 'alert');
+        notice.style.position = 'fixed';
+        notice.style.top = '16px';
+        notice.style.right = '16px';
+        notice.style.zIndex = '1080';
+        notice.style.maxWidth = '420px';
+        notice.innerHTML = '<i class="bi bi-arrow-repeat"></i> Se detectaron cambios en el tablero por otro usuario. Sincronizando...';
+        document.body.appendChild(notice);
+
+        window.setTimeout(() => {
+            window.location.reload();
+        }, 1100);
+    }
+
+    async function pollBoardSyncStatus(){
+        if(idTableroActual <= 0 || boardSyncReloadScheduled || boardSyncPollInFlight){
+            return;
+        }
+        if(document.visibilityState === 'hidden'){
+            return;
+        }
+
+        boardSyncPollInFlight = true;
+        try {
+            const url = `${APP_URL_ROOT}/tablero/get_tablero_sync_status?id_tablero=${encodeURIComponent(idTableroActual)}&since_historial=${encodeURIComponent(boardSyncLastHistorialId)}`;
+            const response = await fetch(url, {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if(!response.ok){
+                return;
+            }
+
+            const data = await response.json();
+            if(!data || !data.success){
+                return;
+            }
+
+            const latestHistorialId = parseInt(data.latest_historial_id || '0', 10) || 0;
+            const hasChanges = !!data.has_changes;
+
+            if(boardSyncLastHistorialId === 0){
+                boardSyncLastHistorialId = latestHistorialId;
+                return;
+            }
+
+            if(hasChanges && latestHistorialId > boardSyncLastHistorialId){
+                notifyBoardExternalChangesAndReload(latestHistorialId);
+                boardSyncLastHistorialId = latestHistorialId;
+                return;
+            }
+
+            if(latestHistorialId > boardSyncLastHistorialId){
+                boardSyncLastHistorialId = latestHistorialId;
+            }
+        } catch(_err) {
+            // Silencio intencional: si falla momentaneamente, el siguiente ciclo vuelve a intentar.
+        } finally {
+            boardSyncPollInFlight = false;
+        }
+    }
+
+    function startBoardSyncPolling(){
+        if(idTableroActual <= 0){
+            return;
+        }
+
+        pollBoardSyncStatus();
+
+        if(boardSyncTimerId){
+            window.clearInterval(boardSyncTimerId);
+        }
+
+        boardSyncTimerId = window.setInterval(() => {
+            pollBoardSyncStatus();
+        }, BOARD_SYNC_POLL_MS);
+
+        document.addEventListener('visibilitychange', () => {
+            if(document.visibilityState === 'visible'){
+                pollBoardSyncStatus();
+            }
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if(boardSyncTimerId){
+                window.clearInterval(boardSyncTimerId);
+            }
+        }, { once: true });
+
+        function _doBoardSyncReloadIfModalsClosed(){
+            if(!boardSyncPendingReload) return;
+            if(document.querySelector('.modal.show')) return;
+            boardSyncPendingReload = false;
+            closeBoardSyncPendingNotice();
+            window.location.reload();
+        }
+
+        // Escucha via jQuery (close button, ESC, hide programatico)
+        if(window.jQuery){
+            window.jQuery(document).on('hidden.bs.modal', function(){
+                window.setTimeout(_doBoardSyncReloadIfModalsClosed, 50);
+            });
+        }
+
+        // MutationObserver en cada modal: captura clic en backdrop y cualquier otro cierre
+        // que no burbujee correctamente el evento jQuery
+        if(window.MutationObserver){
+            const _boardSyncObserver = new MutationObserver(function(){
+                window.setTimeout(_doBoardSyncReloadIfModalsClosed, 50);
+            });
+            document.querySelectorAll('.modal').forEach(function(modalEl){
+                _boardSyncObserver.observe(modalEl, { attributes: true, attributeFilter: ['class'] });
+            });
+        }
+    }
+
     function showModal(modalEl){
         if(!modalEl) return;
         if(window.jQuery && window.jQuery.fn && window.jQuery.fn.modal){
@@ -1588,6 +2370,50 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
         modalEl.setAttribute('aria-hidden', 'true');
     }
 
+    function openEditarListaTareaModal(idTarea, nombreActual){
+        if(!modalEditarListaTareaEl || !inputEditarListaTareaNombreEl){
+            return;
+        }
+
+        tareaEditandoId = parseInt(idTarea || '0', 10) || 0;
+        inputEditarListaTareaNombreEl.value = nombreActual || '';
+        showModal(modalEditarListaTareaEl);
+
+        window.setTimeout(() => {
+            inputEditarListaTareaNombreEl.focus();
+            inputEditarListaTareaNombreEl.select();
+        }, 80);
+    }
+
+    function closeEditarListaTareaModal(){
+        if(!modalEditarListaTareaEl){
+            return;
+        }
+        hideModal(modalEditarListaTareaEl);
+    }
+
+    function openEditarDetalleTareaModal(idDetalle, descripcionActual){
+        if(!modalEditarDetalleTareaEl || !inputEditarDetalleTareaDescripcionEl){
+            return;
+        }
+
+        detalleTareaEditandoId = parseInt(idDetalle || '0', 10) || 0;
+        inputEditarDetalleTareaDescripcionEl.value = descripcionActual || '';
+        showModal(modalEditarDetalleTareaEl);
+
+        window.setTimeout(() => {
+            inputEditarDetalleTareaDescripcionEl.focus();
+            inputEditarDetalleTareaDescripcionEl.select();
+        }, 80);
+    }
+
+    function closeEditarDetalleTareaModal(){
+        if(!modalEditarDetalleTareaEl){
+            return;
+        }
+        hideModal(modalEditarDetalleTareaEl);
+    }
+
     function openConfirmActionModal(config){
         pendingConfirmAction = config && typeof config.onConfirm === 'function' ? config.onConfirm : null;
         if(modalConfirmarAccionTituloEl){
@@ -1595,6 +2421,11 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
         }
         if(modalConfirmarAccionMensajeEl){
             modalConfirmarAccionMensajeEl.textContent = config && config.message ? config.message : '¿Desea continuar?';
+        }
+        if(btnConfirmarAccionTableroEl){
+            btnConfirmarAccionTableroEl.textContent = config && config.confirmText
+                ? String(config.confirmText)
+                : confirmActionDefaultLabel;
         }
         showModal(modalConfirmarAccionEl);
     }
@@ -1776,6 +2607,8 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
             syncEmptyColumnState(listEl);
             syncColumnCounter(listEl);
         });
+
+        syncTableroScrollMetrics();
     }
 
     function parseIdList(value){
@@ -2110,12 +2943,12 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                 const usuarioAsignadoEmail = String(det.Usuario_asignado_email || '').trim();
                 const tiempoPorUsuario = Array.isArray(det.Tiempo_por_usuario) ? det.Tiempo_por_usuario : [];
                 detalleTiempoUsuarioMap[String(parseInt(det.Id_tarea_detalle || 0, 10))] = tiempoPorUsuario;
-                const timerActionAllowed = !idUsuarioAsignado || idUsuarioAsignado === currentUserId || canTimerAdminOverride;
+                const timerActionAllowed = idUsuarioAsignado !== null && idUsuarioAsignado === currentUserId;
                 let timerActionReason = '';
-                if(!timerActionAllowed){
+                if(idUsuarioAsignado === null){
+                    timerActionReason = 'title="Asigne un usuario a la tarea para operar el cronometro"';
+                } else if(!timerActionAllowed){
                     timerActionReason = 'title="Solo el usuario asignado puede operar el cronometro"';
-                } else if(idUsuarioAsignado && idUsuarioAsignado !== currentUserId && canTimerAdminOverride){
-                    timerActionReason = 'title="Modo administrador: operara el cronometro para el usuario asignado"';
                 }
                 return `
                     <div class="border rounded px-2 py-2 mb-2 bg-white tarea-detalle-item">
@@ -2126,7 +2959,7 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                             </div>
                             <div class="d-flex align-items-center gap-2">
                                 ${canEditTask ? `<button class="btn btn-sm btn-outline-primary btn-edit-detalle" type="button" data-detalle-id="${parseInt(det.Id_tarea_detalle || 0, 10)}" data-detalle-descripcion="${detText}" title="Editar tarea"><i class="bi bi-pencil-square"></i></button>` : ''}
-                                ${canDeleteTask ? `<button class="btn btn-sm btn-outline-danger btn-delete-detalle" type="button" data-detalle-id="${parseInt(det.Id_tarea_detalle || 0, 10)}" title="Eliminar tarea"><i class="bi bi-trash"></i></button>` : ''}
+                                ${canDeleteTask ? `<button class="btn btn-sm btn-outline-danger btn-delete-detalle" type="button" data-detalle-id="${parseInt(det.Id_tarea_detalle || 0, 10)}" data-detalle-descripcion="${detText}" data-detalle-tiempo-segundos="${totalDetalle}" data-detalle-running="${hasRunning ? '1' : '0'}" title="Eliminar tarea"><i class="bi bi-trash"></i></button>` : ''}
                                 <span class="badge detalle-timer-display ${editableTimer ? 'detalle-timer-display--editable' : ''}" style="background:#fff3cd;color:#7a4b00;border:1px solid #f1d58a;font-weight:700;min-width:78px;" data-detalle-id="${parseInt(det.Id_tarea_detalle || 0, 10)}" data-base-seconds="${totalDetalle}" data-running-start="${escapeHtml(runningInicio)}" data-manual-editable="${editableTimer ? '1' : '0'}" title="${editableTimer ? 'Click para editar (hh:mm:ss)' : (hasRunning ? 'Cronometro en curso' : 'Sin permiso para editar tiempo')}">00:00:00</span>
                                 ${canTrackTime ? `
                                     <button class="btn btn-sm btn-success btn-start-detalle-timer" type="button" data-detalle-id="${parseInt(det.Id_tarea_detalle || 0, 10)}" ${hasRunning || !timerActionAllowed ? 'disabled' : ''} ${timerActionReason}><i class="bi bi-play-fill"></i></button>
@@ -2137,7 +2970,7 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                         <div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
                             <span class="small text-muted">Asignado:</span>
                             ${canAssignTaskUser
-                                ? `<select class="form-select form-select-sm detalle-usuario-asignado tablero-select-enhanced" style="max-width:280px;" data-detalle-id="${parseInt(det.Id_tarea_detalle || 0, 10)}" data-prev-value="${idUsuarioAsignado ? String(idUsuarioAsignado) : ''}">${buildDetalleUsuarioOptions(idUsuarioAsignado)}</select>`
+                                ? `<select class="form-select form-select-sm detalle-usuario-asignado tablero-select-enhanced" style="max-width:280px;" data-detalle-id="${parseInt(det.Id_tarea_detalle || 0, 10)}" data-prev-value="${idUsuarioAsignado ? String(idUsuarioAsignado) : ''}" ${hasRunning ? 'disabled title="No se puede reasignar mientras existe un cronometro en curso."' : ''}>${buildDetalleUsuarioOptions(idUsuarioAsignado)}</select>`
                                 : `<span class="badge bg-light text-dark border">${usuarioAsignadoEmail !== '' ? escapeHtml(usuarioAsignadoEmail) : 'Sin asignar'}</span>`}
                         </div>
                         <div class="mt-2 d-flex flex-wrap gap-1 small">
@@ -2353,7 +3186,7 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
         });
     }
 
-    if(canEditCard && window.Sortable){
+    if(canMoveCard && window.Sortable){
         document.querySelectorAll('.tablero-card-list').forEach(listEl => {
             syncEmptyColumnState(listEl);
             syncColumnCounter(listEl);
@@ -2374,6 +3207,13 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                             posicion: posicion
                         });
 
+                        // Mantener sincronizado el estado local para que el modal de editar
+                        // refleje la columna real luego de mover por drag & drop.
+                        tarjetaEl.dataset.columnaId = String(idColumna);
+                        tarjetaEl.querySelectorAll('.btn-edit-tarjeta').forEach(btn => {
+                            btn.dataset.columnaId = String(idColumna);
+                        });
+
                         syncEmptyColumnState(evt.from);
                         syncEmptyColumnState(evt.to);
                         syncColumnCounter(evt.from);
@@ -2392,7 +3232,9 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
         });
     }
 
+    initTableroInteractiveScroll();
     applyTarjetaFilters();
+    startBoardSyncPolling();
 
     if(canMarkDone){
         document.querySelectorAll('.tarjeta-completado-toggle').forEach(input => {
@@ -2564,17 +3406,24 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                 return;
             }
 
-            try {
-                await postJson(`${APP_URL_ROOT}/tablero/update_tarea_detalle_tiempo_manual_usuarios`, {
-                    id_tablero: idTableroActual,
-                    id_tarea_detalle: idDetalle,
-                    updates: updates
-                });
-                hideModal(modalEditarTiempoUsuariosEl);
-                await cargarModalTareas();
-            } catch(err){
-                alert(err.message);
-            }
+            openConfirmActionModal({
+                title: '<i class="bi bi-exclamation-triangle"></i> Confirmar reemplazo de tiempo',
+                message: 'El tiempo manual reemplazara el acumulado actual de los usuarios seleccionados. No se sumara al valor anterior. ¿Desea continuar?',
+                confirmText: 'Si, de acuerdo',
+                onConfirm: async function(){
+                    try {
+                        await postJson(`${APP_URL_ROOT}/tablero/update_tarea_detalle_tiempo_manual_usuarios`, {
+                            id_tablero: idTableroActual,
+                            id_tarea_detalle: idDetalle,
+                            updates: updates
+                        });
+                        hideModal(modalEditarTiempoUsuariosEl);
+                        await cargarModalTareas();
+                    } catch(err){
+                        alert(err.message);
+                    }
+                }
+            });
         });
     }
 
@@ -2608,7 +3457,11 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                 const idTarjeta = this.dataset.tarjetaId || '';
                 const titulo = this.dataset.tarjetaTitulo || '';
                 const descripcion = this.dataset.tarjetaDescripcion || '';
-                const idColumna = this.dataset.columnaId || '';
+                const tarjetaNode = this.closest('.tablero-tarjeta');
+                const listaNode = tarjetaNode ? tarjetaNode.closest('.tablero-card-list') : null;
+                const idColumna = (listaNode && listaNode.dataset && listaNode.dataset.columnaId)
+                    ? (listaNode.dataset.columnaId || '')
+                    : (this.dataset.columnaId || '');
                 const idAlcance = this.dataset.alcanceId || '';
                 const idActividad = this.dataset.actividadId || '';
                 const idUsuarioAsignado = this.dataset.usuarioAsignadoId || '';
@@ -2667,6 +3520,18 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                 });
             });
         }
+    }
+
+    if(btnDeleteTableroModalEl && formDeleteTableroEl){
+        btnDeleteTableroModalEl.addEventListener('click', function(){
+            openConfirmActionModal({
+                title: '<i class="bi bi-trash"></i> Eliminar tablero',
+                message: '¿Esta seguro de eliminar este tablero? Esta accion no se puede deshacer.',
+                onConfirm: function(){
+                    formDeleteTableroEl.submit();
+                }
+            });
+        });
     }
 
     if(formEtiquetaTableroEl){
@@ -2786,6 +3651,8 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
         });
     });
 
+    restoreBoardModalAfterSyncReload();
+
     document.querySelectorAll('.tablero-tarjeta').forEach(card => {
         card.addEventListener('click', function(evt){
             const ignoreClick = evt.target.closest('button, a, input, select, textarea, label, .timer-display');
@@ -2824,34 +3691,115 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
         });
     }
 
+    if(formEditarListaTareaEl){
+        formEditarListaTareaEl.addEventListener('submit', async function(evt){
+            evt.preventDefault();
+
+            if(!canEditList || !tarjetaTareasActualId || !tareaEditandoId){
+                return;
+            }
+
+            const nombreLimpio = (inputEditarListaTareaNombreEl ? inputEditarListaTareaNombreEl.value : '').trim();
+            if(!nombreLimpio){
+                alert('El nombre de la lista es obligatorio.');
+                return;
+            }
+
+            if(btnGuardarEditarListaTareaEl){
+                btnGuardarEditarListaTareaEl.disabled = true;
+            }
+
+            try {
+                await postJson(`${APP_URL_ROOT}/tablero/update_tarjeta_tarea`, {
+                    id_tablero: idTableroActual,
+                    id_tarea: tareaEditandoId,
+                    nombre_tarea: nombreLimpio
+                });
+
+                closeEditarListaTareaModal();
+                await cargarModalTareas();
+            } catch(err){
+                alert(err.message);
+            } finally {
+                if(btnGuardarEditarListaTareaEl){
+                    btnGuardarEditarListaTareaEl.disabled = false;
+                }
+            }
+        });
+
+        const resetEditarListaState = function(){
+            tareaEditandoId = 0;
+            if(inputEditarListaTareaNombreEl){
+                inputEditarListaTareaNombreEl.value = '';
+            }
+            if(btnGuardarEditarListaTareaEl){
+                btnGuardarEditarListaTareaEl.disabled = false;
+            }
+        };
+
+        if(window.jQuery && modalEditarListaTareaEl){
+            window.jQuery(modalEditarListaTareaEl).on('hidden.bs.modal', resetEditarListaState);
+        }
+    }
+
+    if(formEditarDetalleTareaEl){
+        formEditarDetalleTareaEl.addEventListener('submit', async function(evt){
+            evt.preventDefault();
+
+            if(!canEditTask || !tarjetaTareasActualId || !detalleTareaEditandoId){
+                return;
+            }
+
+            const descripcionLimpia = (inputEditarDetalleTareaDescripcionEl ? inputEditarDetalleTareaDescripcionEl.value : '').trim();
+            if(!descripcionLimpia){
+                alert('La descripcion de la tarea es obligatoria.');
+                return;
+            }
+
+            if(btnGuardarEditarDetalleTareaEl){
+                btnGuardarEditarDetalleTareaEl.disabled = true;
+            }
+
+            try {
+                await postJson(`${APP_URL_ROOT}/tablero/update_tarjeta_tarea_detalle`, {
+                    id_tablero: idTableroActual,
+                    id_tarea_detalle: detalleTareaEditandoId,
+                    descripcion: descripcionLimpia
+                });
+
+                closeEditarDetalleTareaModal();
+                await cargarModalTareas();
+            } catch(err){
+                alert(err.message);
+            } finally {
+                if(btnGuardarEditarDetalleTareaEl){
+                    btnGuardarEditarDetalleTareaEl.disabled = false;
+                }
+            }
+        });
+
+        const resetEditarDetalleState = function(){
+            detalleTareaEditandoId = 0;
+            if(inputEditarDetalleTareaDescripcionEl){
+                inputEditarDetalleTareaDescripcionEl.value = '';
+            }
+            if(btnGuardarEditarDetalleTareaEl){
+                btnGuardarEditarDetalleTareaEl.disabled = false;
+            }
+        };
+
+        if(window.jQuery && modalEditarDetalleTareaEl){
+            window.jQuery(modalEditarDetalleTareaEl).on('hidden.bs.modal', resetEditarDetalleState);
+        }
+    }
+
     if(contenedorListasTareasEl){
         contenedorListasTareasEl.addEventListener('click', async function(evt){
             const btnEditTarea = evt.target.closest('.btn-edit-tarea');
             if(btnEditTarea && canEditList && tarjetaTareasActualId){
                 const idTarea = parseInt(btnEditTarea.dataset.tareaId || '0', 10);
                 const nombreActual = btnEditTarea.dataset.tareaNombre || '';
-                const nuevoNombre = window.prompt('Editar nombre de la lista', nombreActual);
-
-                if(nuevoNombre === null){
-                    return;
-                }
-
-                const nombreLimpio = nuevoNombre.trim();
-                if(!nombreLimpio){
-                    alert('El nombre de la lista es obligatorio.');
-                    return;
-                }
-
-                try {
-                    await postJson(`${APP_URL_ROOT}/tablero/update_tarjeta_tarea`, {
-                        id_tablero: idTableroActual,
-                        id_tarea: idTarea,
-                        nombre_tarea: nombreLimpio
-                    });
-                    await cargarModalTareas();
-                } catch(err){
-                    alert(err.message);
-                }
+                openEditarListaTareaModal(idTarea, nombreActual);
                 return;
             }
 
@@ -2859,28 +3807,7 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
             if(btnEditDetalle && canEditTask && tarjetaTareasActualId){
                 const idDetalle = parseInt(btnEditDetalle.dataset.detalleId || '0', 10);
                 const descripcionActual = btnEditDetalle.dataset.detalleDescripcion || '';
-                const nuevaDescripcion = window.prompt('Editar descripcion de la tarea', descripcionActual);
-
-                if(nuevaDescripcion === null){
-                    return;
-                }
-
-                const descripcionLimpia = nuevaDescripcion.trim();
-                if(!descripcionLimpia){
-                    alert('La descripcion de la tarea es obligatoria.');
-                    return;
-                }
-
-                try {
-                    await postJson(`${APP_URL_ROOT}/tablero/update_tarjeta_tarea_detalle`, {
-                        id_tablero: idTableroActual,
-                        id_tarea_detalle: idDetalle,
-                        descripcion: descripcionLimpia
-                    });
-                    await cargarModalTareas();
-                } catch(err){
-                    alert(err.message);
-                }
+                openEditarDetalleTareaModal(idDetalle, descripcionActual);
                 return;
             }
 
@@ -2904,9 +3831,18 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
             const btnDeleteDetalle = evt.target.closest('.btn-delete-detalle');
             if(btnDeleteDetalle && canDeleteTask && tarjetaTareasActualId){
                 const idDetalle = parseInt(btnDeleteDetalle.dataset.detalleId || '0', 10);
+                const descripcion = String(btnDeleteDetalle.dataset.detalleDescripcion || '').trim() || 'esta tarea';
+                const tiempoSegundos = parseInt(btnDeleteDetalle.dataset.detalleTiempoSegundos || '0', 10) || 0;
+                const enCurso = String(btnDeleteDetalle.dataset.detalleRunning || '0') === '1';
+                const tieneTiempo = tiempoSegundos > 0 || enCurso;
+
+                const mensajeConfirmacion = tieneTiempo
+                    ? `La tarea "${descripcion}" tiene tiempo registrado (${formatSeconds(Math.max(0, tiempoSegundos))}${enCurso ? ', en curso' : ''}). ¿Confirma que desea eliminarla? Esta accion no se puede deshacer.`
+                    : `¿Eliminar la tarea "${descripcion}" del listado?`;
+
                 openConfirmActionModal({
                     title: '<i class="bi bi-trash"></i> Eliminar tarea',
-                    message: '¿Eliminar esta tarea del listado?',
+                    message: mensajeConfirmacion,
                     onConfirm: async function(){
                         await postJson(`${APP_URL_ROOT}/tablero/delete_tarjeta_tarea_detalle`, {
                             id_tablero: idTableroActual,
@@ -2929,7 +3865,7 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                 const idDetalle = parseInt(timerBadge.dataset.detalleId || '0', 10);
                 const tiemposUsuarios = detalleTiempoUsuarioMap[String(idDetalle)] || [];
 
-                if(Array.isArray(tiemposUsuarios) && tiemposUsuarios.length >= 2){
+                if(Array.isArray(tiemposUsuarios) && tiemposUsuarios.length >= 1){
                     openModalTiempoUsuarios(idDetalle, tiemposUsuarios);
                     return;
                 }
@@ -2948,16 +3884,23 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                     return;
                 }
 
-                try {
-                    await postJson(`${APP_URL_ROOT}/tablero/update_tarea_detalle_tiempo_manual`, {
-                        id_tablero: idTableroActual,
-                        id_tarea_detalle: idDetalle,
-                        tiempo_hms: cleaned
-                    });
-                    await cargarModalTareas();
-                } catch(err){
-                    alert(err.message);
-                }
+                openConfirmActionModal({
+                    title: '<i class="bi bi-exclamation-triangle"></i> Confirmar reemplazo de tiempo',
+                    message: 'El tiempo manual reemplazara el acumulado actual del detalle. No se sumara al valor anterior. ¿Desea continuar?',
+                    confirmText: 'Si, de acuerdo',
+                    onConfirm: async function(){
+                        try {
+                            await postJson(`${APP_URL_ROOT}/tablero/update_tarea_detalle_tiempo_manual`, {
+                                id_tablero: idTableroActual,
+                                id_tarea_detalle: idDetalle,
+                                tiempo_hms: cleaned
+                            });
+                            await cargarModalTareas();
+                        } catch(err){
+                            alert(err.message);
+                        }
+                    }
+                });
                 return;
             }
 
@@ -3094,6 +4037,41 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
         });
     }
 
+    if(canOrderColumn){
+        const modalOrdenarColumnasEl = document.getElementById('modalOrdenarColumnas');
+        const listaOrdenColumnasEl = document.getElementById('listaOrdenColumnas');
+        const inputOrdenColumnasEl = document.getElementById('inputOrdenColumnas');
+        const formReorderColumnasEl = document.getElementById('formReorderColumnas');
+
+        const syncOrdenColumnasInput = () => {
+            if(!listaOrdenColumnasEl || !inputOrdenColumnasEl) return;
+            const ids = Array.from(listaOrdenColumnasEl.querySelectorAll('.reorder-columna-item'))
+                .map(el => parseInt(el.dataset.columnaId || '0', 10))
+                .filter(id => id > 0);
+            inputOrdenColumnasEl.value = ids.join(',');
+        };
+
+        if(listaOrdenColumnasEl && typeof Sortable !== 'undefined'){
+            Sortable.create(listaOrdenColumnasEl, {
+                animation: 150,
+                ghostClass: 'bg-light',
+                onEnd: syncOrdenColumnasInput
+            });
+        }
+
+        if(modalOrdenarColumnasEl){
+            if(window.jQuery){
+                window.jQuery(modalOrdenarColumnasEl).on('shown.bs.modal', syncOrdenColumnasInput);
+            } else {
+                modalOrdenarColumnasEl.addEventListener('shown.bs.modal', syncOrdenColumnasInput);
+            }
+        }
+
+        if(formReorderColumnasEl){
+            formReorderColumnasEl.addEventListener('submit', syncOrdenColumnasInput);
+        }
+    }
+
     // Modal: al seleccionar usuario, cargar permisos ya asignados en los checkboxes.
     if(canAssignBoard){
         const modal = document.getElementById('modalAsignarUsuarioTablero');
@@ -3105,9 +4083,14 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                 tablero_editar: modal.querySelector('#modal_perm_tablero_editar'),
                 tablero_eliminar: modal.querySelector('#modal_perm_tablero_eliminar'),
                 tablero_asignar: modal.querySelector('#modal_perm_tablero_asignar'),
+                columna_crear: modal.querySelector('#modal_perm_columna_crear'),
+                columna_editar: modal.querySelector('#modal_perm_columna_editar'),
+                columna_eliminar: modal.querySelector('#modal_perm_columna_eliminar'),
+                columna_ordenar: modal.querySelector('#modal_perm_columna_ordenar'),
                 tarjeta_ver: modal.querySelector('#modal_perm_tarjeta_ver'),
                 tarjeta_crear: modal.querySelector('#modal_perm_tarjeta_crear'),
                 tarjeta_editar: modal.querySelector('#modal_perm_tarjeta_editar'),
+                tarjeta_mover: modal.querySelector('#modal_perm_tarjeta_mover'),
                 tarjeta_eliminar: modal.querySelector('#modal_perm_tarjeta_eliminar'),
                 tarjeta_asignar: modal.querySelector('#modal_perm_tarjeta_asignar'),
                 lista_crear: modal.querySelector('#modal_perm_lista_crear'),
@@ -3119,11 +4102,125 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                 tarea_tiempo_editar: modal.querySelector('#modal_perm_tarea_tiempo_editar')
             };
 
+            const sectionSelectAll = {
+                tablero: modal.querySelector('.js-select-all-section[data-section="tablero"]'),
+                columna: modal.querySelector('.js-select-all-section[data-section="columna"]'),
+                tarjeta: modal.querySelector('.js-select-all-section[data-section="tarjeta"]'),
+                lista: modal.querySelector('.js-select-all-section[data-section="lista"]'),
+                tarea: modal.querySelector('.js-select-all-section[data-section="tarea"]')
+            };
+
+            const sectionPermissionKeys = {
+                tablero: ['tablero_ver', 'tablero_crear', 'tablero_editar', 'tablero_eliminar', 'tablero_asignar'],
+                columna: ['columna_crear', 'columna_editar', 'columna_eliminar', 'columna_ordenar'],
+                tarjeta: ['tarjeta_ver', 'tarjeta_crear', 'tarjeta_editar', 'tarjeta_mover', 'tarjeta_eliminar', 'tarjeta_asignar'],
+                lista: ['lista_crear', 'lista_editar', 'lista_eliminar'],
+                tarea: ['tarea_crear', 'tarea_editar', 'tarea_eliminar', 'tarea_tiempo_editar']
+            };
+
+            const globalSelectAllWrap = modal.querySelector('#modalGlobalSelectAllWrap');
+            const globalSelectAll = modal.querySelector('#modal_perm_select_all_global');
+
+            const allPermissionKeys = Object.keys(checkboxes);
+
+            const updateGlobalSelectAllState = () => {
+                if(!globalSelectAll) return;
+
+                const allBoxes = allPermissionKeys
+                    .map(key => checkboxes[key])
+                    .filter(Boolean);
+
+                if(!allBoxes.length){
+                    globalSelectAll.checked = false;
+                    globalSelectAll.indeterminate = false;
+                    return;
+                }
+
+                const checkedCount = allBoxes.reduce((acc, box) => acc + (box.checked ? 1 : 0), 0);
+                globalSelectAll.checked = checkedCount === allBoxes.length;
+                globalSelectAll.indeterminate = checkedCount > 0 && checkedCount < allBoxes.length;
+            };
+
+            const toggleGlobalSelectAllVisibility = (show) => {
+                if(!globalSelectAllWrap || !globalSelectAll) return;
+                if(show){
+                    globalSelectAllWrap.classList.remove('d-none');
+                } else {
+                    globalSelectAllWrap.classList.add('d-none');
+                    globalSelectAll.checked = false;
+                    globalSelectAll.indeterminate = false;
+                }
+            };
+
+            const updateSelectAllStateForSection = (sectionName) => {
+                const selectAll = sectionSelectAll[sectionName];
+                const keys = sectionPermissionKeys[sectionName] || [];
+                if(!selectAll || !keys.length) return;
+
+                const sectionBoxes = keys
+                    .map(key => checkboxes[key])
+                    .filter(Boolean);
+
+                if(!sectionBoxes.length){
+                    selectAll.checked = false;
+                    selectAll.indeterminate = false;
+                    return;
+                }
+
+                const checkedCount = sectionBoxes.reduce((acc, box) => acc + (box.checked ? 1 : 0), 0);
+                selectAll.checked = checkedCount === sectionBoxes.length;
+                selectAll.indeterminate = checkedCount > 0 && checkedCount < sectionBoxes.length;
+            };
+
+            const updateAllSelectAllStates = () => {
+                Object.keys(sectionSelectAll).forEach(updateSelectAllStateForSection);
+                updateGlobalSelectAllState();
+            };
+
+            const bindSelectAllSectionEvents = () => {
+                Object.keys(sectionSelectAll).forEach(sectionName => {
+                    const selectAll = sectionSelectAll[sectionName];
+                    const keys = sectionPermissionKeys[sectionName] || [];
+                    if(!selectAll || !keys.length) return;
+
+                    selectAll.addEventListener('change', function(){
+                        keys.forEach(key => {
+                            if(checkboxes[key]){
+                                checkboxes[key].checked = this.checked;
+                            }
+                        });
+                        updateSelectAllStateForSection(sectionName);
+                        updateGlobalSelectAllState();
+                    });
+
+                    keys.forEach(key => {
+                        if(checkboxes[key]){
+                            checkboxes[key].addEventListener('change', function(){
+                                updateSelectAllStateForSection(sectionName);
+                                updateGlobalSelectAllState();
+                            });
+                        }
+                    });
+                });
+
+                if(globalSelectAll){
+                    globalSelectAll.addEventListener('change', function(){
+                        allPermissionKeys.forEach(key => {
+                            if(checkboxes[key]){
+                                checkboxes[key].checked = this.checked;
+                            }
+                        });
+                        updateAllSelectAllStates();
+                    });
+                }
+            };
+
             const resetDefaults = () => {
                 Object.keys(checkboxes).forEach(key => {
                     if(!checkboxes[key]) return;
                     checkboxes[key].checked = (key === 'tablero_ver' || key === 'tarjeta_ver');
                 });
+                updateAllSelectAllStates();
             };
 
             const loadPermissionsFromServer = async (userId) => {
@@ -3169,7 +4266,8 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                 if(perms){
                     const granularKeys = [
                         'tablero_ver', 'tablero_crear', 'tablero_editar', 'tablero_eliminar', 'tablero_asignar',
-                        'tarjeta_ver', 'tarjeta_crear', 'tarjeta_editar', 'tarjeta_eliminar', 'tarjeta_asignar',
+                        'columna_crear', 'columna_editar', 'columna_eliminar', 'columna_ordenar',
+                        'tarjeta_ver', 'tarjeta_crear', 'tarjeta_editar', 'tarjeta_mover', 'tarjeta_eliminar', 'tarjeta_asignar',
                         'lista_crear', 'lista_editar', 'lista_eliminar',
                         'tarea_crear', 'tarea_editar', 'tarea_eliminar', 'tarea_tiempo_editar'
                     ];
@@ -3182,9 +4280,14 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                         tablero_editar: !!perms.legacy_editar,
                         tablero_eliminar: !!perms.legacy_eliminar,
                         tablero_asignar: !!perms.legacy_editar,
+                        columna_crear: !!perms.legacy_editar,
+                        columna_editar: !!perms.legacy_editar,
+                        columna_eliminar: !!perms.legacy_eliminar,
+                        columna_ordenar: !!perms.legacy_editar,
                         tarjeta_ver: !!perms.legacy_ver,
                         tarjeta_crear: !!perms.legacy_crear,
                         tarjeta_editar: !!perms.legacy_editar,
+                        tarjeta_mover: !!perms.legacy_editar,
                         tarjeta_eliminar: !!perms.legacy_eliminar,
                         tarjeta_asignar: !!perms.legacy_editar,
                         lista_crear: !!perms.legacy_editar,
@@ -3200,6 +4303,7 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                         if(!checkboxes[key]) return;
                         checkboxes[key].checked = !!normalizedPerms[key];
                     });
+                    updateAllSelectAllStates();
                 } else {
                     resetDefaults();
                 }
@@ -3208,8 +4312,10 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
             const syncSelectedUserPermissions = async () => {
                 const id = parseInt(userSelect.value || '0', 10);
                 if(id > 0){
+                    toggleGlobalSelectAllVisibility(true);
                     await applyPermissions(id);
                 } else {
+                    toggleGlobalSelectAllVisibility(false);
                     resetDefaults();
                 }
             };
@@ -3223,6 +4329,8 @@ $canCreateBoard = $canCreateBoardGlobal && ($idTableroActual <= 0 || !empty($per
                     syncSelectedUserPermissions();
                 });
             });
+
+            bindSelectAllSectionEvents();
 
             if(window.jQuery){
                 window.jQuery(modal).on('shown.bs.modal', function(){

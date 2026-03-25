@@ -100,9 +100,14 @@ class TableroModel {
                 Permiso_tablero_editar,
                 Permiso_tablero_eliminar,
                 Permiso_tablero_asignar,
+                Permiso_columna_crear,
+                Permiso_columna_editar,
+                Permiso_columna_eliminar,
+                Permiso_columna_ordenar,
                 Permiso_tarjeta_ver,
                 Permiso_tarjeta_crear,
                 Permiso_tarjeta_editar,
+                Permiso_tarjeta_mover,
                 Permiso_tarjeta_eliminar,
                 Permiso_tarjeta_asignar,
                 Permiso_lista_crear,
@@ -125,9 +130,14 @@ class TableroModel {
                 :permiso_tablero_editar,
                 :permiso_tablero_eliminar,
                 :permiso_tablero_asignar,
+                :permiso_columna_crear,
+                :permiso_columna_editar,
+                :permiso_columna_eliminar,
+                :permiso_columna_ordenar,
                 :permiso_tarjeta_ver,
                 :permiso_tarjeta_crear,
                 :permiso_tarjeta_editar,
+                :permiso_tarjeta_mover,
                 :permiso_tarjeta_eliminar,
                 :permiso_tarjeta_asignar,
                 :permiso_lista_crear,
@@ -149,9 +159,14 @@ class TableroModel {
                 Permiso_tablero_editar = VALUES(Permiso_tablero_editar),
                 Permiso_tablero_eliminar = VALUES(Permiso_tablero_eliminar),
                 Permiso_tablero_asignar = VALUES(Permiso_tablero_asignar),
+                Permiso_columna_crear = VALUES(Permiso_columna_crear),
+                Permiso_columna_editar = VALUES(Permiso_columna_editar),
+                Permiso_columna_eliminar = VALUES(Permiso_columna_eliminar),
+                Permiso_columna_ordenar = VALUES(Permiso_columna_ordenar),
                 Permiso_tarjeta_ver = VALUES(Permiso_tarjeta_ver),
                 Permiso_tarjeta_crear = VALUES(Permiso_tarjeta_crear),
                 Permiso_tarjeta_editar = VALUES(Permiso_tarjeta_editar),
+                Permiso_tarjeta_mover = VALUES(Permiso_tarjeta_mover),
                 Permiso_tarjeta_eliminar = VALUES(Permiso_tarjeta_eliminar),
                 Permiso_tarjeta_asignar = VALUES(Permiso_tarjeta_asignar),
                 Permiso_lista_crear = VALUES(Permiso_lista_crear),
@@ -181,10 +196,15 @@ class TableroModel {
         $permTableroEditar = $resolvePermission('permiso_tablero_editar', 'permiso_editar', 0);
         $permTableroEliminar = $resolvePermission('permiso_tablero_eliminar', 'permiso_eliminar', 0);
         $permTableroAsignar = $resolvePermission('permiso_tablero_asignar', 'permiso_editar', 0);
+        $permColumnaCrear = $resolvePermission('permiso_columna_crear', 'permiso_tablero_editar', 0);
+        $permColumnaEditar = $resolvePermission('permiso_columna_editar', 'permiso_tablero_editar', 0);
+        $permColumnaEliminar = $resolvePermission('permiso_columna_eliminar', 'permiso_tablero_eliminar', 0);
+        $permColumnaOrdenar = $resolvePermission('permiso_columna_ordenar', 'permiso_tablero_editar', 0);
 
         $permTarjetaVer = $resolvePermission('permiso_tarjeta_ver', 'permiso_ver', 1);
         $permTarjetaCrear = $resolvePermission('permiso_tarjeta_crear', 'permiso_crear', 0);
         $permTarjetaEditar = $resolvePermission('permiso_tarjeta_editar', 'permiso_editar', 0);
+        $permTarjetaMover = $resolvePermission('permiso_tarjeta_mover', 'permiso_tarjeta_editar', 0);
         $permTarjetaEliminar = $resolvePermission('permiso_tarjeta_eliminar', 'permiso_eliminar', 0);
         $permTarjetaAsignar = $resolvePermission('permiso_tarjeta_asignar', 'permiso_editar', 0);
 
@@ -209,9 +229,14 @@ class TableroModel {
         $this->db->bind(':permiso_tablero_editar', $permTableroEditar);
         $this->db->bind(':permiso_tablero_eliminar', $permTableroEliminar);
         $this->db->bind(':permiso_tablero_asignar', $permTableroAsignar);
+        $this->db->bind(':permiso_columna_crear', $permColumnaCrear);
+        $this->db->bind(':permiso_columna_editar', $permColumnaEditar);
+        $this->db->bind(':permiso_columna_eliminar', $permColumnaEliminar);
+        $this->db->bind(':permiso_columna_ordenar', $permColumnaOrdenar);
         $this->db->bind(':permiso_tarjeta_ver', $permTarjetaVer);
         $this->db->bind(':permiso_tarjeta_crear', $permTarjetaCrear);
         $this->db->bind(':permiso_tarjeta_editar', $permTarjetaEditar);
+        $this->db->bind(':permiso_tarjeta_mover', $permTarjetaMover);
         $this->db->bind(':permiso_tarjeta_eliminar', $permTarjetaEliminar);
         $this->db->bind(':permiso_tarjeta_asignar', $permTarjetaAsignar);
         $this->db->bind(':permiso_lista_crear', $permListaCrear);
@@ -241,9 +266,14 @@ class TableroModel {
                 Permiso_tablero_editar,
                 Permiso_tablero_eliminar,
                 Permiso_tablero_asignar,
+                Permiso_columna_crear,
+                Permiso_columna_editar,
+                Permiso_columna_eliminar,
+                Permiso_columna_ordenar,
                 Permiso_tarjeta_ver,
                 Permiso_tarjeta_crear,
                 Permiso_tarjeta_editar,
+                Permiso_tarjeta_mover,
                 Permiso_tarjeta_eliminar,
                 Permiso_tarjeta_asignar,
                 Permiso_lista_crear,
@@ -278,9 +308,14 @@ class TableroModel {
                 'Permiso_tablero_editar' => 1,
                 'Permiso_tablero_eliminar' => 1,
                 'Permiso_tablero_asignar' => 1,
+                'Permiso_columna_crear' => 1,
+                'Permiso_columna_editar' => 1,
+                'Permiso_columna_eliminar' => 1,
+                'Permiso_columna_ordenar' => 1,
                 'Permiso_tarjeta_ver' => 1,
                 'Permiso_tarjeta_crear' => 1,
                 'Permiso_tarjeta_editar' => 1,
+                'Permiso_tarjeta_mover' => 1,
                 'Permiso_tarjeta_eliminar' => 1,
                 'Permiso_tarjeta_asignar' => 1,
                 'Permiso_lista_crear' => 1,
@@ -316,9 +351,14 @@ class TableroModel {
                 tup.Permiso_tablero_editar,
                 tup.Permiso_tablero_eliminar,
                 tup.Permiso_tablero_asignar,
+                tup.Permiso_columna_crear,
+                tup.Permiso_columna_editar,
+                tup.Permiso_columna_eliminar,
+                tup.Permiso_columna_ordenar,
                 tup.Permiso_tarjeta_ver,
                 tup.Permiso_tarjeta_crear,
                 tup.Permiso_tarjeta_editar,
+                tup.Permiso_tarjeta_mover,
                 tup.Permiso_tarjeta_eliminar,
                 tup.Permiso_tarjeta_asignar,
                 tup.Permiso_lista_crear,
@@ -915,16 +955,47 @@ class TableroModel {
     }
 
     public function addColumna($data){
-        $this->db->query('INSERT INTO tablero_columnas (Id_tablero, Nombre, Color, Orden_columna, Estado) VALUES (:id_tablero, :nombre, :color, :orden, 1)');
-        $this->db->bind(':id_tablero', (int)$data['id_tablero']);
-        $this->db->bind(':nombre', $data['nombre']);
-        $this->db->bind(':color', $data['color']);
-        $this->db->bind(':orden', (int)$data['orden_columna']);
-        return $this->db->execute();
+        $idTablero = (int)($data['id_tablero'] ?? 0);
+        $nombre = (string)($data['nombre'] ?? '');
+        $color = (string)($data['color'] ?? '#0d6efd');
+        $orden = (int)($data['orden_columna'] ?? 0);
+
+        if($idTablero <= 0 || trim($nombre) === ''){
+            return false;
+        }
+
+        if($orden <= 0){
+            $orden = $this->getSiguienteOrdenColumna($idTablero);
+        }
+
+        // Avoid race conditions or stale order values by retrying when unique index collides.
+        for($intento = 0; $intento < 3; $intento++){
+            try {
+                $this->db->query('INSERT INTO tablero_columnas (Id_tablero, Nombre, Color, Orden_columna, Estado) VALUES (:id_tablero, :nombre, :color, :orden, 1)');
+                $this->db->bind(':id_tablero', $idTablero);
+                $this->db->bind(':nombre', $nombre);
+                $this->db->bind(':color', $color);
+                $this->db->bind(':orden', $orden);
+                return $this->db->execute();
+            } catch(PDOException $e){
+                $errorCode = (string)$e->getCode();
+                $message = (string)$e->getMessage();
+                $isOrderDuplicate = $errorCode === '23000' && strpos($message, 'uk_tablero_columna_orden') !== false;
+
+                if($isOrderDuplicate && $intento < 2){
+                    $orden = $this->getSiguienteOrdenColumna($idTablero);
+                    continue;
+                }
+
+                return false;
+            }
+        }
+
+        return false;
     }
 
     public function getSiguienteOrdenColumna($id_tablero){
-        $this->db->query('SELECT COALESCE(MAX(Orden_columna), 0) + 1 AS siguiente FROM tablero_columnas WHERE Id_tablero = :id_tablero AND Estado = 1');
+        $this->db->query('SELECT COALESCE(MAX(Orden_columna), 0) + 1 AS siguiente FROM tablero_columnas WHERE Id_tablero = :id_tablero');
         $this->db->bind(':id_tablero', (int)$id_tablero);
         $row = $this->db->single();
         return $row ? (int)$row->siguiente : 1;
@@ -1160,9 +1231,162 @@ class TableroModel {
         return $this->db->execute();
     }
 
+    public function reorderColumnas($id_tablero, $orderedColumnIds = []){
+        try {
+            $idTablero = (int)$id_tablero;
+            $ordered = array_values(array_unique(array_map('intval', is_array($orderedColumnIds) ? $orderedColumnIds : [])));
+            if($idTablero <= 0 || empty($ordered)){
+                return false;
+            }
+
+            $columnas = $this->getColumnasActivasByTablero($idTablero);
+            if(empty($columnas) || count($columnas) !== count($ordered)){
+                return false;
+            }
+
+            $idsActuales = [];
+            foreach($columnas as $col){
+                $idsActuales[] = (int)$col->Id_columna;
+            }
+            sort($idsActuales);
+
+            $idsNuevos = $ordered;
+            sort($idsNuevos);
+            if($idsActuales !== $idsNuevos){
+                return false;
+            }
+
+            $this->db->query('SELECT Id_columna FROM tablero_columnas WHERE Id_tablero = :id_tablero AND Estado <> 1 ORDER BY COALESCE(NULLIF(Orden_columna, 0), 999999), Id_columna');
+            $this->db->bind(':id_tablero', $idTablero);
+            $inactivas = $this->db->resultSet();
+
+            $inactiveIds = [];
+            foreach($inactivas as $colInactiva){
+                $inactiveIds[] = (int)$colInactiva->Id_columna;
+            }
+
+            $allIds = array_merge($ordered, $inactiveIds);
+
+            $this->db->query('SELECT COALESCE(MAX(Orden_columna), 0) AS max_orden FROM tablero_columnas WHERE Id_tablero = :id_tablero');
+            $this->db->bind(':id_tablero', $idTablero);
+            $maxRow = $this->db->single();
+            $maxOrden = (int)($maxRow->max_orden ?? 0);
+            $temporalBase = $maxOrden + 1000;
+
+            // Primer paso: mover todas las columnas del tablero a un rango temporal unico.
+            foreach($allIds as $idx => $idColumna){
+                $ordenTemporal = $temporalBase + $idx + 1;
+                $this->db->query('UPDATE tablero_columnas SET Orden_columna = :orden, Fecha_actualizacion = NOW() WHERE Id_columna = :id_columna AND Id_tablero = :id_tablero');
+                $this->db->bind(':orden', (int)$ordenTemporal);
+                $this->db->bind(':id_columna', (int)$idColumna);
+                $this->db->bind(':id_tablero', $idTablero);
+                if(!$this->db->execute()){
+                    return false;
+                }
+            }
+
+            // Segundo paso: activas al inicio (1..N) en el orden solicitado.
+            foreach($ordered as $idx => $idColumna){
+                $ordenFinal = $idx + 1;
+                $this->db->query('UPDATE tablero_columnas SET Orden_columna = :orden, Fecha_actualizacion = NOW() WHERE Id_columna = :id_columna AND Id_tablero = :id_tablero AND Estado = 1');
+                $this->db->bind(':orden', (int)$ordenFinal);
+                $this->db->bind(':id_columna', (int)$idColumna);
+                $this->db->bind(':id_tablero', $idTablero);
+                if(!$this->db->execute()){
+                    return false;
+                }
+            }
+
+            // Tercer paso: inactivas despues de las activas, manteniendo unicidad por tablero.
+            foreach($inactiveIds as $idx => $idColumna){
+                $ordenFinalInactiva = count($ordered) + $idx + 1;
+                $this->db->query('UPDATE tablero_columnas SET Orden_columna = :orden, Fecha_actualizacion = NOW() WHERE Id_columna = :id_columna AND Id_tablero = :id_tablero AND Estado <> 1');
+                $this->db->bind(':orden', (int)$ordenFinalInactiva);
+                $this->db->bind(':id_columna', (int)$idColumna);
+                $this->db->bind(':id_tablero', $idTablero);
+                if(!$this->db->execute()){
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (Throwable $e) {
+            error_log('TableroModel::reorderColumnas error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
     public function deleteColumna($id_columna){
         $this->db->query('UPDATE tablero_columnas SET Estado = 0, Fecha_actualizacion = NOW() WHERE Id_columna = :id');
         $this->db->bind(':id', (int)$id_columna);
+        return $this->db->execute();
+    }
+
+    public function updateTablero($id_tablero, $nombre, $descripcion){
+        $this->db->query('
+            UPDATE tablero
+            SET
+                Nombre = :nombre,
+                Descripcion = :descripcion,
+                Fecha_actualizacion = NOW()
+            WHERE Id_tablero = :id_tablero
+              AND Estado = 1
+        ');
+        $this->db->bind(':nombre', $nombre);
+        $this->db->bind(':descripcion', $descripcion !== '' ? $descripcion : null);
+        $this->db->bind(':id_tablero', (int)$id_tablero);
+        return $this->db->execute();
+    }
+
+    public function getTableroDeletionSummary($id_tablero){
+        $this->db->query('
+            SELECT
+                (SELECT COUNT(*) FROM tablero_columnas c WHERE c.Id_tablero = :id_tablero_col AND c.Estado = 1) AS total_columnas,
+                (SELECT COUNT(*) FROM tablero_tarjetas t WHERE t.Id_tablero = :id_tablero_tar AND t.Estado = 1) AS total_tarjetas,
+                (
+                    SELECT COUNT(*)
+                    FROM tablero_tarjetas_tarea tt
+                    INNER JOIN tablero_tarjetas t ON t.Id_tarjeta = tt.Id_tarjeta
+                    WHERE t.Id_tablero = :id_tablero_lista
+                      AND t.Estado = 1
+                      AND tt.Estado = 1
+                ) AS total_listas,
+                (
+                    SELECT COUNT(*)
+                    FROM tablero_tarjetas_tarea_detalle d
+                    INNER JOIN tablero_tarjetas_tarea tt ON tt.Id_tarea = d.Id_tarea
+                    INNER JOIN tablero_tarjetas t ON t.Id_tarjeta = tt.Id_tarjeta
+                    WHERE t.Id_tablero = :id_tablero_tarea
+                      AND t.Estado = 1
+                      AND tt.Estado = 1
+                      AND d.Estado = 1
+                ) AS total_tareas
+        ');
+        $this->db->bind(':id_tablero_col', (int)$id_tablero);
+        $this->db->bind(':id_tablero_tar', (int)$id_tablero);
+        $this->db->bind(':id_tablero_lista', (int)$id_tablero);
+        $this->db->bind(':id_tablero_tarea', (int)$id_tablero);
+
+        $row = $this->db->single();
+        return (object)[
+            'total_columnas' => $row ? (int)$row->total_columnas : 0,
+            'total_tarjetas' => $row ? (int)$row->total_tarjetas : 0,
+            'total_listas' => $row ? (int)$row->total_listas : 0,
+            'total_tareas' => $row ? (int)$row->total_tareas : 0
+        ];
+    }
+
+    public function canDeleteTablero($id_tablero){
+        $summary = $this->getTableroDeletionSummary((int)$id_tablero);
+        return (int)$summary->total_columnas === 0
+            && (int)$summary->total_tarjetas === 0
+            && (int)$summary->total_listas === 0
+            && (int)$summary->total_tareas === 0;
+    }
+
+    public function deleteTablero($id_tablero){
+        $this->db->query('UPDATE tablero SET Estado = 0, Fecha_actualizacion = NOW() WHERE Id_tablero = :id_tablero AND Estado = 1');
+        $this->db->bind(':id_tablero', (int)$id_tablero);
         return $this->db->execute();
     }
 
@@ -1587,7 +1811,7 @@ class TableroModel {
                 continue;
             }
 
-            if(!$this->incrementarTiempoDetalleUsuario($id_tarea_detalle, $uid, $duracion)){
+            if(!$this->incrementarTiempoDetalleUsuario($id_tarea_detalle, $uid, $duracion, false)){
                 return false;
             }
 
@@ -1619,7 +1843,7 @@ class TableroModel {
         return true;
     }
 
-    private function incrementarTiempoDetalleUsuario($id_tarea_detalle, $id_usuario, $duracion_segundos){
+    private function incrementarTiempoDetalleUsuario($id_tarea_detalle, $id_usuario, $duracion_segundos, $acumular = true){
         $duracion = max(0, (int)$duracion_segundos);
         if($id_tarea_detalle <= 0 || $id_usuario <= 0 || $duracion <= 0){
             return true;
@@ -1629,23 +1853,43 @@ class TableroModel {
             return true;
         }
 
-        $this->db->query('
-            INSERT INTO tablero_tarjetas_tareas_detalle_tiempo_usuario (
-                Id_tarea_detalle,
-                Id_usuario,
-                Tiempo_total_segundos,
-                Estado
-            ) VALUES (
-                :id_tarea_detalle,
-                :id_usuario,
-                :duracion_segundos,
-                1
-            )
-            ON DUPLICATE KEY UPDATE
-                Tiempo_total_segundos = Tiempo_total_segundos + VALUES(Tiempo_total_segundos),
-                Estado = 1,
-                Fecha_actualizacion = NOW()
-        ');
+        if($acumular){
+            $this->db->query('
+                INSERT INTO tablero_tarjetas_tareas_detalle_tiempo_usuario (
+                    Id_tarea_detalle,
+                    Id_usuario,
+                    Tiempo_total_segundos,
+                    Estado
+                ) VALUES (
+                    :id_tarea_detalle,
+                    :id_usuario,
+                    :duracion_segundos,
+                    1
+                )
+                ON DUPLICATE KEY UPDATE
+                    Tiempo_total_segundos = Tiempo_total_segundos + VALUES(Tiempo_total_segundos),
+                    Estado = 1,
+                    Fecha_actualizacion = NOW()
+            ');
+        } else {
+            $this->db->query('
+                INSERT INTO tablero_tarjetas_tareas_detalle_tiempo_usuario (
+                    Id_tarea_detalle,
+                    Id_usuario,
+                    Tiempo_total_segundos,
+                    Estado
+                ) VALUES (
+                    :id_tarea_detalle,
+                    :id_usuario,
+                    :duracion_segundos,
+                    1
+                )
+                ON DUPLICATE KEY UPDATE
+                    Tiempo_total_segundos = VALUES(Tiempo_total_segundos),
+                    Estado = 1,
+                    Fecha_actualizacion = NOW()
+            ');
+        }
         $this->db->bind(':id_tarea_detalle', (int)$id_tarea_detalle);
         $this->db->bind(':id_usuario', (int)$id_usuario);
         $this->db->bind(':duracion_segundos', $duracion);
@@ -1809,5 +2053,33 @@ class TableroModel {
         $this->db->bind(':id_tarjeta', (int)$id_tarjeta);
         $this->db->bind(':limite', (int)$limite);
         return $this->db->resultSet();
+    }
+
+    public function getLatestHistorialIdByTablero($id_tablero){
+        $this->db->query('
+            SELECT COALESCE(MAX(h.Id_historial), 0) AS latest_id
+            FROM tablero_tarjetas_historial h
+            INNER JOIN tablero_tarjetas t ON t.Id_tarjeta = h.Id_tarjeta
+            WHERE t.Id_tablero = :id_tablero
+        ');
+        $this->db->bind(':id_tablero', (int)$id_tablero);
+        $row = $this->db->single();
+        return $row ? (int)($row->latest_id ?? 0) : 0;
+    }
+
+    public function hasHistorialChangesByOtherUser($id_tablero, $since_historial, $id_usuario){
+        $this->db->query('
+            SELECT 1
+            FROM tablero_tarjetas_historial h
+            INNER JOIN tablero_tarjetas t ON t.Id_tarjeta = h.Id_tarjeta
+            WHERE t.Id_tablero = :id_tablero
+              AND h.Id_historial > :since_historial
+              AND (:id_usuario = 0 OR h.Id_usuario IS NULL OR h.Id_usuario <> :id_usuario)
+            LIMIT 1
+        ');
+        $this->db->bind(':id_tablero', (int)$id_tablero);
+        $this->db->bind(':since_historial', (int)$since_historial);
+        $this->db->bind(':id_usuario', (int)$id_usuario);
+        return (bool)$this->db->single();
     }
 }

@@ -313,13 +313,210 @@ body.login {
 }
 
 /* Estilos visuales del tablero (columnas y tarjetas) */
+.tablero-interactive-shell {
+    position: relative;
+    --tablero-sync-size: 12px;
+    --tablero-card-list-height: min(560px, calc(100vh - 280px));
+    --tablero-edge-size: 24px;
+    width: 100%;
+    max-width: 100%;
+}
+
+.tablero-content-band {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    position: relative;
+}
+
+.tablero-wrapper {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+}
+
+.tablero-viewport {
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-height: none;
+    width: 100%;
+    max-width: 100%;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    border-radius: 0.45rem;
+}
+
+.tablero-viewport::-webkit-scrollbar {
+    display: none;
+}
+
+.tablero-scroll-sync {
+    background: #edf1f6;
+    border: 1px solid #d3dce7;
+    border-radius: 999px;
+    scrollbar-color: #9aa8b8 #edf1f6;
+}
+
+.tablero-scroll-sync-x {
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: var(--tablero-sync-size);
+    margin-bottom: 0.45rem;
+}
+
+.tablero-scroll-sync--bottom {
+    margin-top: 0.45rem;
+    margin-bottom: 0;
+}
+
+.tablero-scroll-sync-y {
+    display: none;
+}
+
+.tablero-scroll-sync-inner-x {
+    height: 1px;
+}
+
+.tablero-scroll-sync-inner-y {
+    width: 1px;
+}
+
+.tablero-scroll-sync::-webkit-scrollbar {
+    width: var(--tablero-sync-size);
+    height: var(--tablero-sync-size);
+}
+
+.tablero-scroll-sync::-webkit-scrollbar-thumb {
+    background: #9aa8b8;
+    border-radius: 999px;
+}
+
+.tablero-scroll-sync::-webkit-scrollbar-track {
+    background: #edf1f6;
+    border-radius: 999px;
+}
+
+.tablero-edge-zone {
+    position: absolute;
+    z-index: 25;
+    top: calc(var(--tablero-sync-size) + 0.5rem);
+    bottom: calc(var(--tablero-sync-size) + 0.5rem);
+    width: var(--tablero-edge-size);
+    background: rgba(108, 117, 125, 0.36);
+    border-radius: 8px;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 700;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14);
+    transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tablero-edge-zone--left {
+    left: calc(-1 * var(--tablero-edge-size) - 8px);
+}
+
+.tablero-edge-zone--right {
+    right: calc(-1 * var(--tablero-edge-size) - 8px);
+}
+
+.tablero-edge-zone:hover {
+    background: rgba(108, 117, 125, 0.5);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+    cursor: ew-resize;
+}
+
+.tablero-edge-zone--left::before {
+    content: '<';
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(33, 37, 41, 0.55);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    line-height: 1;
+}
+
+.tablero-edge-zone--right::before {
+    content: '>';
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(33, 37, 41, 0.55);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    line-height: 1;
+}
+
 .tablero-columns {
     gap: 5px !important;
+    width: max-content;
+    align-items: flex-start;
+}
+
+@media (max-width: 992px) {
+    .tablero-interactive-shell {
+        --tablero-card-list-height: min(420px, calc(100vh - 250px));
+        --tablero-edge-size: 18px;
+    }
 }
 
 .tablero-columna {
+    width: min(320px, calc(100vw - 4rem));
+    min-width: min(320px, calc(100vw - 4rem));
+    max-width: min(320px, calc(100vw - 4rem));
     border: 2px solid #8b5a2b;
     box-shadow: 0 3px 10px rgba(90, 58, 34, 0.2);
+    display: flex;
+    flex-direction: column;
+}
+
+.tablero-columna .card-header {
+    flex: 0 0 auto;
+}
+
+.tablero-columna .tablero-card-list {
+    flex: 1 1 auto;
+    max-height: var(--tablero-card-list-height);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: #9aa8b8 #eef2f7;
+    overscroll-behavior: contain;
+}
+
+.tablero-columna .tablero-card-list::-webkit-scrollbar {
+    width: 9px;
+}
+
+.tablero-columna .tablero-card-list::-webkit-scrollbar-thumb {
+    background: #9aa8b8;
+    border-radius: 999px;
+}
+
+.tablero-columna .tablero-card-list::-webkit-scrollbar-track {
+    background: #eef2f7;
+    border-radius: 999px;
+}
+
+@media (max-width: 576px) {
+    .tablero-columna {
+        width: min(320px, calc(100vw - 2.5rem));
+        min-width: min(320px, calc(100vw - 2.5rem));
+        max-width: min(320px, calc(100vw - 2.5rem));
+    }
+
+    .tablero-scroll-sync-x {
+        height: 10px;
+    }
 }
 
 .tablero-tarjeta {

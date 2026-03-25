@@ -440,22 +440,52 @@ function normalizeSqlCompatibilityQuery($query) {
     ];
 }
 
-function shouldIgnoreCompatibilitySqlError(mysqli $conn, $query, $wasNormalized) {
-    if (!$wasNormalized) {
-        return false;
-    }
-
+function shouldIgnoreCompatibilitySqlErrorByCode($errorCode, $query) {
     $isAlterTable = preg_match('/^\s*ALTER\s+TABLE\b/i', $query) === 1;
     if (!$isAlterTable) {
         return false;
     }
 
-    // 1060: Duplicate column name
-    // 1061: Duplicate key name
-    // 1091: Can't DROP ... doesn't exist
+    $errno = (int)$errorCode;
+
+    // 1060: Duplicate column name (ALTER TABLE ... ADD COLUMN ...)
+    if ($errno === 1060 && preg_match('/\bADD\s+COLUMN\b/i', $query) === 1) {
+        return true;
+    }
+
+    // 1061: Duplicate key name (ALTER TABLE ... ADD INDEX/KEY/UNIQUE ...)
+    if ($errno === 1061 && preg_match('/\bADD\s+(INDEX|KEY|UNIQUE\s+KEY)\b/i', $query) === 1) {
+        return true;
+    }
+
+    // 1091: Can't DROP ... doesn't exist (ALTER TABLE ... DROP ...)
+    if ($errno === 1091 && preg_match('/\bDROP\s+(INDEX|KEY|COLUMN|FOREIGN\s+KEY)\b/i', $query) === 1) {
+        return true;
+    }
+
     // 1826: Duplicate foreign key constraint name
-    $ignorableErrorCodes = [1060, 1061, 1091, 1826];
-    return in_array((int) $conn->errno, $ignorableErrorCodes, true);
+    if ($errno === 1826 && preg_match('/\bADD\s+CONSTRAINT\b/i', $query) === 1) {
+        return true;
+    }
+
+    return false;
+}
+
+function shouldIgnoreCompatibilitySqlError(mysqli $conn, $query) {
+    return shouldIgnoreCompatibilitySqlErrorByCode((int)$conn->errno, $query);
+}
+
+function isTableroColumnOrderUniqueIndexQuery($query) {
+    return preg_match('/^\s*ALTER\s+TABLE\s+`?tablero_columnas`?.*ADD\s+UNIQUE\s+KEY\s+`?uk_tablero_columna_orden`?/is', $query) === 1;
+}
+
+function repairTableroColumnOrderForUniqueIndex(mysqli $conn) {
+    // Reparacion defensiva: asegura unicidad por tablero de forma deterministica.
+    // Id_columna es PK y por lo tanto unico dentro de cada tablero.
+    $repairSql = "UPDATE `tablero_columnas`\n"
+        . "SET `Orden_columna` = `Id_columna`";
+
+    return $conn->query($repairSql) !== false;
 }
 
 // Ejecuta un archivo SQL en la conexion actual y reporta resultados.
@@ -483,14 +513,35 @@ function runSqlFile(mysqli $conn, $filePath) {
         $queryToExecute = $normalizedQueryData['query'];
         $wasNormalized = $normalizedQueryData['changed'];
 
-        if ($conn->query($queryToExecute) === false) {
-            if (shouldIgnoreCompatibilitySqlError($conn, $queryToExecute, $wasNormalized)) {
-                // El esquema ya estaba en el estado deseado; continuar instalacion.
+        try {
+            $result = $conn->query($queryToExecute);
+            if ($result === false) {
+                if ((int)$conn->errno === 1062 && isTableroColumnOrderUniqueIndexQuery($queryToExecute)) {
+                    if (repairTableroColumnOrderForUniqueIndex($conn)) {
+                        $retryResult = $conn->query($queryToExecute);
+                        if ($retryResult !== false) {
+                            $executed++;
+                            continue;
+                        }
+                    }
+                }
+
+                if (shouldIgnoreCompatibilitySqlError($conn, $queryToExecute)) {
+                    // El esquema ya estaba en el estado deseado; continuar instalacion.
+                    $executed++;
+                    continue;
+                }
+
+                throw new Exception("Error en " . basename($filePath) . ": " . $conn->error . " | SQL: " . substr($queryToExecute, 0, 180));
+            }
+        } catch (Throwable $e) {
+            $errorCode = (int)$e->getCode();
+            if (shouldIgnoreCompatibilitySqlErrorByCode($errorCode, $queryToExecute)) {
                 $executed++;
                 continue;
             }
 
-            throw new Exception("Error en " . basename($filePath) . ": " . $conn->error . " | SQL: " . substr($queryToExecute, 0, 180));
+            throw new Exception("Error en " . basename($filePath) . ": " . $e->getMessage() . " | SQL: " . substr($queryToExecute, 0, 180));
         }
         $executed++;
     }
@@ -1309,7 +1360,15 @@ try {
     echo "✅ Script 09 ejecutado correctamente ($queries09 sentencias)\n";
 
     // ============================================================
-    // 7. EJECUTAR SCRIPT DE RECUPERACION DE CONTRASENA (11)
+    // 7. EJECUTAR SCRIPT DE RESTAURAR ADMIN (10)
+    // ============================================================
+    echo "📝 Ejecutando script de restaurar admin (10_restaurar_admin.sql)...\n";
+    $restoreAdminScriptPath = __DIR__ . '/database_scripts/10_restaurar_admin.sql';
+    $queries10 = runSqlFile($conn, $restoreAdminScriptPath);
+    echo "✅ Script 10 ejecutado correctamente ($queries10 sentencias)\n";
+
+    // ============================================================
+    // 8. EJECUTAR SCRIPT DE RECUPERACION DE CONTRASENA (11)
     // ============================================================
     echo "📝 Ejecutando script de recuperación de contraseña (11_recuperacion_password.sql)...\n";
     $passwordResetScriptPath = __DIR__ . '/database_scripts/11_recuperacion_password.sql';
@@ -1325,7 +1384,8 @@ try {
                 Id_tablero, Id_usuario,
                 Permiso_ver, Permiso_crear, Permiso_editar, Permiso_eliminar,
                 Permiso_tablero_ver, Permiso_tablero_crear, Permiso_tablero_editar, Permiso_tablero_eliminar, Permiso_tablero_asignar,
-                Permiso_tarjeta_ver, Permiso_tarjeta_crear, Permiso_tarjeta_editar, Permiso_tarjeta_eliminar, Permiso_tarjeta_asignar,
+                Permiso_columna_crear, Permiso_columna_editar, Permiso_columna_eliminar, Permiso_columna_ordenar,
+                Permiso_tarjeta_ver, Permiso_tarjeta_crear, Permiso_tarjeta_editar, Permiso_tarjeta_mover, Permiso_tarjeta_eliminar, Permiso_tarjeta_asignar,
                 Permiso_lista_crear, Permiso_lista_editar, Permiso_lista_eliminar,
                 Permiso_tarea_crear, Permiso_tarea_editar, Permiso_tarea_eliminar, Permiso_tarea_tiempo_editar,
                 Estado
@@ -1334,7 +1394,8 @@ try {
                 t.Id_tablero, $admin_id,
                 1,1,1,1,
                 1,1,1,1,1,
-                1,1,1,1,1,
+                1,1,1,1,
+                1,1,1,1,1,1,
                 1,1,1,
                 1,1,1,1,
                 1
@@ -1343,7 +1404,8 @@ try {
             ON DUPLICATE KEY UPDATE
                 Permiso_ver=1, Permiso_crear=1, Permiso_editar=1, Permiso_eliminar=1,
                 Permiso_tablero_ver=1, Permiso_tablero_crear=1, Permiso_tablero_editar=1, Permiso_tablero_eliminar=1, Permiso_tablero_asignar=1,
-                Permiso_tarjeta_ver=1, Permiso_tarjeta_crear=1, Permiso_tarjeta_editar=1, Permiso_tarjeta_eliminar=1, Permiso_tarjeta_asignar=1,
+                Permiso_columna_crear=1, Permiso_columna_editar=1, Permiso_columna_eliminar=1, Permiso_columna_ordenar=1,
+                Permiso_tarjeta_ver=1, Permiso_tarjeta_crear=1, Permiso_tarjeta_editar=1, Permiso_tarjeta_mover=1, Permiso_tarjeta_eliminar=1, Permiso_tarjeta_asignar=1,
                 Permiso_lista_crear=1, Permiso_lista_editar=1, Permiso_lista_eliminar=1,
                 Permiso_tarea_crear=1, Permiso_tarea_editar=1, Permiso_tarea_eliminar=1, Permiso_tarea_tiempo_editar=1,
                 Estado=1

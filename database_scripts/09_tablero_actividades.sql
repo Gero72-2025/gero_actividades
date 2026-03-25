@@ -42,9 +42,14 @@ CREATE TABLE IF NOT EXISTS `tablero_usuario_permiso` (
     `Permiso_tablero_editar` TINYINT(1) NOT NULL DEFAULT 0,
     `Permiso_tablero_eliminar` TINYINT(1) NOT NULL DEFAULT 0,
     `Permiso_tablero_asignar` TINYINT(1) NOT NULL DEFAULT 0,
+    `Permiso_columna_crear` TINYINT(1) NOT NULL DEFAULT 0,
+    `Permiso_columna_editar` TINYINT(1) NOT NULL DEFAULT 0,
+    `Permiso_columna_eliminar` TINYINT(1) NOT NULL DEFAULT 0,
+    `Permiso_columna_ordenar` TINYINT(1) NOT NULL DEFAULT 0,
     `Permiso_tarjeta_ver` TINYINT(1) NOT NULL DEFAULT 1,
     `Permiso_tarjeta_crear` TINYINT(1) NOT NULL DEFAULT 0,
     `Permiso_tarjeta_editar` TINYINT(1) NOT NULL DEFAULT 0,
+    `Permiso_tarjeta_mover` TINYINT(1) NOT NULL DEFAULT 0,
     `Permiso_tarjeta_eliminar` TINYINT(1) NOT NULL DEFAULT 0,
     `Permiso_tarjeta_asignar` TINYINT(1) NOT NULL DEFAULT 0,
     `Permiso_lista_crear` TINYINT(1) NOT NULL DEFAULT 0,
@@ -342,7 +347,19 @@ ALTER TABLE `tablero_usuario_permiso`
     ADD COLUMN IF NOT EXISTS `Permiso_tablero_asignar` TINYINT(1) NOT NULL DEFAULT 0 AFTER `Permiso_tablero_eliminar`;
 
 ALTER TABLE `tablero_usuario_permiso`
-    ADD COLUMN IF NOT EXISTS `Permiso_tarjeta_ver` TINYINT(1) NOT NULL DEFAULT 1 AFTER `Permiso_tablero_asignar`;
+    ADD COLUMN IF NOT EXISTS `Permiso_columna_crear` TINYINT(1) NOT NULL DEFAULT 0 AFTER `Permiso_tablero_asignar`;
+
+ALTER TABLE `tablero_usuario_permiso`
+    ADD COLUMN IF NOT EXISTS `Permiso_columna_editar` TINYINT(1) NOT NULL DEFAULT 0 AFTER `Permiso_columna_crear`;
+
+ALTER TABLE `tablero_usuario_permiso`
+    ADD COLUMN IF NOT EXISTS `Permiso_columna_eliminar` TINYINT(1) NOT NULL DEFAULT 0 AFTER `Permiso_columna_editar`;
+
+ALTER TABLE `tablero_usuario_permiso`
+    ADD COLUMN IF NOT EXISTS `Permiso_columna_ordenar` TINYINT(1) NOT NULL DEFAULT 0 AFTER `Permiso_columna_eliminar`;
+
+ALTER TABLE `tablero_usuario_permiso`
+    ADD COLUMN IF NOT EXISTS `Permiso_tarjeta_ver` TINYINT(1) NOT NULL DEFAULT 1 AFTER `Permiso_columna_ordenar`;
 
 ALTER TABLE `tablero_usuario_permiso`
     ADD COLUMN IF NOT EXISTS `Permiso_tarjeta_crear` TINYINT(1) NOT NULL DEFAULT 0 AFTER `Permiso_tarjeta_ver`;
@@ -351,7 +368,10 @@ ALTER TABLE `tablero_usuario_permiso`
     ADD COLUMN IF NOT EXISTS `Permiso_tarjeta_editar` TINYINT(1) NOT NULL DEFAULT 0 AFTER `Permiso_tarjeta_crear`;
 
 ALTER TABLE `tablero_usuario_permiso`
-    ADD COLUMN IF NOT EXISTS `Permiso_tarjeta_eliminar` TINYINT(1) NOT NULL DEFAULT 0 AFTER `Permiso_tarjeta_editar`;
+    ADD COLUMN IF NOT EXISTS `Permiso_tarjeta_mover` TINYINT(1) NOT NULL DEFAULT 0 AFTER `Permiso_tarjeta_editar`;
+
+ALTER TABLE `tablero_usuario_permiso`
+    ADD COLUMN IF NOT EXISTS `Permiso_tarjeta_eliminar` TINYINT(1) NOT NULL DEFAULT 0 AFTER `Permiso_tarjeta_mover`;
 
 ALTER TABLE `tablero_usuario_permiso`
     ADD COLUMN IF NOT EXISTS `Permiso_tarjeta_asignar` TINYINT(1) NOT NULL DEFAULT 0 AFTER `Permiso_tarjeta_eliminar`;
@@ -384,9 +404,14 @@ SET
     `Permiso_tablero_editar` = COALESCE(`Permiso_tablero_editar`, `Permiso_editar`, 0),
     `Permiso_tablero_eliminar` = COALESCE(`Permiso_tablero_eliminar`, `Permiso_eliminar`, 0),
     `Permiso_tablero_asignar` = COALESCE(`Permiso_tablero_asignar`, `Permiso_editar`, 0),
+    `Permiso_columna_crear` = COALESCE(`Permiso_columna_crear`, `Permiso_tablero_editar`, `Permiso_editar`, 0),
+    `Permiso_columna_editar` = COALESCE(`Permiso_columna_editar`, `Permiso_tablero_editar`, `Permiso_editar`, 0),
+    `Permiso_columna_eliminar` = COALESCE(`Permiso_columna_eliminar`, `Permiso_tablero_eliminar`, `Permiso_eliminar`, 0),
+    `Permiso_columna_ordenar` = COALESCE(`Permiso_columna_ordenar`, `Permiso_tablero_editar`, `Permiso_editar`, 0),
     `Permiso_tarjeta_ver` = COALESCE(`Permiso_tarjeta_ver`, `Permiso_ver`, 1),
     `Permiso_tarjeta_crear` = COALESCE(`Permiso_tarjeta_crear`, `Permiso_crear`, 0),
     `Permiso_tarjeta_editar` = COALESCE(`Permiso_tarjeta_editar`, `Permiso_editar`, 0),
+    `Permiso_tarjeta_mover` = COALESCE(`Permiso_tarjeta_mover`, `Permiso_tarjeta_editar`, `Permiso_editar`, 0),
     `Permiso_tarjeta_eliminar` = COALESCE(`Permiso_tarjeta_eliminar`, `Permiso_eliminar`, 0),
     `Permiso_tarjeta_asignar` = COALESCE(`Permiso_tarjeta_asignar`, `Permiso_editar`, 0),
     `Permiso_lista_crear` = COALESCE(`Permiso_lista_crear`, `Permiso_editar`, 0),
@@ -508,7 +533,28 @@ ON DUPLICATE KEY UPDATE
 -- Si venias de la version anterior, este indice unico era global por Orden_columna
 -- y provoca errores al crear columnas de otro tablero (Duplicate entry '1').
 ALTER TABLE `tablero_columnas`
+    ADD COLUMN IF NOT EXISTS `Orden_columna` INT NOT NULL DEFAULT 0 AFTER `Color`;
+
+ALTER TABLE `tablero_columnas`
     DROP INDEX IF EXISTS `uk_tablero_columna_orden`;
+
+SET @orden_prev_tablero := 0;
+SET @orden_seq := 0;
+
+UPDATE `tablero_columnas` c
+INNER JOIN (
+    SELECT
+        base.Id_columna,
+        base.Id_tablero,
+        (@orden_seq := IF(@orden_prev_tablero = base.Id_tablero, @orden_seq + 1, 1)) AS nuevo_orden,
+        (@orden_prev_tablero := base.Id_tablero) AS _tmp
+    FROM (
+        SELECT Id_columna, Id_tablero, COALESCE(NULLIF(Orden_columna, 0), 999999) AS orden_actual
+        FROM `tablero_columnas`
+        ORDER BY Id_tablero ASC, orden_actual ASC, Id_columna ASC
+    ) base
+) seq ON seq.Id_columna = c.Id_columna
+SET c.Orden_columna = seq.nuevo_orden;
 
 -- Recrear unicidad por tablero + orden (correcto para multi-tablero).
 ALTER TABLE `tablero_columnas`
@@ -531,36 +577,45 @@ SELECT 'tablero.ver', 'Ver tableros asignados', 'tablero', 'ver', 1
 WHERE NOT EXISTS (SELECT 1 FROM `permisos` WHERE `Nombre` = 'tablero.ver');
 
 INSERT INTO `permisos` (`Nombre`, `Descripcion`, `Modulo`, `Accion`, `Estado`)
-SELECT 'tablero.crear', 'Crear tableros y tarjetas', 'tablero', 'crear', 1
-WHERE NOT EXISTS (SELECT 1 FROM `permisos` WHERE `Nombre` = 'tablero.crear');
+SELECT 'tablero.dashboard', 'Acceso global a vista Dashboard de tablero', 'tablero', 'dashboard', 1
+WHERE NOT EXISTS (SELECT 1 FROM `permisos` WHERE `Nombre` = 'tablero.dashboard');
 
 INSERT INTO `permisos` (`Nombre`, `Descripcion`, `Modulo`, `Accion`, `Estado`)
-SELECT 'tablero.editar', 'Editar tableros, tarjetas y columnas', 'tablero', 'editar', 1
-WHERE NOT EXISTS (SELECT 1 FROM `permisos` WHERE `Nombre` = 'tablero.editar');
+SELECT 'tablero.calendario', 'Acceso global a vista Calendario de tablero', 'tablero', 'calendario', 1
+WHERE NOT EXISTS (SELECT 1 FROM `permisos` WHERE `Nombre` = 'tablero.calendario');
 
 INSERT INTO `permisos` (`Nombre`, `Descripcion`, `Modulo`, `Accion`, `Estado`)
-SELECT 'tablero.eliminar', 'Eliminar logicamente tarjetas del tablero', 'tablero', 'eliminar', 1
-WHERE NOT EXISTS (SELECT 1 FROM `permisos` WHERE `Nombre` = 'tablero.eliminar');
+SELECT 'tablero.reporteria', 'Acceso global a vista Reporteria de tablero', 'tablero', 'reporteria', 1
+WHERE NOT EXISTS (SELECT 1 FROM `permisos` WHERE `Nombre` = 'tablero.reporteria');
 
-INSERT INTO `permisos` (`Nombre`, `Descripcion`, `Modulo`, `Accion`, `Estado`)
-SELECT 'tablero.columnas', 'Gestionar columnas del tablero', 'tablero', 'columnas', 1
-WHERE NOT EXISTS (SELECT 1 FROM `permisos` WHERE `Nombre` = 'tablero.columnas');
+-- Desactivar permisos globales antiguos del modulo tablero.
+-- Las acciones internas ahora se gobiernan por permisos granulares en tablero_usuario_permiso.
+UPDATE `permisos`
+SET `Estado` = 0
+WHERE `Nombre` IN (
+    'tablero.crear',
+    'tablero.editar',
+    'tablero.eliminar',
+    'tablero.columnas',
+    'tablero.columnas_eliminar',
+    'tablero.asignar',
+    'tablero.tiempo',
+    'tablero.tiempo_editar'
+);
 
-INSERT INTO `permisos` (`Nombre`, `Descripcion`, `Modulo`, `Accion`, `Estado`)
-SELECT 'tablero.columnas_eliminar', 'Eliminar columnas del tablero', 'tablero', 'columnas_eliminar', 1
-WHERE NOT EXISTS (SELECT 1 FROM `permisos` WHERE `Nombre` = 'tablero.columnas_eliminar');
-
-INSERT INTO `permisos` (`Nombre`, `Descripcion`, `Modulo`, `Accion`, `Estado`)
-SELECT 'tablero.asignar', 'Asignar usuarios a tableros/tarjetas', 'tablero', 'asignar', 1
-WHERE NOT EXISTS (SELECT 1 FROM `permisos` WHERE `Nombre` = 'tablero.asignar');
-
-INSERT INTO `permisos` (`Nombre`, `Descripcion`, `Modulo`, `Accion`, `Estado`)
-SELECT 'tablero.tiempo', 'Registrar tiempos en tarjetas', 'tablero', 'tiempo', 1
-WHERE NOT EXISTS (SELECT 1 FROM `permisos` WHERE `Nombre` = 'tablero.tiempo');
-
-INSERT INTO `permisos` (`Nombre`, `Descripcion`, `Modulo`, `Accion`, `Estado`)
-SELECT 'tablero.tiempo_editar', 'Editar manualmente tiempos en tareas de tarjetas', 'tablero', 'tiempo_editar', 1
-WHERE NOT EXISTS (SELECT 1 FROM `permisos` WHERE `Nombre` = 'tablero.tiempo_editar');
+UPDATE `role_permiso` rp
+INNER JOIN `permisos` p ON p.Id_permiso = rp.Id_permiso
+SET rp.`Estado` = 0
+WHERE p.`Nombre` IN (
+    'tablero.crear',
+    'tablero.editar',
+    'tablero.eliminar',
+    'tablero.columnas',
+    'tablero.columnas_eliminar',
+    'tablero.asignar',
+    'tablero.tiempo',
+    'tablero.tiempo_editar'
+);
 
 -- ------------------------------------------
 -- 8) ASIGNACION RBAC SUGERIDA
@@ -569,43 +624,23 @@ INSERT IGNORE INTO `role_permiso` (`Id_role`, `Id_permiso`, `Estado`)
 SELECT 1, p.Id_permiso, 1
 FROM `permisos` p
 WHERE p.Nombre IN (
-    'tablero.ver','tablero.crear','tablero.editar','tablero.eliminar','tablero.columnas','tablero.columnas_eliminar','tablero.asignar','tablero.tiempo','tablero.tiempo_editar'
+    'tablero.ver','tablero.dashboard','tablero.calendario','tablero.reporteria'
 );
 
 INSERT IGNORE INTO `role_permiso` (`Id_role`, `Id_permiso`, `Estado`)
 SELECT 2, p.Id_permiso, 1
 FROM `permisos` p
-WHERE p.Nombre IN ('tablero.ver','tablero.crear','tablero.editar','tablero.columnas','tablero.asignar','tablero.tiempo');
-
-INSERT IGNORE INTO `role_permiso` (`Id_role`, `Id_permiso`, `Estado`)
-SELECT 2, p.Id_permiso, 1
-FROM `permisos` p
-WHERE p.Nombre IN ('tablero.eliminar');
+WHERE p.Nombre IN ('tablero.ver','tablero.dashboard','tablero.calendario','tablero.reporteria');
 
 INSERT IGNORE INTO `role_permiso` (`Id_role`, `Id_permiso`, `Estado`)
 SELECT 3, p.Id_permiso, 1
 FROM `permisos` p
-WHERE p.Nombre IN ('tablero.eliminar');
-
-INSERT IGNORE INTO `role_permiso` (`Id_role`, `Id_permiso`, `Estado`)
-SELECT 3, p.Id_permiso, 1
-FROM `permisos` p
-WHERE p.Nombre IN ('tablero.ver','tablero.crear','tablero.editar','tablero.columnas','tablero.asignar','tablero.tiempo');
-
-INSERT IGNORE INTO `role_permiso` (`Id_role`, `Id_permiso`, `Estado`)
-SELECT 2, p.Id_permiso, 1
-FROM `permisos` p
-WHERE p.Nombre IN ('tablero.tiempo_editar');
-
-INSERT IGNORE INTO `role_permiso` (`Id_role`, `Id_permiso`, `Estado`)
-SELECT 3, p.Id_permiso, 1
-FROM `permisos` p
-WHERE p.Nombre IN ('tablero.tiempo_editar');
+WHERE p.Nombre IN ('tablero.ver','tablero.dashboard','tablero.calendario','tablero.reporteria');
 
 INSERT IGNORE INTO `role_permiso` (`Id_role`, `Id_permiso`, `Estado`)
 SELECT 4, p.Id_permiso, 1
 FROM `permisos` p
-WHERE p.Nombre IN ('tablero.ver','tablero.crear','tablero.tiempo');
+WHERE p.Nombre IN ('tablero.ver','tablero.dashboard','tablero.calendario','tablero.reporteria');
 
 -- ------------------------------------------
 -- 9) SEMILLA OPCIONAL DE TABLERO DE EJEMPLO
@@ -620,7 +655,8 @@ INSERT INTO `tablero_usuario_permiso` (
     `Id_tablero`, `Id_usuario`,
     `Permiso_ver`, `Permiso_crear`, `Permiso_editar`, `Permiso_eliminar`,
     `Permiso_tablero_ver`, `Permiso_tablero_crear`, `Permiso_tablero_editar`, `Permiso_tablero_eliminar`, `Permiso_tablero_asignar`,
-    `Permiso_tarjeta_ver`, `Permiso_tarjeta_crear`, `Permiso_tarjeta_editar`, `Permiso_tarjeta_eliminar`, `Permiso_tarjeta_asignar`,
+    `Permiso_columna_crear`, `Permiso_columna_editar`, `Permiso_columna_eliminar`, `Permiso_columna_ordenar`,
+    `Permiso_tarjeta_ver`, `Permiso_tarjeta_crear`, `Permiso_tarjeta_editar`, `Permiso_tarjeta_mover`, `Permiso_tarjeta_eliminar`, `Permiso_tarjeta_asignar`,
     `Permiso_lista_crear`, `Permiso_lista_editar`, `Permiso_lista_eliminar`,
     `Permiso_tarea_crear`, `Permiso_tarea_editar`, `Permiso_tarea_eliminar`, `Permiso_tarea_tiempo_editar`,
     `Estado`
@@ -628,7 +664,8 @@ INSERT INTO `tablero_usuario_permiso` (
 SELECT t.Id_tablero, 1,
        1, 1, 1, 1,
        1, 1, 1, 1, 1,
-       1, 1, 1, 1, 1,
+    1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1,
        1, 1, 1,
        1, 1, 1, 1,
        1
@@ -644,9 +681,14 @@ ON DUPLICATE KEY UPDATE
     Permiso_tablero_editar = VALUES(Permiso_tablero_editar),
     Permiso_tablero_eliminar = VALUES(Permiso_tablero_eliminar),
     Permiso_tablero_asignar = VALUES(Permiso_tablero_asignar),
+    Permiso_columna_crear = VALUES(Permiso_columna_crear),
+    Permiso_columna_editar = VALUES(Permiso_columna_editar),
+    Permiso_columna_eliminar = VALUES(Permiso_columna_eliminar),
+    Permiso_columna_ordenar = VALUES(Permiso_columna_ordenar),
     Permiso_tarjeta_ver = VALUES(Permiso_tarjeta_ver),
     Permiso_tarjeta_crear = VALUES(Permiso_tarjeta_crear),
     Permiso_tarjeta_editar = VALUES(Permiso_tarjeta_editar),
+    Permiso_tarjeta_mover = VALUES(Permiso_tarjeta_mover),
     Permiso_tarjeta_eliminar = VALUES(Permiso_tarjeta_eliminar),
     Permiso_tarjeta_asignar = VALUES(Permiso_tarjeta_asignar),
     Permiso_lista_crear = VALUES(Permiso_lista_crear),
@@ -665,7 +707,7 @@ FROM `tablero` t
 WHERE t.Nombre = 'Tablero General'
   AND NOT EXISTS (
       SELECT 1 FROM `tablero_columnas` c
-      WHERE c.Id_tablero = t.Id_tablero AND c.Nombre = 'Pendiente' AND c.Estado = 1
+            WHERE c.Id_tablero = t.Id_tablero AND c.Orden_columna = 1
   );
 
 INSERT INTO `tablero_columnas` (`Id_tablero`, `Nombre`, `Color`, `Orden_columna`, `Estado`)
@@ -674,7 +716,7 @@ FROM `tablero` t
 WHERE t.Nombre = 'Tablero General'
   AND NOT EXISTS (
       SELECT 1 FROM `tablero_columnas` c
-      WHERE c.Id_tablero = t.Id_tablero AND c.Nombre = 'En Progreso' AND c.Estado = 1
+            WHERE c.Id_tablero = t.Id_tablero AND c.Orden_columna = 2
   );
 
 INSERT INTO `tablero_columnas` (`Id_tablero`, `Nombre`, `Color`, `Orden_columna`, `Estado`)
@@ -683,7 +725,7 @@ FROM `tablero` t
 WHERE t.Nombre = 'Tablero General'
   AND NOT EXISTS (
       SELECT 1 FROM `tablero_columnas` c
-      WHERE c.Id_tablero = t.Id_tablero AND c.Nombre = 'En Revision' AND c.Estado = 1
+            WHERE c.Id_tablero = t.Id_tablero AND c.Orden_columna = 3
   );
 
 INSERT INTO `tablero_columnas` (`Id_tablero`, `Nombre`, `Color`, `Orden_columna`, `Estado`)
@@ -692,7 +734,7 @@ FROM `tablero` t
 WHERE t.Nombre = 'Tablero General'
   AND NOT EXISTS (
       SELECT 1 FROM `tablero_columnas` c
-      WHERE c.Id_tablero = t.Id_tablero AND c.Nombre = 'Completada' AND c.Estado = 1
+            WHERE c.Id_tablero = t.Id_tablero AND c.Orden_columna = 4
   );
 
 -- Prioridades base por tablero existente
