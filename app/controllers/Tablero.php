@@ -73,7 +73,7 @@ class Tablero extends Controller {
         $canDeleteTablero = $this->tableroModel->canDeleteTablero($id_tablero);
 
         $columnas = $this->tableroModel->getColumnasActivasByTablero($id_tablero);
-        $tarjetas = $this->tableroModel->getTarjetasActivasByTablero($id_tablero);
+        $tarjetas = $this->tableroModel->getTarjetasActivasByTablero($id_tablero, true); // incluir archivadas, el filtrado es cliente
         $etiquetas = $this->tableroModel->getEtiquetasByTablero($id_tablero);
         $prioridades = $this->tableroModel->getPrioridadesByTablero($id_tablero);
         $usuarios = $this->tableroModel->getUsuariosActivos();
@@ -1156,7 +1156,14 @@ class Tablero extends Controller {
             'tarea_crear' => false,
             'tarea_editar' => false,
             'tarea_eliminar' => false,
-            'tarea_tiempo_editar' => false
+            'tarea_tiempo_editar' => false,
+            'plantilla_tarjeta_crear' => false,
+            'plantilla_tarjeta_editar' => false,
+            'plantilla_tarjeta_eliminar' => false,
+            'plantilla_tarjeta_asociar' => false,
+            'plantilla_lista_crear' => false,
+            'plantilla_lista_editar' => false,
+            'plantilla_lista_eliminar' => false
         ];
     }
 
@@ -1197,7 +1204,14 @@ class Tablero extends Controller {
             'tarea_crear' => (int)($permObj->Permiso_tarea_crear ?? $permObj->Permiso_editar ?? 0) === 1,
             'tarea_editar' => (int)($permObj->Permiso_tarea_editar ?? $permObj->Permiso_editar ?? 0) === 1,
             'tarea_eliminar' => (int)($permObj->Permiso_tarea_eliminar ?? $permObj->Permiso_editar ?? 0) === 1,
-            'tarea_tiempo_editar' => (int)($permObj->Permiso_tarea_tiempo_editar ?? 0) === 1
+            'tarea_tiempo_editar' => (int)($permObj->Permiso_tarea_tiempo_editar ?? 0) === 1,
+            'plantilla_tarjeta_crear' => (int)($permObj->Permiso_plantilla_tarjeta_crear ?? 0) === 1,
+            'plantilla_tarjeta_editar' => (int)($permObj->Permiso_plantilla_tarjeta_editar ?? 0) === 1,
+            'plantilla_tarjeta_eliminar' => (int)($permObj->Permiso_plantilla_tarjeta_eliminar ?? 0) === 1,
+            'plantilla_tarjeta_asociar' => (int)($permObj->Permiso_plantilla_tarjeta_asociar ?? 0) === 1,
+            'plantilla_lista_crear' => (int)($permObj->Permiso_plantilla_lista_crear ?? 0) === 1,
+            'plantilla_lista_editar' => (int)($permObj->Permiso_plantilla_lista_editar ?? 0) === 1,
+            'plantilla_lista_eliminar' => (int)($permObj->Permiso_plantilla_lista_eliminar ?? 0) === 1
         ];
     }
 
@@ -1307,7 +1321,14 @@ class Tablero extends Controller {
             'permiso_tarea_crear' => 1,
             'permiso_tarea_editar' => 1,
             'permiso_tarea_eliminar' => 1,
-            'permiso_tarea_tiempo_editar' => 1
+            'permiso_tarea_tiempo_editar' => 1,
+            'permiso_plantilla_tarjeta_crear' => 1,
+            'permiso_plantilla_tarjeta_editar' => 1,
+            'permiso_plantilla_tarjeta_eliminar' => 1,
+            'permiso_plantilla_tarjeta_asociar' => 1,
+            'permiso_plantilla_lista_crear' => 1,
+            'permiso_plantilla_lista_editar' => 1,
+            'permiso_plantilla_lista_eliminar' => 1
         ]);
 
         $defaultColumns = [
@@ -1478,6 +1499,14 @@ class Tablero extends Controller {
         $permiso_tarea_eliminar = !empty($_POST['permiso_tarea_eliminar']) ? 1 : 0;
         $permiso_tarea_tiempo_editar = !empty($_POST['permiso_tarea_tiempo_editar']) ? 1 : 0;
 
+        $permiso_plantilla_tarjeta_crear    = !empty($_POST['permiso_plantilla_tarjeta_crear']) ? 1 : 0;
+        $permiso_plantilla_tarjeta_editar   = !empty($_POST['permiso_plantilla_tarjeta_editar']) ? 1 : 0;
+        $permiso_plantilla_tarjeta_eliminar = !empty($_POST['permiso_plantilla_tarjeta_eliminar']) ? 1 : 0;
+        $permiso_plantilla_tarjeta_asociar  = !empty($_POST['permiso_plantilla_tarjeta_asociar']) ? 1 : 0;
+        $permiso_plantilla_lista_crear      = !empty($_POST['permiso_plantilla_lista_crear']) ? 1 : 0;
+        $permiso_plantilla_lista_editar     = !empty($_POST['permiso_plantilla_lista_editar']) ? 1 : 0;
+        $permiso_plantilla_lista_eliminar   = !empty($_POST['permiso_plantilla_lista_eliminar']) ? 1 : 0;
+
         if($id_tablero <= 0 || $id_usuario <= 0){
             flashMessage('tablero_error', 'Datos invalidos para asignacion.', 'danger');
             redirect('tablero/index?tablero_id=' . $id_tablero);
@@ -1516,7 +1545,14 @@ class Tablero extends Controller {
             'permiso_tarea_crear' => $permiso_tarea_crear,
             'permiso_tarea_editar' => $permiso_tarea_editar,
             'permiso_tarea_eliminar' => $permiso_tarea_eliminar,
-            'permiso_tarea_tiempo_editar' => $permiso_tarea_tiempo_editar
+            'permiso_tarea_tiempo_editar' => $permiso_tarea_tiempo_editar,
+            'permiso_plantilla_tarjeta_crear' => $permiso_plantilla_tarjeta_crear,
+            'permiso_plantilla_tarjeta_editar' => $permiso_plantilla_tarjeta_editar,
+            'permiso_plantilla_tarjeta_eliminar' => $permiso_plantilla_tarjeta_eliminar,
+            'permiso_plantilla_tarjeta_asociar' => $permiso_plantilla_tarjeta_asociar,
+            'permiso_plantilla_lista_crear' => $permiso_plantilla_lista_crear,
+            'permiso_plantilla_lista_editar' => $permiso_plantilla_lista_editar,
+            'permiso_plantilla_lista_eliminar' => $permiso_plantilla_lista_eliminar
         ]);
 
         if($ok){
@@ -2011,6 +2047,22 @@ class Tablero extends Controller {
         if($id_tarjeta_nueva){
             $this->tableroModel->setEtiquetasTarjeta((int)$id_tarjeta_nueva, $etiquetasValidas);
 
+            // Auto-crear listados de tareas desde plantillas asociadas
+            $plantilla_listas_ids_raw = trim($_POST['plantilla_listas_ids'] ?? '');
+            if($plantilla_listas_ids_raw !== ''){
+                $ids_lista = array_filter(array_map('intval', explode(',', $plantilla_listas_ids_raw)));
+                foreach($ids_lista as $id_lista){
+                    $plantillaLista = $this->tableroModel->getTareasPlantillaById($id_lista, $id_tablero);
+                    if(!$plantillaLista) continue;
+                    $id_tarea = $this->tableroModel->addTareaTarjeta((int)$id_tarjeta_nueva, $plantillaLista->Nombre_lista);
+                    if(!$id_tarea) continue;
+                    $detalles = $this->tableroModel->getTareasPlantillaDetalles($id_lista);
+                    foreach($detalles as $detalle){
+                        $this->tableroModel->addDetalleTarea($id_tarea, $detalle->Descripcion, null);
+                    }
+                }
+            }
+
             $detalleCreacion = 'Se creo la tarjeta "' . $titulo . '".';
             if(!empty($etiquetasValidas)){
                 $detalleCreacion .= ' Etiquetas: ' . $this->buildLabelHistoryText($id_tablero, $etiquetasValidas) . '.';
@@ -2260,6 +2312,45 @@ class Tablero extends Controller {
         }
 
         redirect('tablero/index?tablero_id=' . $id_tablero);
+    }
+
+    public function archivar_tarjeta(){
+        $this->verificarAcceso('tablero', 'ver');
+
+        if($_SERVER['REQUEST_METHOD'] !== 'POST'){
+            return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
+        }
+
+        $payload    = $this->getJsonInput();
+        $id_tablero = isset($payload['id_tablero']) ? (int)$payload['id_tablero'] : 0;
+        $id_tarjeta = isset($payload['id_tarjeta']) ? (int)$payload['id_tarjeta'] : 0;
+        $archivar   = !empty($payload['archivar']);
+
+        if($id_tablero <= 0 || $id_tarjeta <= 0){
+            return $this->jsonResponse(['success' => false, 'error' => 'Datos incompletos'], 400);
+        }
+
+        if(!$this->hasBoardPermission($id_tablero, 'tarjeta_editar')){
+            return $this->jsonResponse(['success' => false, 'error' => 'Sin permiso para editar tarjetas en este tablero'], 403);
+        }
+
+        $tarjeta = $this->tableroModel->getTarjetaById($id_tarjeta);
+        if(!$tarjeta || (int)$tarjeta->Id_tablero !== $id_tablero){
+            return $this->jsonResponse(['success' => false, 'error' => 'Tarjeta no encontrada'], 404);
+        }
+
+        $ok = $this->tableroModel->toggleArchivarTarjeta($id_tarjeta, $id_tablero, $archivar);
+        if(!$ok){
+            return $this->jsonResponse(['success' => false, 'error' => 'No se pudo actualizar la tarjeta'], 500);
+        }
+
+        $accion  = $archivar ? 'tarjeta_archivada' : 'tarjeta_desarchivada';
+        $mensaje = $archivar
+            ? 'Archivó la tarjeta "' . trim((string)$tarjeta->Titulo) . '".'
+            : 'Desarchivó la tarjeta "' . trim((string)$tarjeta->Titulo) . '".';
+        $this->tableroModel->addHistorialTarjeta($id_tarjeta, (int)$_SESSION['user_id'], $accion, $mensaje, ['archivada' => $archivar]);
+
+        return $this->jsonResponse(['success' => true, 'archivada' => $archivar]);
     }
 
     public function move_tarjeta(){
@@ -3618,6 +3709,286 @@ class Tablero extends Controller {
             ['nombre' => 'MEDIA', 'valor' => 5, 'color' => '#fd7e14'],
             ['nombre' => 'BAJA', 'valor' => 1, 'color' => '#198754']
         ];
+    }
+
+    // ------------------------------------------------------------------
+    // PLANTILLAS DE TARJETA
+    // ------------------------------------------------------------------
+
+    public function get_plantillas_tarjeta(){
+        $this->verificarAcceso('tablero', 'ver');
+
+        if($_SERVER['REQUEST_METHOD'] !== 'POST'){
+            return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
+        }
+
+        $payload    = $this->getJsonInput();
+        $id_tablero = isset($payload['id_tablero']) ? (int)$payload['id_tablero'] : 0;
+
+        if($id_tablero <= 0 || !$this->hasBoardPermission($id_tablero, 'tablero_ver')){
+            return $this->jsonResponse(['success' => false, 'error' => 'Sin permiso en este tablero'], 403);
+        }
+
+        $plantillas = $this->tableroModel->getTarjetasPlantillas($id_tablero);
+        // Incluir lista_ids asociadas a cada plantilla
+        $asociaciones = $this->tableroModel->getTodasAsociacionesListasByTablero($id_tablero);
+        $mapa = [];
+        foreach($asociaciones as $a){
+            $mapa[(int)$a->Id_plantilla_tarjeta][] = (int)$a->Id_plantilla_lista;
+        }
+        foreach($plantillas as &$p){
+            $pid = (int)$p->Id_plantilla_tarjeta;
+            $p->lista_ids = $mapa[$pid] ?? [];
+        }
+        unset($p);
+        return $this->jsonResponse(['success' => true, 'plantillas' => $plantillas]);
+    }
+
+    public function create_plantilla_tarjeta(){
+        $this->verificarAcceso('tablero', 'ver');
+
+        if($_SERVER['REQUEST_METHOD'] !== 'POST'){
+            return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
+        }
+
+        $payload          = $this->getJsonInput();
+        $id_tablero       = isset($payload['id_tablero']) ? (int)$payload['id_tablero'] : 0;
+        $nombre_plantilla = trim($payload['nombre_plantilla'] ?? '');
+        $titulo           = trim($payload['titulo'] ?? '');
+        $descripcion      = trim($payload['descripcion'] ?? '');
+        $lista_ids          = isset($payload['lista_ids']) && is_array($payload['lista_ids'])
+                              ? array_values(array_filter(array_map('intval', $payload['lista_ids'])))
+                              : [];
+        $id_columna_defecto   = isset($payload['id_columna_defecto'])   && $payload['id_columna_defecto']   ? (int)$payload['id_columna_defecto']   : null;
+        $id_prioridad_defecto = isset($payload['id_prioridad_defecto']) && $payload['id_prioridad_defecto'] ? (int)$payload['id_prioridad_defecto'] : null;
+
+        if($id_tablero <= 0 || !$this->hasBoardPermission($id_tablero, 'tablero_ver')){
+            return $this->jsonResponse(['success' => false, 'error' => 'Sin permiso en este tablero'], 403);
+        }
+
+        if($nombre_plantilla === '' || $titulo === ''){
+            return $this->jsonResponse(['success' => false, 'error' => 'El nombre de plantilla y el titulo son obligatorios'], 400);
+        }
+
+        $id = $this->tableroModel->createTarjetaPlantilla(
+            $nombre_plantilla,
+            $titulo,
+            $descripcion,
+            (int)$_SESSION['user_id'],
+            $id_tablero,
+            $id_columna_defecto,
+            $id_prioridad_defecto
+        );
+
+        if(!$id){
+            return $this->jsonResponse(['success' => false, 'error' => 'No se pudo guardar la plantilla'], 500);
+        }
+
+        if(!empty($lista_ids)){
+            $this->tableroModel->setListasAsociadasPlantillaTarjeta($id, $lista_ids);
+        }
+
+        return $this->jsonResponse(['success' => true, 'id_plantilla_tarjeta' => $id]);
+    }
+
+    // ------------------------------------------------------------------
+    // PLANTILLAS DE LISTA DE TAREAS
+    // ------------------------------------------------------------------
+
+    public function get_plantillas_lista(){
+        $this->verificarAcceso('tablero', 'ver');
+
+        if($_SERVER['REQUEST_METHOD'] !== 'POST'){
+            return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
+        }
+
+        $payload    = $this->getJsonInput();
+        $id_tablero = isset($payload['id_tablero']) ? (int)$payload['id_tablero'] : 0;
+
+        if($id_tablero <= 0 || !$this->hasBoardPermission($id_tablero, 'tablero_ver')){
+            return $this->jsonResponse(['success' => false, 'error' => 'Sin permiso en este tablero'], 403);
+        }
+
+        $plantillas = $this->tableroModel->getTareasPlantillas($id_tablero);
+        return $this->jsonResponse(['success' => true, 'plantillas' => $plantillas]);
+    }
+
+    public function create_plantilla_lista(){
+        $this->verificarAcceso('tablero', 'ver');
+
+        if($_SERVER['REQUEST_METHOD'] !== 'POST'){
+            return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
+        }
+
+        $payload          = $this->getJsonInput();
+        $id_tablero       = isset($payload['id_tablero']) ? (int)$payload['id_tablero'] : 0;
+        $nombre_plantilla = trim($payload['nombre_plantilla'] ?? '');
+        $nombre_lista     = trim($payload['nombre_lista'] ?? '');
+        $tareas           = isset($payload['tareas']) && is_array($payload['tareas']) ? $payload['tareas'] : [];
+
+        if($id_tablero <= 0 || !$this->hasBoardPermission($id_tablero, 'tablero_ver')){
+            return $this->jsonResponse(['success' => false, 'error' => 'Sin permiso en este tablero'], 403);
+        }
+
+        if($nombre_plantilla === '' || $nombre_lista === ''){
+            return $this->jsonResponse(['success' => false, 'error' => 'El nombre de plantilla y el nombre del listado son obligatorios'], 400);
+        }
+
+        $id_plantilla_lista = $this->tableroModel->createTareasPlantilla(
+            $nombre_plantilla,
+            $nombre_lista,
+            (int)$_SESSION['user_id'],
+            $id_tablero
+        );
+
+        if(!$id_plantilla_lista){
+            return $this->jsonResponse(['success' => false, 'error' => 'No se pudo guardar la plantilla de lista'], 500);
+        }
+
+        $orden = 0;
+        foreach($tareas as $tarea){
+            $desc = trim((string)($tarea['descripcion'] ?? ''));
+            if($desc === '') continue;
+            $this->tableroModel->addTareasPlantillaDetalle($id_plantilla_lista, $desc, $orden++);
+        }
+
+        return $this->jsonResponse(['success' => true, 'id_plantilla_lista' => (int)$id_plantilla_lista]);
+    }
+
+    public function get_plantilla_lista_detalle(){
+        $this->verificarAcceso('tablero', 'ver');
+
+        if($_SERVER['REQUEST_METHOD'] !== 'POST'){
+            return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
+        }
+
+        $payload            = $this->getJsonInput();
+        $id_tablero         = isset($payload['id_tablero']) ? (int)$payload['id_tablero'] : 0;
+        $id_plantilla_lista = isset($payload['id_plantilla_lista']) ? (int)$payload['id_plantilla_lista'] : 0;
+
+        if($id_tablero <= 0 || !$this->hasBoardPermission($id_tablero, 'tablero_ver')){
+            return $this->jsonResponse(['success' => false, 'error' => 'Sin permiso en este tablero'], 403);
+        }
+
+        if($id_plantilla_lista <= 0){
+            return $this->jsonResponse(['success' => false, 'error' => 'Plantilla invalida'], 400);
+        }
+
+        $plantilla = $this->tableroModel->getTareasPlantillaById($id_plantilla_lista, $id_tablero);
+        if(!$plantilla){
+            return $this->jsonResponse(['success' => false, 'error' => 'Plantilla no encontrada'], 404);
+        }
+
+        $detalles = $this->tableroModel->getTareasPlantillaDetalles($id_plantilla_lista);
+
+        return $this->jsonResponse([
+            'success'   => true,
+            'plantilla' => [
+                'Id_plantilla_lista' => (int)$plantilla->Id_plantilla_lista,
+                'Nombre_plantilla'   => $plantilla->Nombre_plantilla,
+                'Nombre_lista'       => $plantilla->Nombre_lista,
+                'detalles'           => $detalles
+            ]
+        ]);
+    }
+
+    public function update_plantilla_tarjeta(){
+        $this->verificarAcceso('tablero', 'ver');
+        if($_SERVER['REQUEST_METHOD'] !== 'POST'){
+            return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
+        }
+        $payload          = $this->getJsonInput();
+        $id_tablero       = isset($payload['id_tablero']) ? (int)$payload['id_tablero'] : 0;
+        $id               = isset($payload['id_plantilla_tarjeta']) ? (int)$payload['id_plantilla_tarjeta'] : 0;
+        $nombre_plantilla = trim($payload['nombre_plantilla'] ?? '');
+        $titulo           = trim($payload['titulo'] ?? '');
+        $descripcion      = trim($payload['descripcion'] ?? '');
+        $lista_ids          = isset($payload['lista_ids']) && is_array($payload['lista_ids'])
+                              ? array_values(array_filter(array_map('intval', $payload['lista_ids'])))
+                              : [];
+        $id_columna_defecto   = isset($payload['id_columna_defecto'])   && $payload['id_columna_defecto']   ? (int)$payload['id_columna_defecto']   : null;
+        $id_prioridad_defecto = isset($payload['id_prioridad_defecto']) && $payload['id_prioridad_defecto'] ? (int)$payload['id_prioridad_defecto'] : null;
+
+        if($id_tablero <= 0 || !$this->hasBoardPermission($id_tablero, 'tablero_ver')){
+            return $this->jsonResponse(['success' => false, 'error' => 'Sin permiso en este tablero'], 403);
+        }
+        if($id <= 0 || $nombre_plantilla === '' || $titulo === ''){
+            return $this->jsonResponse(['success' => false, 'error' => 'Datos incompletos'], 400);
+        }
+        $ok = $this->tableroModel->updateTarjetaPlantilla($id, $id_tablero, $nombre_plantilla, $titulo, $descripcion, $id_columna_defecto, $id_prioridad_defecto);
+        if(!$ok) return $this->jsonResponse(['success' => false, 'error' => 'No se pudo actualizar la plantilla'], 500);
+        $this->tableroModel->setListasAsociadasPlantillaTarjeta($id, $lista_ids);
+        return $this->jsonResponse(['success' => true]);
+    }
+
+    public function delete_plantilla_tarjeta(){
+        $this->verificarAcceso('tablero', 'ver');
+        if($_SERVER['REQUEST_METHOD'] !== 'POST'){
+            return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
+        }
+        $payload    = $this->getJsonInput();
+        $id_tablero = isset($payload['id_tablero']) ? (int)$payload['id_tablero'] : 0;
+        $id         = isset($payload['id_plantilla_tarjeta']) ? (int)$payload['id_plantilla_tarjeta'] : 0;
+
+        if($id_tablero <= 0 || !$this->hasBoardPermission($id_tablero, 'tablero_ver')){
+            return $this->jsonResponse(['success' => false, 'error' => 'Sin permiso en este tablero'], 403);
+        }
+        if($id <= 0) return $this->jsonResponse(['success' => false, 'error' => 'ID invalido'], 400);
+        $ok = $this->tableroModel->deleteTarjetaPlantilla($id, $id_tablero);
+        if(!$ok) return $this->jsonResponse(['success' => false, 'error' => 'No se pudo eliminar la plantilla'], 500);
+        return $this->jsonResponse(['success' => true]);
+    }
+
+    public function update_plantilla_lista(){
+        $this->verificarAcceso('tablero', 'ver');
+        if($_SERVER['REQUEST_METHOD'] !== 'POST'){
+            return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
+        }
+        $payload          = $this->getJsonInput();
+        $id_tablero       = isset($payload['id_tablero']) ? (int)$payload['id_tablero'] : 0;
+        $id               = isset($payload['id_plantilla_lista']) ? (int)$payload['id_plantilla_lista'] : 0;
+        $nombre_plantilla = trim($payload['nombre_plantilla'] ?? '');
+        $nombre_lista     = trim($payload['nombre_lista'] ?? '');
+        $tareas           = isset($payload['tareas']) && is_array($payload['tareas']) ? $payload['tareas'] : [];
+
+        if($id_tablero <= 0 || !$this->hasBoardPermission($id_tablero, 'tablero_ver')){
+            return $this->jsonResponse(['success' => false, 'error' => 'Sin permiso en este tablero'], 403);
+        }
+        if($id <= 0 || $nombre_plantilla === '' || $nombre_lista === ''){
+            return $this->jsonResponse(['success' => false, 'error' => 'Datos incompletos'], 400);
+        }
+        $plantilla = $this->tableroModel->getTareasPlantillaById($id, $id_tablero);
+        if(!$plantilla) return $this->jsonResponse(['success' => false, 'error' => 'Plantilla no encontrada'], 404);
+
+        $ok = $this->tableroModel->updateTareasPlantilla($id, $id_tablero, $nombre_plantilla, $nombre_lista);
+        if(!$ok) return $this->jsonResponse(['success' => false, 'error' => 'No se pudo actualizar la plantilla'], 500);
+
+        $this->tableroModel->deleteAllTareasPlantillaDetallesByLista($id);
+        $orden = 0;
+        foreach($tareas as $tarea){
+            $desc = trim((string)($tarea['descripcion'] ?? ''));
+            if($desc === '') continue;
+            $this->tableroModel->addTareasPlantillaDetalle($id, $desc, $orden++);
+        }
+        return $this->jsonResponse(['success' => true]);
+    }
+
+    public function delete_plantilla_lista(){
+        $this->verificarAcceso('tablero', 'ver');
+        if($_SERVER['REQUEST_METHOD'] !== 'POST'){
+            return $this->jsonResponse(['success' => false, 'error' => 'Metodo no permitido'], 405);
+        }
+        $payload    = $this->getJsonInput();
+        $id_tablero = isset($payload['id_tablero']) ? (int)$payload['id_tablero'] : 0;
+        $id         = isset($payload['id_plantilla_lista']) ? (int)$payload['id_plantilla_lista'] : 0;
+
+        if($id_tablero <= 0 || !$this->hasBoardPermission($id_tablero, 'tablero_ver')){
+            return $this->jsonResponse(['success' => false, 'error' => 'Sin permiso en este tablero'], 403);
+        }
+        if($id <= 0) return $this->jsonResponse(['success' => false, 'error' => 'ID invalido'], 400);
+        $ok = $this->tableroModel->deleteTareasPlantilla($id, $id_tablero);
+        if(!$ok) return $this->jsonResponse(['success' => false, 'error' => 'No se pudo eliminar la plantilla'], 500);
+        return $this->jsonResponse(['success' => true]);
     }
 
     private function getJsonInput(){

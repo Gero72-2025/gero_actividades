@@ -45,6 +45,9 @@ INSERT INTO `tablero_usuario_permiso` (
     `Permiso_lista_crear`, `Permiso_lista_editar`, `Permiso_lista_eliminar`,
     `Permiso_tarea_crear`, `Permiso_tarea_editar`, `Permiso_tarea_eliminar`,
     `Permiso_tarea_tiempo_editar`,
+    `Permiso_plantilla_tarjeta_crear`, `Permiso_plantilla_tarjeta_editar`,
+    `Permiso_plantilla_tarjeta_eliminar`, `Permiso_plantilla_tarjeta_asociar`,
+    `Permiso_plantilla_lista_crear`, `Permiso_plantilla_lista_editar`, `Permiso_plantilla_lista_eliminar`,
     `Estado`
 )
 SELECT
@@ -55,6 +58,8 @@ SELECT
     1, 1, 1, 1, 1, 1,
     1, 1, 1,
     1, 1, 1, 1,
+    1, 1, 1, 1,
+    1, 1, 1,
     1
 FROM `tablero` t
 WHERE t.Estado = 1
@@ -85,6 +90,13 @@ ON DUPLICATE KEY UPDATE
     `Permiso_tarea_editar`      = 1,
     `Permiso_tarea_eliminar`    = 1,
     `Permiso_tarea_tiempo_editar` = 1,
+    `Permiso_plantilla_tarjeta_crear`    = 1,
+    `Permiso_plantilla_tarjeta_editar`   = 1,
+    `Permiso_plantilla_tarjeta_eliminar` = 1,
+    `Permiso_plantilla_tarjeta_asociar`  = 1,
+    `Permiso_plantilla_lista_crear`      = 1,
+    `Permiso_plantilla_lista_editar`     = 1,
+    `Permiso_plantilla_lista_eliminar`   = 1,
     `Estado`                    = 1;
 
 -- ==========================================

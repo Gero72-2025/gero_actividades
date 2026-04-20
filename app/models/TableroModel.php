@@ -117,6 +117,13 @@ class TableroModel {
                 Permiso_tarea_editar,
                 Permiso_tarea_eliminar,
                 Permiso_tarea_tiempo_editar,
+                Permiso_plantilla_tarjeta_crear,
+                Permiso_plantilla_tarjeta_editar,
+                Permiso_plantilla_tarjeta_eliminar,
+                Permiso_plantilla_tarjeta_asociar,
+                Permiso_plantilla_lista_crear,
+                Permiso_plantilla_lista_editar,
+                Permiso_plantilla_lista_eliminar,
                 Estado
             ) VALUES (
                 :id_tablero,
@@ -147,6 +154,13 @@ class TableroModel {
                 :permiso_tarea_editar,
                 :permiso_tarea_eliminar,
                 :permiso_tarea_tiempo_editar,
+                :permiso_plantilla_tarjeta_crear,
+                :permiso_plantilla_tarjeta_editar,
+                :permiso_plantilla_tarjeta_eliminar,
+                :permiso_plantilla_tarjeta_asociar,
+                :permiso_plantilla_lista_crear,
+                :permiso_plantilla_lista_editar,
+                :permiso_plantilla_lista_eliminar,
                 1
             )
             ON DUPLICATE KEY UPDATE
@@ -176,6 +190,13 @@ class TableroModel {
                 Permiso_tarea_editar = VALUES(Permiso_tarea_editar),
                 Permiso_tarea_eliminar = VALUES(Permiso_tarea_eliminar),
                 Permiso_tarea_tiempo_editar = VALUES(Permiso_tarea_tiempo_editar),
+                Permiso_plantilla_tarjeta_crear = VALUES(Permiso_plantilla_tarjeta_crear),
+                Permiso_plantilla_tarjeta_editar = VALUES(Permiso_plantilla_tarjeta_editar),
+                Permiso_plantilla_tarjeta_eliminar = VALUES(Permiso_plantilla_tarjeta_eliminar),
+                Permiso_plantilla_tarjeta_asociar = VALUES(Permiso_plantilla_tarjeta_asociar),
+                Permiso_plantilla_lista_crear = VALUES(Permiso_plantilla_lista_crear),
+                Permiso_plantilla_lista_editar = VALUES(Permiso_plantilla_lista_editar),
+                Permiso_plantilla_lista_eliminar = VALUES(Permiso_plantilla_lista_eliminar),
                 Estado = 1,
                 Fecha_actualizacion = NOW()
         ');
@@ -217,6 +238,14 @@ class TableroModel {
         $permTareaEliminar = $resolvePermission('permiso_tarea_eliminar', 'permiso_editar', 0);
         $permTareaTiempoEditar = $resolvePermission('permiso_tarea_tiempo_editar', 'permiso_tiempo_editar', 0);
 
+        $permPlantillaTarjetaCrear    = $resolvePermission('permiso_plantilla_tarjeta_crear', null, 0);
+        $permPlantillaTarjetaEditar   = $resolvePermission('permiso_plantilla_tarjeta_editar', null, 0);
+        $permPlantillaTarjetaEliminar = $resolvePermission('permiso_plantilla_tarjeta_eliminar', null, 0);
+        $permPlantillaTarjetaAsociar  = $resolvePermission('permiso_plantilla_tarjeta_asociar', null, 0);
+        $permPlantillaListaCrear      = $resolvePermission('permiso_plantilla_lista_crear', null, 0);
+        $permPlantillaListaEditar     = $resolvePermission('permiso_plantilla_lista_editar', null, 0);
+        $permPlantillaListaEliminar   = $resolvePermission('permiso_plantilla_lista_eliminar', null, 0);
+
         $this->db->bind(':id_tablero', (int)$data['id_tablero']);
         $this->db->bind(':id_usuario', (int)$data['id_usuario']);
         $this->db->bind(':permiso_ver', $permTableroVer);
@@ -246,6 +275,13 @@ class TableroModel {
         $this->db->bind(':permiso_tarea_editar', $permTareaEditar);
         $this->db->bind(':permiso_tarea_eliminar', $permTareaEliminar);
         $this->db->bind(':permiso_tarea_tiempo_editar', $permTareaTiempoEditar);
+        $this->db->bind(':permiso_plantilla_tarjeta_crear', $permPlantillaTarjetaCrear);
+        $this->db->bind(':permiso_plantilla_tarjeta_editar', $permPlantillaTarjetaEditar);
+        $this->db->bind(':permiso_plantilla_tarjeta_eliminar', $permPlantillaTarjetaEliminar);
+        $this->db->bind(':permiso_plantilla_tarjeta_asociar', $permPlantillaTarjetaAsociar);
+        $this->db->bind(':permiso_plantilla_lista_crear', $permPlantillaListaCrear);
+        $this->db->bind(':permiso_plantilla_lista_editar', $permPlantillaListaEditar);
+        $this->db->bind(':permiso_plantilla_lista_eliminar', $permPlantillaListaEliminar);
         return $this->db->execute();
     }
 
@@ -282,7 +318,14 @@ class TableroModel {
                 Permiso_tarea_crear,
                 Permiso_tarea_editar,
                 Permiso_tarea_eliminar,
-                Permiso_tarea_tiempo_editar
+                Permiso_tarea_tiempo_editar,
+                Permiso_plantilla_tarjeta_crear,
+                Permiso_plantilla_tarjeta_editar,
+                Permiso_plantilla_tarjeta_eliminar,
+                Permiso_plantilla_tarjeta_asociar,
+                Permiso_plantilla_lista_crear,
+                Permiso_plantilla_lista_editar,
+                Permiso_plantilla_lista_eliminar
             FROM tablero_usuario_permiso
             WHERE Id_tablero = :id_tablero
               AND Id_usuario = :id_usuario
@@ -324,7 +367,14 @@ class TableroModel {
                 'Permiso_tarea_crear' => 1,
                 'Permiso_tarea_editar' => 1,
                 'Permiso_tarea_eliminar' => 1,
-                'Permiso_tarea_tiempo_editar' => 1
+                'Permiso_tarea_tiempo_editar' => 1,
+                'Permiso_plantilla_tarjeta_crear' => 1,
+                'Permiso_plantilla_tarjeta_editar' => 1,
+                'Permiso_plantilla_tarjeta_eliminar' => 1,
+                'Permiso_plantilla_tarjeta_asociar' => 1,
+                'Permiso_plantilla_lista_crear' => 1,
+                'Permiso_plantilla_lista_editar' => 1,
+                'Permiso_plantilla_lista_eliminar' => 1
             ];
         }
 
@@ -707,7 +757,7 @@ class TableroModel {
         return $this->db->resultSet();
     }
 
-    public function getTarjetasActivasByTablero($id_tablero){
+    public function getTarjetasActivasByTablero($id_tablero, $incluir_archivadas = false){
         $this->db->query('
             SELECT
                 t.*,
@@ -768,10 +818,26 @@ class TableroModel {
                         LEFT JOIN tablero_prioridades p ON p.Id_prioridad = t.Id_prioridad AND p.Estado = 1
             WHERE t.Id_tablero = :id_tablero
               AND t.Estado = 1
+              AND (t.Archivada = 0 OR :incluir_archivadas = 1)
             ORDER BY t.Id_columna ASC, t.Posicion ASC, t.Id_tarjeta ASC
         ');
         $this->db->bind(':id_tablero', (int)$id_tablero);
+        $this->db->bind(':incluir_archivadas', $incluir_archivadas ? 1 : 0);
         return $this->db->resultSet();
+    }
+
+    public function toggleArchivarTarjeta($id_tarjeta, $id_tablero, $archivar){
+        $this->db->query('
+            UPDATE tablero_tarjetas
+            SET Archivada = :archivada,
+                Fecha_archivado = :fecha_archivado
+            WHERE Id_tarjeta = :id_tarjeta AND Id_tablero = :id_tablero AND Estado = 1
+        ');
+        $this->db->bind(':archivada', $archivar ? 1 : 0);
+        $this->db->bind(':fecha_archivado', $archivar ? date('Y-m-d H:i:s') : null);
+        $this->db->bind(':id_tarjeta', (int)$id_tarjeta);
+        $this->db->bind(':id_tablero', (int)$id_tablero);
+        return $this->db->execute();
     }
 
     public function getActividadesActivas($limit = 200){
@@ -2081,5 +2147,196 @@ class TableroModel {
         $this->db->bind(':since_historial', (int)$since_historial);
         $this->db->bind(':id_usuario', (int)$id_usuario);
         return (bool)$this->db->single();
+    }
+
+    // ------------------------------------------------------------------
+    // PLANTILLAS DE TARJETA
+    // ------------------------------------------------------------------
+
+    public function getTarjetasPlantillas($id_tablero){
+        if(!$this->tableExists('tablero_tarjetas_plantilla')) return [];
+        $this->db->query('
+            SELECT Id_plantilla_tarjeta, Nombre_plantilla, Titulo, Descripcion,
+                   Id_columna_defecto, Id_prioridad_defecto, Fecha_creacion
+            FROM tablero_tarjetas_plantilla
+            WHERE Id_tablero = :id_tablero AND Estado = 1
+            ORDER BY Nombre_plantilla ASC
+        ');
+        $this->db->bind(':id_tablero', (int)$id_tablero);
+        return $this->db->resultSet() ?: [];
+    }
+
+    public function getTarjetaPlantillaById($id, $id_tablero){
+        if(!$this->tableExists('tablero_tarjetas_plantilla')) return null;
+        $this->db->query('SELECT * FROM tablero_tarjetas_plantilla WHERE Id_plantilla_tarjeta = :id AND Id_tablero = :id_tablero AND Estado = 1');
+        $this->db->bind(':id', (int)$id);
+        $this->db->bind(':id_tablero', (int)$id_tablero);
+        return $this->db->single();
+    }
+
+    public function createTarjetaPlantilla($nombre_plantilla, $titulo, $descripcion, $id_usuario_creador, $id_tablero, $id_columna_defecto = null, $id_prioridad_defecto = null){
+        if(!$this->tableExists('tablero_tarjetas_plantilla')) return false;
+        $this->db->query('
+            INSERT INTO tablero_tarjetas_plantilla (Id_tablero, Nombre_plantilla, Titulo, Descripcion, Id_columna_defecto, Id_prioridad_defecto, Id_usuario_creador, Estado)
+            VALUES (:id_tablero, :nombre_plantilla, :titulo, :descripcion, :id_columna_defecto, :id_prioridad_defecto, :id_usuario_creador, 1)
+        ');
+        $this->db->bind(':id_tablero', (int)$id_tablero);
+        $this->db->bind(':nombre_plantilla', (string)$nombre_plantilla);
+        $this->db->bind(':titulo', (string)$titulo);
+        $this->db->bind(':descripcion', (string)$descripcion);
+        $this->db->bind(':id_columna_defecto', $id_columna_defecto !== null ? (int)$id_columna_defecto : null);
+        $this->db->bind(':id_prioridad_defecto', $id_prioridad_defecto !== null ? (int)$id_prioridad_defecto : null);
+        $this->db->bind(':id_usuario_creador', (int)$id_usuario_creador);
+        if(!$this->db->execute()) return false;
+        $this->db->query('SELECT LAST_INSERT_ID() AS id');
+        $row = $this->db->single();
+        return $row ? (int)$row->id : false;
+    }
+
+    // ------------------------------------------------------------------
+    // PLANTILLAS DE LISTA DE TAREAS
+    // ------------------------------------------------------------------
+
+    public function getTareasPlantillas($id_tablero){
+        if(!$this->tableExists('tablero_tarjetas_tareas_plantilla')) return [];
+        $this->db->query('
+            SELECT Id_plantilla_lista, Nombre_plantilla, Nombre_lista, Fecha_creacion
+            FROM tablero_tarjetas_tareas_plantilla
+            WHERE Id_tablero = :id_tablero AND Estado = 1
+            ORDER BY Nombre_plantilla ASC
+        ');
+        $this->db->bind(':id_tablero', (int)$id_tablero);
+        return $this->db->resultSet() ?: [];
+    }
+
+    public function getTareasPlantillaById($id, $id_tablero){
+        if(!$this->tableExists('tablero_tarjetas_tareas_plantilla')) return null;
+        $this->db->query('SELECT * FROM tablero_tarjetas_tareas_plantilla WHERE Id_plantilla_lista = :id AND Id_tablero = :id_tablero AND Estado = 1');
+        $this->db->bind(':id', (int)$id);
+        $this->db->bind(':id_tablero', (int)$id_tablero);
+        return $this->db->single();
+    }
+
+    public function getTareasPlantillaDetalles($id_plantilla_lista){
+        if(!$this->tableExists('tablero_tarjetas_tareas_plantilla_detalle')) return [];
+        $this->db->query('
+            SELECT Id_plantilla_detalle, Descripcion, Orden_detalle
+            FROM tablero_tarjetas_tareas_plantilla_detalle
+            WHERE Id_plantilla_lista = :id AND Estado = 1
+            ORDER BY Orden_detalle ASC, Id_plantilla_detalle ASC
+        ');
+        $this->db->bind(':id', (int)$id_plantilla_lista);
+        return $this->db->resultSet() ?: [];
+    }
+
+    public function createTareasPlantilla($nombre_plantilla, $nombre_lista, $id_usuario_creador, $id_tablero){
+        if(!$this->tableExists('tablero_tarjetas_tareas_plantilla')) return false;
+        $this->db->query('
+            INSERT INTO tablero_tarjetas_tareas_plantilla (Id_tablero, Nombre_plantilla, Nombre_lista, Id_usuario_creador, Estado)
+            VALUES (:id_tablero, :nombre_plantilla, :nombre_lista, :id_usuario_creador, 1)
+        ');
+        $this->db->bind(':id_tablero', (int)$id_tablero);
+        $this->db->bind(':nombre_plantilla', (string)$nombre_plantilla);
+        $this->db->bind(':nombre_lista', (string)$nombre_lista);
+        $this->db->bind(':id_usuario_creador', (int)$id_usuario_creador);
+        if(!$this->db->execute()) return false;
+        $this->db->query('SELECT LAST_INSERT_ID() AS id');
+        $row = $this->db->single();
+        return $row ? (int)$row->id : false;
+    }
+
+    public function addTareasPlantillaDetalle($id_plantilla_lista, $descripcion, $orden){
+        if(!$this->tableExists('tablero_tarjetas_tareas_plantilla_detalle')) return false;
+        $this->db->query('
+            INSERT INTO tablero_tarjetas_tareas_plantilla_detalle (Id_plantilla_lista, Descripcion, Orden_detalle, Estado)
+            VALUES (:id_plantilla_lista, :descripcion, :orden, 1)
+        ');
+        $this->db->bind(':id_plantilla_lista', (int)$id_plantilla_lista);
+        $this->db->bind(':descripcion', (string)$descripcion);
+        $this->db->bind(':orden', (int)$orden);
+        return $this->db->execute();
+    }
+
+    public function updateTarjetaPlantilla($id, $id_tablero, $nombre_plantilla, $titulo, $descripcion, $id_columna_defecto = null, $id_prioridad_defecto = null){
+        if(!$this->tableExists('tablero_tarjetas_plantilla')) return false;
+        $this->db->query('
+            UPDATE tablero_tarjetas_plantilla
+            SET Nombre_plantilla = :nombre_plantilla, Titulo = :titulo, Descripcion = :descripcion,
+                Id_columna_defecto = :id_columna_defecto, Id_prioridad_defecto = :id_prioridad_defecto
+            WHERE Id_plantilla_tarjeta = :id AND Id_tablero = :id_tablero AND Estado = 1
+        ');
+        $this->db->bind(':nombre_plantilla', (string)$nombre_plantilla);
+        $this->db->bind(':titulo', (string)$titulo);
+        $this->db->bind(':descripcion', (string)$descripcion);
+        $this->db->bind(':id_columna_defecto', $id_columna_defecto !== null ? (int)$id_columna_defecto : null);
+        $this->db->bind(':id_prioridad_defecto', $id_prioridad_defecto !== null ? (int)$id_prioridad_defecto : null);
+        $this->db->bind(':id', (int)$id);
+        $this->db->bind(':id_tablero', (int)$id_tablero);
+        return $this->db->execute();
+    }
+
+    public function deleteTarjetaPlantilla($id, $id_tablero){
+        if(!$this->tableExists('tablero_tarjetas_plantilla')) return false;
+        $this->db->query('UPDATE tablero_tarjetas_plantilla SET Estado = 0 WHERE Id_plantilla_tarjeta = :id AND Id_tablero = :id_tablero');
+        $this->db->bind(':id', (int)$id);
+        $this->db->bind(':id_tablero', (int)$id_tablero);
+        return $this->db->execute();
+    }
+
+    public function updateTareasPlantilla($id, $id_tablero, $nombre_plantilla, $nombre_lista){
+        if(!$this->tableExists('tablero_tarjetas_tareas_plantilla')) return false;
+        $this->db->query('
+            UPDATE tablero_tarjetas_tareas_plantilla
+            SET Nombre_plantilla = :nombre_plantilla, Nombre_lista = :nombre_lista
+            WHERE Id_plantilla_lista = :id AND Id_tablero = :id_tablero AND Estado = 1
+        ');
+        $this->db->bind(':nombre_plantilla', (string)$nombre_plantilla);
+        $this->db->bind(':nombre_lista', (string)$nombre_lista);
+        $this->db->bind(':id', (int)$id);
+        $this->db->bind(':id_tablero', (int)$id_tablero);
+        return $this->db->execute();
+    }
+
+    public function deleteAllTareasPlantillaDetallesByLista($id_plantilla_lista){
+        if(!$this->tableExists('tablero_tarjetas_tareas_plantilla_detalle')) return true;
+        $this->db->query('DELETE FROM tablero_tarjetas_tareas_plantilla_detalle WHERE Id_plantilla_lista = :id');
+        $this->db->bind(':id', (int)$id_plantilla_lista);
+        return $this->db->execute();
+    }
+
+    public function deleteTareasPlantilla($id, $id_tablero){
+        if(!$this->tableExists('tablero_tarjetas_tareas_plantilla')) return false;
+        $this->db->query('UPDATE tablero_tarjetas_tareas_plantilla SET Estado = 0 WHERE Id_plantilla_lista = :id AND Id_tablero = :id_tablero');
+        $this->db->bind(':id', (int)$id);
+        $this->db->bind(':id_tablero', (int)$id_tablero);
+        return $this->db->execute();
+    }
+
+    public function getTodasAsociacionesListasByTablero($id_tablero){
+        if(!$this->tableExists('tablero_tarjetas_plantilla_lista_rel')) return [];
+        $this->db->query('
+            SELECT r.Id_plantilla_tarjeta, r.Id_plantilla_lista
+            FROM tablero_tarjetas_plantilla_lista_rel r
+            INNER JOIN tablero_tarjetas_plantilla tp ON tp.Id_plantilla_tarjeta = r.Id_plantilla_tarjeta
+            WHERE tp.Id_tablero = :id_tablero AND tp.Estado = 1
+            ORDER BY r.Orden ASC, r.Id_rel ASC
+        ');
+        $this->db->bind(':id_tablero', (int)$id_tablero);
+        return $this->db->resultSet() ?: [];
+    }
+
+    public function setListasAsociadasPlantillaTarjeta($id_plantilla_tarjeta, array $ids_lista){
+        if(!$this->tableExists('tablero_tarjetas_plantilla_lista_rel')) return true;
+        $this->db->query('DELETE FROM tablero_tarjetas_plantilla_lista_rel WHERE Id_plantilla_tarjeta = :id');
+        $this->db->bind(':id', (int)$id_plantilla_tarjeta);
+        $this->db->execute();
+        foreach(array_values($ids_lista) as $orden => $id_lista){
+            $this->db->query('INSERT IGNORE INTO tablero_tarjetas_plantilla_lista_rel (Id_plantilla_tarjeta, Id_plantilla_lista, Orden) VALUES (:id_pt, :id_pl, :orden)');
+            $this->db->bind(':id_pt', (int)$id_plantilla_tarjeta);
+            $this->db->bind(':id_pl', (int)$id_lista);
+            $this->db->bind(':orden', $orden);
+            $this->db->execute();
+        }
+        return true;
     }
 }

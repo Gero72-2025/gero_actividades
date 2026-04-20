@@ -704,7 +704,9 @@ function generateOfflineSqlBundle($dbName, $adminEmail, $adminPass) {
     $scripts = [
         __DIR__ . '/database_scripts/09_tablero_actividades.sql',
         __DIR__ . '/database_scripts/10_restaurar_admin.sql',
-        __DIR__ . '/database_scripts/11_recuperacion_password.sql'
+        __DIR__ . '/database_scripts/11_recuperacion_password.sql',
+        __DIR__ . '/database_scripts/12_plantillas_tablero.sql',
+        __DIR__ . '/database_scripts/13_plantillas_asociaciones_permisos.sql'
     ];
 
     foreach ($scripts as $scriptPath) {
@@ -1374,6 +1376,22 @@ try {
     $passwordResetScriptPath = __DIR__ . '/database_scripts/11_recuperacion_password.sql';
     $queries11 = runSqlFile($conn, $passwordResetScriptPath);
     echo "✅ Script 11 ejecutado correctamente ($queries11 sentencias)\n";
+
+    // ============================================================
+    // 9. EJECUTAR SCRIPT DE PLANTILLAS DE TABLERO (12)
+    // ============================================================
+    echo "📝 Ejecutando script de plantillas de tablero (12_plantillas_tablero.sql)...\n";
+    $plantillasTableroScriptPath = __DIR__ . '/database_scripts/12_plantillas_tablero.sql';
+    $queries12 = runSqlFile($conn, $plantillasTableroScriptPath);
+    echo "✅ Script 12 ejecutado correctamente ($queries12 sentencias)\n";
+
+    // ============================================================
+    // 10. EJECUTAR SCRIPT DE ASOCIACIONES PLANTILLAS Y PERMISOS (13)
+    // ============================================================
+    echo "📝 Ejecutando script de asociaciones y permisos de plantillas (13_plantillas_asociaciones_permisos.sql)...\n";
+    $plantillasPermisosScriptPath = __DIR__ . '/database_scripts/13_plantillas_asociaciones_permisos.sql';
+    $queries13 = runSqlFile($conn, $plantillasPermisosScriptPath);
+    echo "✅ Script 13 ejecutado correctamente ($queries13 sentencias)\n";
 
     // Asegurar que el admin real del setup tenga permisos de tablero (si no es Id 1).
     if ((int)$admin_id !== 1) {
