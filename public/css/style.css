@@ -530,6 +530,20 @@ body.login {
     box-shadow: 0 8px 18px rgba(25, 135, 84, 0.22);
 }
 
+.tablero-tarjeta--archivada {
+    opacity: 0.6;
+    border-color: #ffc107 !important;
+    background-color: #fffdf0 !important;
+    box-shadow: none;
+}
+
+.tablero-tarjeta--archivada .card-title::before {
+    content: '\f118\00a0';
+    font-family: 'Bootstrap Icons';
+    font-size: 0.85em;
+    color: #e6a817;
+}
+
 .tarjeta-completado-row {
     display: flex;
     align-items: center;

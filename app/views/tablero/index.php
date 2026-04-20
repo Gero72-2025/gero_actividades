@@ -37,6 +37,13 @@ if(!empty($data['usuariosAsignados'])){
             'tarea_editar' => (int)($ua->Permiso_tarea_editar ?? 0) === 1,
             'tarea_eliminar' => (int)($ua->Permiso_tarea_eliminar ?? 0) === 1,
             'tarea_tiempo_editar' => (int)($ua->Permiso_tarea_tiempo_editar ?? 0) === 1,
+            'plantilla_tarjeta_crear' => (int)($ua->Permiso_plantilla_tarjeta_crear ?? 0) === 1,
+            'plantilla_tarjeta_editar' => (int)($ua->Permiso_plantilla_tarjeta_editar ?? 0) === 1,
+            'plantilla_tarjeta_eliminar' => (int)($ua->Permiso_plantilla_tarjeta_eliminar ?? 0) === 1,
+            'plantilla_tarjeta_asociar' => (int)($ua->Permiso_plantilla_tarjeta_asociar ?? 0) === 1,
+            'plantilla_lista_crear' => (int)($ua->Permiso_plantilla_lista_crear ?? 0) === 1,
+            'plantilla_lista_editar' => (int)($ua->Permiso_plantilla_lista_editar ?? 0) === 1,
+            'plantilla_lista_eliminar' => (int)($ua->Permiso_plantilla_lista_eliminar ?? 0) === 1,
             'legacy_ver' => (int)($ua->Permiso_ver ?? 0) === 1,
             'legacy_crear' => (int)($ua->Permiso_crear ?? 0) === 1,
             'legacy_editar' => (int)($ua->Permiso_editar ?? 0) === 1,
@@ -67,7 +74,14 @@ $permTablero = $data['permisosTablero'] ?? [
     'tarea_crear' => false,
     'tarea_editar' => false,
     'tarea_eliminar' => false,
-    'tarea_tiempo_editar' => false
+    'tarea_tiempo_editar' => false,
+    'plantilla_tarjeta_crear' => false,
+    'plantilla_tarjeta_editar' => false,
+    'plantilla_tarjeta_eliminar' => false,
+    'plantilla_tarjeta_asociar' => false,
+    'plantilla_lista_crear' => false,
+    'plantilla_lista_editar' => false,
+    'plantilla_lista_eliminar' => false
 ];
 
 $canDashboardGlobal = tienePermiso('tablero.dashboard');
@@ -97,6 +111,15 @@ $canDeleteCard = !empty($permTablero['tarjeta_eliminar']);
 $canCreateBoard = !empty($permTablero['tablero_crear']);
 $canDeleteBoard = !empty($permTablero['tablero_eliminar']);
 $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
+$canPlantillaTarjetaCrear    = !empty($permTablero['plantilla_tarjeta_crear']);
+$canPlantillaTarjetaEditar   = !empty($permTablero['plantilla_tarjeta_editar']);
+$canPlantillaTarjetaEliminar = !empty($permTablero['plantilla_tarjeta_eliminar']);
+$canPlantillaTarjetaAsociar  = !empty($permTablero['plantilla_tarjeta_asociar']);
+$canPlantillaListaCrear      = !empty($permTablero['plantilla_lista_crear']);
+$canPlantillaListaEditar     = !empty($permTablero['plantilla_lista_editar']);
+$canPlantillaListaEliminar   = !empty($permTablero['plantilla_lista_eliminar']);
+$canGestorPlantillaTarjeta   = $canPlantillaTarjetaCrear || $canPlantillaTarjetaEditar || $canPlantillaTarjetaEliminar;
+$canGestorPlantillaLista     = $canPlantillaListaCrear || $canPlantillaListaEditar || $canPlantillaListaEliminar;
 ?>
 
 <div class="mb-3">
@@ -199,6 +222,12 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                                 <i class="bi bi-plus-circle"></i> Nueva Tarjeta
                             </button>
                         <?php endif; ?>
+
+                        <?php if($idTableroActual > 0 && ($canGestorPlantillaTarjeta || $canGestorPlantillaLista)): ?>
+                            <button class="btn btn-outline-secondary" data-toggle="modal" data-target="#modalTipoPlantilla">
+                                <i class="bi bi-file-earmark-text"></i> Plantillas
+                            </button>
+                        <?php endif; ?>
                     </div>
 
                     <form action="<?php echo URLROOT; ?>/tablero/index" method="get" class="row g-2 align-items-end mb-3" id="formTableroActivo">
@@ -256,6 +285,12 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                                 <button type="button" class="btn btn-outline-secondary" id="btnLimpiarFiltrosTarjeta" title="Limpiar filtros">
                                     <i class="bi bi-x-circle"></i>
                                 </button>
+                            </div>
+                            <div class="col-12 col-md-auto d-flex align-items-end pb-1">
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" id="switchMostrarArchivadas" role="switch">
+                                    <label class="form-check-label text-muted small" for="switchMostrarArchivadas">Mostrar Archivadas</label>
+                                </div>
                             </div>
                         </div>
                     <?php endif; ?>
@@ -324,9 +359,10 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                         <?php foreach($data['tarjetasPorColumna'][$columna->Id_columna] as $tarjeta): ?>
                             <div
                                 id="tarjeta-<?php echo (int)$tarjeta->Id_tarjeta; ?>"
-                                class="card mb-2 tablero-tarjeta <?php echo !empty($tarjeta->Completado) ? 'tablero-tarjeta--completada' : ''; ?>"
+                                class="card mb-2 tablero-tarjeta <?php echo !empty($tarjeta->Completado) ? 'tablero-tarjeta--completada' : ''; ?> <?php echo !empty($tarjeta->Archivada) ? 'tablero-tarjeta--archivada' : ''; ?>"
                                 data-tarjeta-id="<?php echo (int)$tarjeta->Id_tarjeta; ?>"
                                 data-tarjeta-completado="<?php echo !empty($tarjeta->Completado) ? '1' : '0'; ?>"
+                                data-tarjeta-archivada="<?php echo !empty($tarjeta->Archivada) ? '1' : '0'; ?>"
                                 data-tarjeta-estado="<?php echo htmlspecialchars($tarjeta->Estado_tarjeta ?? 'Pendiente', ENT_QUOTES, 'UTF-8'); ?>"
                                 data-prioridad-id="<?php echo !empty($tarjeta->Id_prioridad) ? (int)$tarjeta->Id_prioridad : ''; ?>"
                                 data-etiqueta-ids="<?php echo htmlspecialchars(implode(',', $tarjeta->EtiquetaIds ?? []), ENT_QUOTES, 'UTF-8'); ?>"
@@ -351,6 +387,7 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                                                 data-fecha-inicio="<?php echo !empty($tarjeta->Fecha_inicio) ? htmlspecialchars($tarjeta->Fecha_inicio, ENT_QUOTES, 'UTF-8') : ''; ?>"
                                                 data-fecha-fin="<?php echo !empty($tarjeta->Fecha_fin) ? htmlspecialchars($tarjeta->Fecha_fin, ENT_QUOTES, 'UTF-8') : ''; ?>"
                                                 data-tarjeta-completado="<?php echo !empty($tarjeta->Completado) ? '1' : '0'; ?>"
+                                                data-tarjeta-archivada="<?php echo !empty($tarjeta->Archivada) ? '1' : '0'; ?>"
                                                 data-can-delete="<?php echo !empty($tarjeta->Can_Delete) ? '1' : '0'; ?>"
                                                 data-etiqueta-ids="<?php echo htmlspecialchars(implode(',', $tarjeta->EtiquetaIds ?? []), ENT_QUOTES, 'UTF-8'); ?>"
                                                 title="Editar tarjeta"
@@ -756,6 +793,37 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                                 <div class="col-12 col-md-6"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_tarea_tiempo_editar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_tarea_tiempo_editar" id="modal_perm_tarea_tiempo_editar" data-perm-section="tarea" value="1"><span>Editar tiempo en tareas</span></label></div>
                             </div>
                         </div>
+
+                        <div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="mb-0">Seccion 6: Plantillas de Tarjetas</h6>
+                                <label class="mb-0 d-inline-flex align-items-center" style="cursor:pointer;">
+                                    <input class="mr-2 js-select-all-section" type="checkbox" data-section="plantilla_tarjeta" value="1">
+                                    <span>Seleccionar todos</span>
+                                </label>
+                            </div>
+                            <div class="row">
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_plantilla_tarjeta_crear" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_plantilla_tarjeta_crear" id="modal_perm_plantilla_tarjeta_crear" data-perm-section="plantilla_tarjeta" value="1"><span>Crear plantillas de tarjeta</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_plantilla_tarjeta_editar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_plantilla_tarjeta_editar" id="modal_perm_plantilla_tarjeta_editar" data-perm-section="plantilla_tarjeta" value="1"><span>Editar plantillas de tarjeta</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_plantilla_tarjeta_eliminar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_plantilla_tarjeta_eliminar" id="modal_perm_plantilla_tarjeta_eliminar" data-perm-section="plantilla_tarjeta" value="1"><span>Eliminar plantillas de tarjeta</span></label></div>
+                                <div class="col-12 col-md-6"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_plantilla_tarjeta_asociar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_plantilla_tarjeta_asociar" id="modal_perm_plantilla_tarjeta_asociar" data-perm-section="plantilla_tarjeta" value="1"><span>Asociar plantillas de tareas</span></label></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="mb-0">Seccion 7: Plantillas de Tareas</h6>
+                                <label class="mb-0 d-inline-flex align-items-center" style="cursor:pointer;">
+                                    <input class="mr-2 js-select-all-section" type="checkbox" data-section="plantilla_lista" value="1">
+                                    <span>Seleccionar todos</span>
+                                </label>
+                            </div>
+                            <div class="row">
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_plantilla_lista_crear" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_plantilla_lista_crear" id="modal_perm_plantilla_lista_crear" data-perm-section="plantilla_lista" value="1"><span>Crear plantillas de tareas</span></label></div>
+                                <div class="col-12 col-md-6 mb-2"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_plantilla_lista_editar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_plantilla_lista_editar" id="modal_perm_plantilla_lista_editar" data-perm-section="plantilla_lista" value="1"><span>Editar plantillas de tareas</span></label></div>
+                                <div class="col-12 col-md-6"><label class="d-flex align-items-center border rounded bg-white px-3 py-2 mb-0" for="modal_perm_plantilla_lista_eliminar" style="cursor:pointer;"><input class="mr-2" type="checkbox" name="permiso_plantilla_lista_eliminar" id="modal_perm_plantilla_lista_eliminar" data-perm-section="plantilla_lista" value="1"><span>Eliminar plantillas de tareas</span></label></div>
+                            </div>
+                        </div>
                     </div>
 
                     <hr>
@@ -801,7 +869,16 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                                                 <?php if((int)($ua->Permiso_tarea_eliminar ?? 0) === 1): ?><span class="badge bg-danger me-1">Tareas: Eliminar</span><?php endif; ?>
                                                 <?php if((int)($ua->Permiso_tarea_tiempo_editar ?? 0) === 1): ?><span class="badge bg-danger me-1">Tareas: Tiempo</span><?php endif; ?>
 
-                                                <?php if((int)($ua->Permiso_tablero_ver ?? 0) !== 1 && (int)($ua->Permiso_tablero_crear ?? 0) !== 1 && (int)($ua->Permiso_tablero_editar ?? 0) !== 1 && (int)($ua->Permiso_tablero_eliminar ?? 0) !== 1 && (int)($ua->Permiso_tablero_asignar ?? 0) !== 1 && (int)($ua->Permiso_columna_crear ?? 0) !== 1 && (int)($ua->Permiso_columna_editar ?? 0) !== 1 && (int)($ua->Permiso_columna_eliminar ?? 0) !== 1 && (int)($ua->Permiso_columna_ordenar ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_ver ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_crear ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_editar ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_mover ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_eliminar ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_asignar ?? 0) !== 1 && (int)($ua->Permiso_lista_crear ?? 0) !== 1 && (int)($ua->Permiso_lista_editar ?? 0) !== 1 && (int)($ua->Permiso_lista_eliminar ?? 0) !== 1 && (int)($ua->Permiso_tarea_crear ?? 0) !== 1 && (int)($ua->Permiso_tarea_editar ?? 0) !== 1 && (int)($ua->Permiso_tarea_eliminar ?? 0) !== 1 && (int)($ua->Permiso_tarea_tiempo_editar ?? 0) !== 1): ?>
+                                                <?php if((int)($ua->Permiso_plantilla_tarjeta_crear ?? 0) === 1): ?><span class="badge bg-secondary me-1">Plant.Tarjeta: Crear</span><?php endif; ?>
+                                                <?php if((int)($ua->Permiso_plantilla_tarjeta_editar ?? 0) === 1): ?><span class="badge bg-secondary me-1">Plant.Tarjeta: Editar</span><?php endif; ?>
+                                                <?php if((int)($ua->Permiso_plantilla_tarjeta_eliminar ?? 0) === 1): ?><span class="badge bg-secondary me-1">Plant.Tarjeta: Eliminar</span><?php endif; ?>
+                                                <?php if((int)($ua->Permiso_plantilla_tarjeta_asociar ?? 0) === 1): ?><span class="badge bg-secondary me-1">Plant.Tarjeta: Asociar</span><?php endif; ?>
+
+                                                <?php if((int)($ua->Permiso_plantilla_lista_crear ?? 0) === 1): ?><span class="badge bg-dark me-1">Plant.Tareas: Crear</span><?php endif; ?>
+                                                <?php if((int)($ua->Permiso_plantilla_lista_editar ?? 0) === 1): ?><span class="badge bg-dark me-1">Plant.Tareas: Editar</span><?php endif; ?>
+                                                <?php if((int)($ua->Permiso_plantilla_lista_eliminar ?? 0) === 1): ?><span class="badge bg-dark me-1">Plant.Tareas: Eliminar</span><?php endif; ?>
+
+                                                <?php if((int)($ua->Permiso_tablero_ver ?? 0) !== 1 && (int)($ua->Permiso_tablero_crear ?? 0) !== 1 && (int)($ua->Permiso_tablero_editar ?? 0) !== 1 && (int)($ua->Permiso_tablero_eliminar ?? 0) !== 1 && (int)($ua->Permiso_tablero_asignar ?? 0) !== 1 && (int)($ua->Permiso_columna_crear ?? 0) !== 1 && (int)($ua->Permiso_columna_editar ?? 0) !== 1 && (int)($ua->Permiso_columna_eliminar ?? 0) !== 1 && (int)($ua->Permiso_columna_ordenar ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_ver ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_crear ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_editar ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_mover ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_eliminar ?? 0) !== 1 && (int)($ua->Permiso_tarjeta_asignar ?? 0) !== 1 && (int)($ua->Permiso_lista_crear ?? 0) !== 1 && (int)($ua->Permiso_lista_editar ?? 0) !== 1 && (int)($ua->Permiso_lista_eliminar ?? 0) !== 1 && (int)($ua->Permiso_tarea_crear ?? 0) !== 1 && (int)($ua->Permiso_tarea_editar ?? 0) !== 1 && (int)($ua->Permiso_tarea_eliminar ?? 0) !== 1 && (int)($ua->Permiso_tarea_tiempo_editar ?? 0) !== 1 && (int)($ua->Permiso_plantilla_tarjeta_crear ?? 0) !== 1 && (int)($ua->Permiso_plantilla_tarjeta_editar ?? 0) !== 1 && (int)($ua->Permiso_plantilla_tarjeta_eliminar ?? 0) !== 1 && (int)($ua->Permiso_plantilla_tarjeta_asociar ?? 0) !== 1 && (int)($ua->Permiso_plantilla_lista_crear ?? 0) !== 1 && (int)($ua->Permiso_plantilla_lista_editar ?? 0) !== 1 && (int)($ua->Permiso_plantilla_lista_eliminar ?? 0) !== 1): ?>
                                                     <span class="text-muted">Sin permisos activos</span>
                                                 <?php endif; ?>
                                             </td>
@@ -1003,21 +1080,354 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
 </form>
 <?php endif; ?>
 
+<?php if($idTableroActual > 0): ?>
+<!-- ===== MODAL: Seleccionar tipo de plantilla ===== -->
+<div class="modal fade" id="modalTipoPlantilla" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title"><i class="bi bi-file-earmark-text"></i> Plantillas</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <?php if($canPlantillaTarjetaCrear || $canPlantillaListaCrear): ?>
+                <p class="mb-3 text-muted">Seleccione el tipo de plantilla que desea crear:</p>
+                <div class="d-flex flex-column gap-3">
+                    <?php if($canPlantillaTarjetaCrear): ?>
+                    <button type="button" class="btn btn-outline-primary btn-lg" id="btnAbrirPlantillaTarjeta" data-dismiss="modal">
+                        <i class="bi bi-kanban"></i> Plantilla de Tarjeta
+                        <small class="d-block text-muted mt-1" style="font-size:0.8em;">Guarda titulo y descripcion predeterminados para crear tarjetas rapidamente</small>
+                    </button>
+                    <?php endif; ?>
+                    <?php if($canPlantillaListaCrear): ?>
+                    <button type="button" class="btn btn-outline-success btn-lg" id="btnAbrirPlantillaLista" data-dismiss="modal">
+                        <i class="bi bi-list-task"></i> Plantilla de Listado de Tareas
+                        <small class="d-block text-muted mt-1" style="font-size:0.8em;">Guarda un listado de tareas sin asignar para aplicarlo a cualquier tarjeta</small>
+                    </button>
+                    <?php endif; ?>
+                </div>
+                <?php else: ?>
+                <div class="text-center py-3">
+                    <i class="bi bi-lock text-muted" style="font-size:2rem;"></i>
+                    <p class="mt-2 mb-0 text-muted">No tiene permisos para crear plantillas.</p>
+                </div>
+                <?php endif; ?>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL: Crear plantilla de tarjeta ===== -->
+<div class="modal fade" id="modalCrearPlantillaTarjeta" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-kanban"></i> Nueva plantilla de tarjeta</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Nombre de la plantilla <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="inputPlantillaTarjetaNombre" maxlength="150" placeholder="Ej: Tarjeta de revision semanal">
+                        <small class="text-muted">Identificador de la plantilla en los desplegables.</small>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Titulo predeterminado <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="inputPlantillaTarjetaTitulo" maxlength="180" placeholder="Titulo que se pre-rellenara al usar la plantilla">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Descripcion predeterminada</label>
+                        <textarea class="form-control" id="inputPlantillaTarjetaDescripcion" rows="4" placeholder="Descripcion opcional..."></textarea>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Columna predeterminada <small class="text-muted">(opcional)</small></label>
+                        <select class="form-control" id="selectPlantillaTarjetaColumna">
+                            <option value="">Sin columna predeterminada</option>
+                            <?php foreach($data['columnas'] as $col): ?>
+                                <option value="<?php echo (int)$col->Id_columna; ?>"><?php echo htmlspecialchars($col->Nombre); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="text-muted">Al aplicar la plantilla se pre-seleccionara esta columna.</small>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Prioridad predeterminada <small class="text-muted">(opcional)</small></label>
+                        <select class="form-control" id="selectPlantillaTarjetaPrioridad">
+                            <option value="">Sin prioridad predeterminada</option>
+                            <?php foreach($prioridadesTablero as $p): ?>
+                                <option value="<?php echo (int)$p->Id_prioridad; ?>" style="color:<?php echo htmlspecialchars($p->Color); ?>"><?php echo htmlspecialchars($p->Nombre); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="text-muted">Al aplicar la plantilla se pre-seleccionara esta prioridad.</small>
+                    </div>
+                    <?php if($canPlantillaTarjetaAsociar): ?>
+                    <div class="col-12">
+                        <label class="form-label"><i class="bi bi-list-task mr-1"></i>Plantillas de tareas asociadas <small class="text-muted">(opcional)</small></label>
+                        <div id="checkboxListasAsociarCrear" class="border rounded p-2" style="max-height:160px;overflow-y:auto;background:#f8f9fa;">
+                            <span class="text-muted small">Sin plantillas de listado disponibles para este tablero.</span>
+                        </div>
+                        <small class="text-muted d-block mt-1">Al usar esta plantilla, se crear&aacute;n autom&aacute;ticamente los listados seleccionados.</small>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnGuardarPlantillaTarjeta">
+                    <i class="bi bi-save"></i> Guardar plantilla
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL: Crear plantilla de listado de tareas ===== -->
+<div class="modal fade" id="modalCrearPlantillaLista" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-list-task"></i> Nueva plantilla de listado de tareas</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Nombre de la plantilla <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="inputPlantillaListaNombrePlantilla" maxlength="150" placeholder="Ej: Checklist de entrega">
+                        <small class="text-muted">Identificador de la plantilla en los desplegables.</small>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Nombre del listado <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="inputPlantillaListaNombreLista" maxlength="180" placeholder="Ej: Pasos de revision">
+                        <small class="text-muted">Nombre que tendra la lista al aplicarse a una tarjeta.</small>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Tareas del listado (sin asignar)</label>
+                        <div id="contenedorTareasPlantillaLista" class="mb-2"></div>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="inputNuevaTareaPlantillaLista" maxlength="255" placeholder="Descripcion de la tarea...">
+                            <button class="btn btn-outline-success" type="button" id="btnAgregarTareaPlantillaLista">
+                                <i class="bi bi-plus"></i> Agregar
+                            </button>
+                        </div>
+                        <small class="text-muted mt-1 d-block">Agregue todas las tareas que debe contener este listado.</small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btnGuardarPlantillaLista">
+                    <i class="bi bi-save"></i> Guardar plantilla
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL: Confirmacion eliminar plantilla ===== -->
+<div class="modal fade" id="modalConfirmarEliminarPlantilla" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-trash mr-1"></i> Eliminar plantilla</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">¿Está seguro que desea eliminar la plantilla <strong id="confirmarEliminarPlantillaNombre"></strong>? Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarEliminarPlantilla">
+                    <i class="bi bi-trash"></i> Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL: Gestor de plantillas de tarjeta ===== -->
+<div class="modal fade" id="modalGestorPlantillasTarjeta" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-kanban"></i> Plantillas de Tarjeta</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div id="gestorListaPlantillasTarjeta"></div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <?php if($canPlantillaTarjetaCrear): ?>
+                <button type="button" class="btn btn-primary" id="btnNuevaPlantillaTarjeta">
+                    <i class="bi bi-plus-lg"></i> Nueva plantilla
+                </button>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL: Gestor de plantillas de listado ===== -->
+<div class="modal fade" id="modalGestorPlantillasLista" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-list-task"></i> Plantillas de Listado de Tareas</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div id="gestorListaPlantillasLista"></div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <?php if($canPlantillaListaCrear): ?>
+                <button type="button" class="btn btn-success" id="btnNuevaPlantillaLista">
+                    <i class="bi bi-plus-lg"></i> Nueva plantilla
+                </button>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL: Editar plantilla de tarjeta ===== -->
+<div class="modal fade" id="modalEditarPlantillaTarjeta" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-pencil-fill"></i> Editar plantilla de tarjeta</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="inputEditarPlantillaTarjetaId">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Nombre de la plantilla <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="inputEditarPlantillaTarjetaNombre" maxlength="150">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Titulo predeterminado <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="inputEditarPlantillaTarjetaTitulo" maxlength="180">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Descripcion predeterminada</label>
+                        <textarea class="form-control" id="inputEditarPlantillaTarjetaDescripcion" rows="4"></textarea>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Columna predeterminada <small class="text-muted">(opcional)</small></label>
+                        <select class="form-control" id="selectEditarPlantillaTarjetaColumna">
+                            <option value="">Sin columna predeterminada</option>
+                            <?php foreach($data['columnas'] as $col): ?>
+                                <option value="<?php echo (int)$col->Id_columna; ?>"><?php echo htmlspecialchars($col->Nombre); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="text-muted">Al aplicar la plantilla se pre-seleccionara esta columna.</small>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Prioridad predeterminada <small class="text-muted">(opcional)</small></label>
+                        <select class="form-control" id="selectEditarPlantillaTarjetaPrioridad">
+                            <option value="">Sin prioridad predeterminada</option>
+                            <?php foreach($prioridadesTablero as $p): ?>
+                                <option value="<?php echo (int)$p->Id_prioridad; ?>" style="color:<?php echo htmlspecialchars($p->Color); ?>"><?php echo htmlspecialchars($p->Nombre); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="text-muted">Al aplicar la plantilla se pre-seleccionara esta prioridad.</small>
+                    </div>
+                    <?php if($canPlantillaTarjetaAsociar): ?>
+                    <div class="col-12">
+                        <label class="form-label"><i class="bi bi-list-task mr-1"></i>Plantillas de tareas asociadas <small class="text-muted">(opcional)</small></label>
+                        <div id="checkboxListasAsociarEditar" class="border rounded p-2" style="max-height:160px;overflow-y:auto;background:#f8f9fa;">
+                            <span class="text-muted small">Sin plantillas de listado disponibles.</span>
+                        </div>
+                        <small class="text-muted d-block mt-1">Al usar esta plantilla, se crear&aacute;n autom&aacute;ticamente los listados seleccionados.</small>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnGuardarEditarPlantillaTarjeta">
+                    <i class="bi bi-save"></i> Guardar cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL: Editar plantilla de listado ===== -->
+<div class="modal fade" id="modalEditarPlantillaLista" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-pencil-fill"></i> Editar plantilla de listado</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="inputEditarPlantillaListaId">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Nombre de la plantilla <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="inputEditarPlantillaListaNombrePlantilla" maxlength="150">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Nombre del listado <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="inputEditarPlantillaListaNombreLista" maxlength="180">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Tareas del listado</label>
+                        <div id="contenedorTareasEditarPlantillaLista" class="mb-2"></div>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="inputNuevaTareaEditarPlantillaLista" maxlength="255" placeholder="Descripcion de la tarea...">
+                            <button class="btn btn-outline-success" type="button" id="btnAgregarTareaEditarPlantillaLista">
+                                <i class="bi bi-plus"></i> Agregar
+                            </button>
+                        </div>
+                        <small class="text-muted mt-1 d-block">Las tareas existentes se reemplazaran con esta lista al guardar.</small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btnGuardarEditarPlantillaLista">
+                    <i class="bi bi-save"></i> Guardar cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <?php if($canCreateCard && $idTableroActual > 0): ?>
 <div class="modal fade" id="modalCreateTarjeta" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">Crear Tarjeta</h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <div class="modal-header bg-primary text-white" style="position:relative;min-height:54px;">
+                <h5 class="modal-title mb-0"><i class="bi bi-kanban mr-1"></i> Crear Tarjeta</h5>
+                <div class="dropdown" style="position:absolute;left:50%;transform:translateX(-50%);z-index:1;">
+                    <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" id="dropdownBtnPlantillasTarjeta" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="bi bi-file-earmark-text"></i> Desde Plantilla
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-right" id="dropdownMenuPlantillasTarjeta" aria-labelledby="dropdownBtnPlantillasTarjeta">
+                        <span class="dropdown-item text-muted">Cargando...</span>
+                    </div>
+                </div>
+                <button type="button" onclick="$('#modalCreateTarjeta').modal('hide')"
+                    style="position:absolute;right:1rem;top:50%;transform:translateY(-50%);z-index:20;background:none;border:none;color:#fff;font-size:1.5rem;line-height:1;cursor:pointer;padding:.25rem .5rem;pointer-events:auto;">
+                    &times;
+                </button>
             </div>
             <form action="<?php echo URLROOT; ?>/tablero/create_tarjeta" method="post">
                 <input type="hidden" name="id_tablero" value="<?php echo $idTableroActual; ?>">
+                <input type="hidden" name="plantilla_listas_ids" id="hiddenPlantillaListasIds" value="">
                 <div class="modal-body">
                     <div class="row g-3">
                         <div class="col-12 col-md-6">
                             <label class="form-label">Columna</label>
-                            <select name="id_columna" class="form-select tablero-activo-select" required>
+                            <select name="id_columna" id="createTarjetaColumna" class="form-select tablero-activo-select" required>
                                 <option value="">Seleccione</option>
                                 <?php foreach($data['columnas'] as $col): ?>
                                     <option value="<?php echo (int)$col->Id_columna; ?>"><?php echo htmlspecialchars($col->Nombre); ?></option>
@@ -1061,7 +1471,7 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                         </div>
                         <div class="col-12 col-md-6">
                             <label class="form-label">Prioridad</label>
-                            <select name="id_prioridad" class="form-select tablero-activo-select" required>
+                            <select name="id_prioridad" id="createTarjetaPrioridad" class="form-select tablero-activo-select" required>
                                 <option value="">Seleccione prioridad</option>
                                 <?php foreach($prioridadesTablero as $prioridad): ?>
                                     <option value="<?php echo (int)$prioridad->Id_prioridad; ?>">
@@ -1280,8 +1690,13 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <?php if($canEditCard): ?>
+                        <button type="button" class="btn btn-outline-warning mr-auto d-none" id="btnArchivarTarjetaModal">
+                            <i class="bi bi-archive"></i> <span id="lblArchivarTarjeta">Archivar Tarjeta</span>
+                        </button>
+                    <?php endif; ?>
                     <?php if($canDeleteCard): ?>
-                        <button type="button" class="btn btn-outline-danger mr-auto d-none" id="btnDeleteTarjetaModal">
+                        <button type="button" class="btn btn-outline-danger d-none" id="btnDeleteTarjetaModal">
                             <i class="bi bi-trash"></i> Eliminar Tarjeta
                         </button>
                     <?php endif; ?>
@@ -1398,17 +1813,44 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                             </div>
                         </div>
 
+                        <div id="notifPlantillaLista" class="alert mb-3 d-none" role="alert" style="padding:.5rem .85rem;font-size:.875rem;"></div>
+
                         <?php if($canCreateList): ?>
                             <div class="input-group mb-3">
                                 <input type="text" class="form-control" id="inputNuevaListaTareas" maxlength="180" placeholder="Nombre de nueva lista de tareas">
                                 <button class="btn btn-primary" type="button" id="btnAgregarListaTareas">Agregar lista</button>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="dropdownBtnPlantillasLista" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="bi bi-file-earmark-text"></i> Desde Plantilla
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-right" id="dropdownMenuPlantillasLista" aria-labelledby="dropdownBtnPlantillasLista">
+                                        <span class="dropdown-item text-muted">Cargando...</span>
+                                    </div>
+                                </div>
                             </div>
                         <?php endif; ?>
                         <div id="contenedorListasTareas"></div>
                     </div>
                     <div class="col-lg-5">
-                        <h6 class="mb-2">Historial</h6>
-                        <div id="contenedorHistorialTarjeta" class="border rounded p-2 bg-light" style="max-height: 520px; overflow-y:auto;"></div>
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <h6 class="mb-0"><i class="bi bi-clock-history mr-1"></i>Historial</h6>
+                            <small id="historialContador" class="text-muted"></small>
+                        </div>
+                        <div class="input-group input-group-sm mb-1">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            </div>
+                            <input type="text" class="form-control" id="inputFiltroHistorial" placeholder="Buscar en historial..." autocomplete="off">
+                            <button class="btn btn-outline-secondary" type="button" id="btnLimpiarFiltroHistorial" title="Limpiar filtros"><i class="bi bi-x-lg"></i></button>
+                        </div>
+                        <select class="form-select tablero-activo-select mb-2" id="selectFiltroHistorialCategoria" style="font-size:0.8rem;">
+                            <option value="">Todas las categorías</option>
+                            <option value="tarjeta">Tarjeta</option>
+                            <option value="lista">Lista de tareas</option>
+                            <option value="tarea">Tarea (ítem)</option>
+                            <option value="tiempo">Tiempo</option>
+                        </select>
+                        <div id="contenedorHistorialTarjeta" class="border rounded p-2 bg-light" style="max-height: 440px; overflow-y:auto;"></div>
                     </div>
                 </div>
             </div>
@@ -1541,6 +1983,12 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
     const canDeleteColumn = <?php echo $canDeleteColumn ? 'true' : 'false'; ?>;
     const canOrderColumn = <?php echo $canOrderColumn ? 'true' : 'false'; ?>;
     const canDeleteCard = <?php echo $canDeleteCard ? 'true' : 'false'; ?>;
+    const canPlantillaTarjetaCrear    = <?php echo $canPlantillaTarjetaCrear ? 'true' : 'false'; ?>;
+    const canPlantillaTarjetaEditar   = <?php echo $canPlantillaTarjetaEditar ? 'true' : 'false'; ?>;
+    const canPlantillaTarjetaEliminar = <?php echo $canPlantillaTarjetaEliminar ? 'true' : 'false'; ?>;
+    const canPlantillaListaCrear      = <?php echo $canPlantillaListaCrear ? 'true' : 'false'; ?>;
+    const canPlantillaListaEditar     = <?php echo $canPlantillaListaEditar ? 'true' : 'false'; ?>;
+    const canPlantillaListaEliminar   = <?php echo $canPlantillaListaEliminar ? 'true' : 'false'; ?>;
     const currentUserId = <?php echo (int)$_SESSION['user_id']; ?>;
     const usuariosAsignadosTarea = <?php
         $usuariosDetalle = [];
@@ -1586,7 +2034,14 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                     (int)($ua->Permiso_tarea_crear ?? 0),
                     (int)($ua->Permiso_tarea_editar ?? 0),
                     (int)($ua->Permiso_tarea_eliminar ?? 0),
-                    (int)($ua->Permiso_tarea_tiempo_editar ?? 0)
+                    (int)($ua->Permiso_tarea_tiempo_editar ?? 0),
+                    (int)($ua->Permiso_plantilla_tarjeta_crear ?? 0),
+                    (int)($ua->Permiso_plantilla_tarjeta_editar ?? 0),
+                    (int)($ua->Permiso_plantilla_tarjeta_eliminar ?? 0),
+                    (int)($ua->Permiso_plantilla_tarjeta_asociar ?? 0),
+                    (int)($ua->Permiso_plantilla_lista_crear ?? 0),
+                    (int)($ua->Permiso_plantilla_lista_editar ?? 0),
+                    (int)($ua->Permiso_plantilla_lista_eliminar ?? 0)
                 ];
 
                 $isLegacyOnly = (array_sum($granularFlags) === 0) && ($legacyVer || $legacyCrear || $legacyEditar || $legacyEliminar);
@@ -1613,7 +2068,14 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                     'tarea_crear' => $isLegacyOnly ? $legacyEditar : ((int)($ua->Permiso_tarea_crear ?? 0) === 1),
                     'tarea_editar' => $isLegacyOnly ? $legacyEditar : ((int)($ua->Permiso_tarea_editar ?? 0) === 1),
                     'tarea_eliminar' => $isLegacyOnly ? $legacyEditar : ((int)($ua->Permiso_tarea_eliminar ?? 0) === 1),
-                    'tarea_tiempo_editar' => (int)($ua->Permiso_tarea_tiempo_editar ?? 0) === 1
+                    'tarea_tiempo_editar' => (int)($ua->Permiso_tarea_tiempo_editar ?? 0) === 1,
+                    'plantilla_tarjeta_crear' => (int)($ua->Permiso_plantilla_tarjeta_crear ?? 0) === 1,
+                    'plantilla_tarjeta_editar' => (int)($ua->Permiso_plantilla_tarjeta_editar ?? 0) === 1,
+                    'plantilla_tarjeta_eliminar' => (int)($ua->Permiso_plantilla_tarjeta_eliminar ?? 0) === 1,
+                    'plantilla_tarjeta_asociar' => (int)($ua->Permiso_plantilla_tarjeta_asociar ?? 0) === 1,
+                    'plantilla_lista_crear' => (int)($ua->Permiso_plantilla_lista_crear ?? 0) === 1,
+                    'plantilla_lista_editar' => (int)($ua->Permiso_plantilla_lista_editar ?? 0) === 1,
+                    'plantilla_lista_eliminar' => (int)($ua->Permiso_plantilla_lista_eliminar ?? 0) === 1
                 ];
             }
         }
@@ -1675,12 +2137,15 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
     const filtroTarjetaEtiquetaEl = document.getElementById('filtroTarjetaEtiqueta');
     const filtroTarjetaPrioridadEl = document.getElementById('filtroTarjetaPrioridad');
     const btnLimpiarFiltrosTarjetaEl = document.getElementById('btnLimpiarFiltrosTarjeta');
+    const switchMostrarArchivadas    = document.getElementById('switchMostrarArchivadas');
     const modalConfirmarAccionEl = document.getElementById('modalConfirmarAccionTablero');
     const modalConfirmarAccionTituloEl = document.getElementById('modalConfirmarAccionTitulo');
     const modalConfirmarAccionMensajeEl = document.getElementById('modalConfirmarAccionMensaje');
     const btnConfirmarAccionTableroEl = document.getElementById('btnConfirmarAccionTablero');
     const confirmActionDefaultLabel = btnConfirmarAccionTableroEl ? String(btnConfirmarAccionTableroEl.textContent || 'Eliminar').trim() : 'Eliminar';
     const btnDeleteTarjetaModalEl = document.getElementById('btnDeleteTarjetaModal');
+    const btnArchivarTarjetaModalEl = document.getElementById('btnArchivarTarjetaModal');
+    const lblArchivarTarjetaEl      = document.getElementById('lblArchivarTarjeta');
     const formDeleteTarjetaEl = document.getElementById('formDeleteTarjeta');
     const btnDeleteTableroModalEl = document.getElementById('btnDeleteTableroModal');
     const formDeleteTableroEl = document.getElementById('formDeleteTablero');
@@ -1713,6 +2178,637 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
     let tableroSyncLocked = false;
     let tableroAutoScrollIntervalId = null;
     let tableroAutoScrollDelayId = null;
+
+    // ------------------------------------------------------------------
+    // PLANTILLAS: estado
+    // ------------------------------------------------------------------
+    let tarjetasPlantillas = [];
+    let listasPlantillas   = [];
+
+    function escapeHtmlPl(str){
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    async function cargarPlantillas(){
+        if(idTableroActual <= 0) return;
+        try {
+            const [r1, r2] = await Promise.all([
+                fetch(`${APP_URL_ROOT}/tablero/get_plantillas_tarjeta`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    credentials: 'same-origin',
+                    body: JSON.stringify({id_tablero: idTableroActual})
+                }),
+                fetch(`${APP_URL_ROOT}/tablero/get_plantillas_lista`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    credentials: 'same-origin',
+                    body: JSON.stringify({id_tablero: idTableroActual})
+                })
+            ]);
+            const d1 = await r1.json();
+            const d2 = await r2.json();
+            if(d1.success) tarjetasPlantillas = d1.plantillas || [];
+            if(d2.success) listasPlantillas   = d2.plantillas  || [];
+        } catch(e){ /* fallo silencioso */ }
+        renderDropdownPlantillasTarjeta();
+        renderDropdownPlantillasLista();
+    }
+
+    function renderCheckboxListasAsociar(containerId, selectedIds){
+        const cont = document.getElementById(containerId);
+        if(!cont) return;
+        if(!listasPlantillas || listasPlantillas.length === 0){
+            cont.innerHTML = '<span class="text-muted small">Sin plantillas de listado disponibles para este tablero.</span>';
+            return;
+        }
+        const sel = new Set((selectedIds || []).map(Number));
+        cont.innerHTML = listasPlantillas.map(p => {
+            const id = parseInt(p.Id_plantilla_lista, 10);
+            const checked = sel.has(id) ? 'checked' : '';
+            return `<div class="form-check mb-1">
+                <input class="form-check-input chk-lista-asociar" type="checkbox" value="${id}" id="chkLista_${containerId}_${id}" ${checked}>
+                <label class="form-check-label small" for="chkLista_${containerId}_${id}">
+                    <strong>${escapeHtmlPl(p.Nombre_plantilla)}</strong>
+                    <span class="text-muted"> &mdash; ${escapeHtmlPl(p.Nombre_lista)}</span>
+                </label>
+            </div>`;
+        }).join('');
+    }
+
+    function getCheckedListaIds(containerId){
+        const cont = document.getElementById(containerId);
+        if(!cont) return [];
+        return Array.from(cont.querySelectorAll('.chk-lista-asociar:checked')).map(el => parseInt(el.value, 10));
+    }
+
+    function renderDropdownPlantillasTarjeta(){
+        const menu = document.getElementById('dropdownMenuPlantillasTarjeta');
+        if(!menu) return;
+        if(tarjetasPlantillas.length === 0){
+            menu.innerHTML = '<span class="dropdown-item text-muted">Sin plantillas guardadas</span>';
+            return;
+        }
+        menu.innerHTML = tarjetasPlantillas.map(p =>
+            `<a class="dropdown-item plantilla-tarjeta-item" href="#" data-id="${p.Id_plantilla_tarjeta}">${escapeHtmlPl(p.Nombre_plantilla)}</a>`
+        ).join('');
+    }
+
+    function renderDropdownPlantillasLista(){
+        const menu = document.getElementById('dropdownMenuPlantillasLista');
+        if(!menu) return;
+        if(listasPlantillas.length === 0){
+            menu.innerHTML = '<span class="dropdown-item text-muted">Sin plantillas guardadas</span>';
+            return;
+        }
+        menu.innerHTML = listasPlantillas.map(p =>
+            `<a class="dropdown-item plantilla-lista-item" href="#" data-id="${p.Id_plantilla_lista}">${escapeHtmlPl(p.Nombre_plantilla)}</a>`
+        ).join('');
+    }
+
+    // Aplicar plantilla de tarjeta -> pre-rellenar modal crear tarjeta
+    document.addEventListener('click', function(e){
+        const itemTarjeta = e.target.closest('.plantilla-tarjeta-item');
+        if(itemTarjeta){
+            e.preventDefault();
+            const id = parseInt(itemTarjeta.dataset.id || '0', 10);
+            const p  = tarjetasPlantillas.find(x => parseInt(x.Id_plantilla_tarjeta, 10) === id);
+            if(p){
+                const tituloEl = document.querySelector('#modalCreateTarjeta [name="titulo"]');
+                const descEl   = document.querySelector('#modalCreateTarjeta [name="descripcion"]');
+                if(tituloEl) tituloEl.value = p.Titulo || '';
+                if(descEl)   descEl.value   = p.Descripcion || '';
+                const hiddenListas = document.getElementById('hiddenPlantillaListasIds');
+                if(hiddenListas) hiddenListas.value = (p.lista_ids || []).join(',');
+                // Pre-rellenar columna y prioridad si la plantilla tiene valores defecto
+                const colEl = document.getElementById('createTarjetaColumna');
+                const priEl = document.getElementById('createTarjetaPrioridad');
+                if(colEl && p.Id_columna_defecto) colEl.value = p.Id_columna_defecto;
+                if(priEl && p.Id_prioridad_defecto) priEl.value = p.Id_prioridad_defecto;
+            }
+            return;
+        }
+
+        const itemLista = e.target.closest('.plantilla-lista-item');
+        if(itemLista){
+            e.preventDefault();
+            const id = parseInt(itemLista.dataset.id || '0', 10);
+            aplicarPlantillaLista(id);
+            return;
+        }
+    });
+
+    function showTareasNotif(mensaje, tipo){
+        const el = document.getElementById('notifPlantillaLista');
+        if(!el) return;
+        el.className = 'alert mb-3' + (tipo === 'success' ? ' alert-success' : ' alert-danger');
+        el.textContent = mensaje;
+        clearTimeout(el._notifTimer);
+        el._notifTimer = setTimeout(() => { el.classList.add('d-none'); }, 4000);
+    }
+
+    async function aplicarPlantillaLista(idPlantilla){
+        if(!tarjetaTareasActualId){
+            showTareasNotif('Primero abra una tarjeta.', 'error');
+            return;
+        }
+        let plantilla;
+        try {
+            const resp = await fetch(`${APP_URL_ROOT}/tablero/get_plantilla_lista_detalle`, {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                credentials: 'same-origin',
+                body: JSON.stringify({id_tablero: idTableroActual, id_plantilla_lista: idPlantilla})
+            });
+            const data = await resp.json();
+            if(!data.success){ showTareasNotif(data.error || 'Error al cargar la plantilla', 'error'); return; }
+            plantilla = data.plantilla;
+        } catch(e){ showTareasNotif('Error de conexion al cargar la plantilla.', 'error'); return; }
+
+        try {
+            const rLista = await fetch(`${APP_URL_ROOT}/tablero/create_tarjeta_tarea`, {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    id_tablero: idTableroActual,
+                    id_tarjeta: tarjetaTareasActualId,
+                    nombre_tarea: plantilla.Nombre_lista
+                })
+            });
+            const dLista = await rLista.json();
+            if(!dLista.success){ showTareasNotif(dLista.error || 'No se pudo crear la lista', 'error'); return; }
+
+            const idTarea = dLista.id_tarea;
+            for(const det of (plantilla.detalles || [])){
+                await fetch(`${APP_URL_ROOT}/tablero/create_tarjeta_tarea_detalle`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        id_tablero: idTableroActual,
+                        id_tarea: idTarea,
+                        descripcion: det.Descripcion
+                    })
+                });
+            }
+        } catch(e){ showTareasNotif('Error al aplicar la plantilla.', 'error'); return; }
+
+        showTareasNotif('Listado "' + (plantilla.Nombre_lista || '') + '" creado desde plantilla correctamente.', 'success');
+        if(typeof cargarModalTareas === 'function') await cargarModalTareas();
+    }
+
+    // -- Gestor: render listas en el modal gestor
+    function renderGestorPlantillasTarjeta(){
+        const contenedor = document.getElementById('gestorListaPlantillasTarjeta');
+        if(!contenedor) return;
+        if(!tarjetasPlantillas.length){
+            contenedor.innerHTML = '<div class="text-muted text-center py-4"><i class="bi bi-inbox" style="font-size:2rem;"></i><div class="mt-2">No hay plantillas de tarjeta creadas aun.</div></div>';
+            return;
+        }
+        contenedor.innerHTML = tarjetasPlantillas.map(p => `
+            <div class="d-flex align-items-center border rounded p-2 mb-2 bg-light" style="gap:.5rem;">
+                <i class="bi bi-kanban text-primary flex-shrink-0"></i>
+                <div class="flex-grow-1 overflow-hidden">
+                    <div class="font-weight-semibold text-truncate">${escapeHtmlPl(p.Nombre_plantilla)}</div>
+                    <div class="small text-muted text-truncate">Titulo: ${escapeHtmlPl(p.Titulo)}</div>
+                </div>
+                ${canPlantillaTarjetaEditar ? `<button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0 btn-editar-plantilla-tarjeta" data-id="${p.Id_plantilla_tarjeta}" title="Editar"><i class="bi bi-pencil"></i></button>` : ''}
+                ${canPlantillaTarjetaEliminar ? `<button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0 btn-eliminar-plantilla-tarjeta" data-id="${p.Id_plantilla_tarjeta}" data-nombre="${escapeHtmlPl(p.Nombre_plantilla)}" title="Eliminar"><i class="bi bi-trash"></i></button>` : ''}
+            </div>
+        `).join('');
+    }
+
+    function renderGestorPlantillasLista(){
+        const contenedor = document.getElementById('gestorListaPlantillasLista');
+        if(!contenedor) return;
+        if(!listasPlantillas.length){
+            contenedor.innerHTML = '<div class="text-muted text-center py-4"><i class="bi bi-inbox" style="font-size:2rem;"></i><div class="mt-2">No hay plantillas de listado creadas aun.</div></div>';
+            return;
+        }
+        contenedor.innerHTML = listasPlantillas.map(p => `
+            <div class="d-flex align-items-center border rounded p-2 mb-2 bg-light" style="gap:.5rem;">
+                <i class="bi bi-list-task text-success flex-shrink-0"></i>
+                <div class="flex-grow-1 overflow-hidden">
+                    <div class="font-weight-semibold text-truncate">${escapeHtmlPl(p.Nombre_plantilla)}</div>
+                    <div class="small text-muted text-truncate">Listado: ${escapeHtmlPl(p.Nombre_lista)}</div>
+                </div>
+                ${canPlantillaListaEditar ? `<button type="button" class="btn btn-sm btn-outline-success flex-shrink-0 btn-editar-plantilla-lista" data-id="${p.Id_plantilla_lista}" title="Editar"><i class="bi bi-pencil"></i></button>` : ''}
+                ${canPlantillaListaEliminar ? `<button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0 btn-eliminar-plantilla-lista" data-id="${p.Id_plantilla_lista}" data-nombre="${escapeHtmlPl(p.Nombre_plantilla)}" title="Eliminar"><i class="bi bi-trash"></i></button>` : ''}
+            </div>
+        `).join('');
+    }
+
+    // -- Selector tipo plantilla -> abrir gestor correspondiente
+    const btnAbrirPlantillaTarjetaEl = document.getElementById('btnAbrirPlantillaTarjeta');
+    const btnAbrirPlantillaListaEl   = document.getElementById('btnAbrirPlantillaLista');
+    if(btnAbrirPlantillaTarjetaEl){
+        btnAbrirPlantillaTarjetaEl.addEventListener('click', function(){
+            renderGestorPlantillasTarjeta();
+            $('#modalGestorPlantillasTarjeta').modal('show');
+        });
+    }
+    if(btnAbrirPlantillaListaEl){
+        btnAbrirPlantillaListaEl.addEventListener('click', function(){
+            renderGestorPlantillasLista();
+            $('#modalGestorPlantillasLista').modal('show');
+        });
+    }
+
+    // -- Gestor: boton "Nueva plantilla" en cada gestor
+    const btnNuevaPlantillaTarjetaEl = document.getElementById('btnNuevaPlantillaTarjeta');
+    if(btnNuevaPlantillaTarjetaEl){
+        btnNuevaPlantillaTarjetaEl.addEventListener('click', function(){
+            $('#modalGestorPlantillasTarjeta').modal('hide');
+            setTimeout(() => {
+                renderCheckboxListasAsociar('checkboxListasAsociarCrear', []);
+                $('#modalCrearPlantillaTarjeta').modal('show');
+            }, 320);
+        });
+    }
+    const btnNuevaPlantillaListaEl = document.getElementById('btnNuevaPlantillaLista');
+    if(btnNuevaPlantillaListaEl){
+        btnNuevaPlantillaListaEl.addEventListener('click', function(){
+            document.getElementById('contenedorTareasPlantillaLista').innerHTML = '';
+            document.getElementById('inputNuevaTareaPlantillaLista').value = '';
+            $('#modalGestorPlantillasLista').modal('hide');
+            setTimeout(() => { $('#modalCrearPlantillaLista').modal('show'); }, 320);
+        });
+    }
+
+    function showPlantillaToast(mensaje, tipo){
+        const toastEl     = document.getElementById('toastPlantilla');
+        const headerEl    = document.getElementById('toastPlantillaHeader');
+        const iconoEl     = document.getElementById('toastPlantillaIcono');
+        const tituloEl    = document.getElementById('toastPlantillaTitulo');
+        const mensajeEl   = document.getElementById('toastPlantillaMensaje');
+        if(!toastEl) return;
+
+        const esError = tipo === 'error';
+        headerEl.className  = 'toast-header ' + (esError ? 'bg-danger text-white' : 'bg-success text-white');
+        iconoEl.className   = 'bi mr-2 ' + (esError ? 'bi-x-circle-fill' : 'bi-check-circle-fill');
+        tituloEl.textContent = esError ? 'Error' : 'Exito';
+        mensajeEl.textContent = mensaje;
+        $(toastEl).toast('show');
+    }
+
+    // -- Guardar plantilla de tarjeta
+    const btnGuardarPlantillaTarjetaEl = document.getElementById('btnGuardarPlantillaTarjeta');
+    if(btnGuardarPlantillaTarjetaEl){
+        btnGuardarPlantillaTarjetaEl.addEventListener('click', async function(){
+            const nombrePlantilla = (document.getElementById('inputPlantillaTarjetaNombre') || {}).value || '';
+            const titulo          = (document.getElementById('inputPlantillaTarjetaTitulo') || {}).value || '';
+            const descripcion     = (document.getElementById('inputPlantillaTarjetaDescripcion') || {}).value || '';
+
+            if(!nombrePlantilla.trim()){ showPlantillaToast('El nombre de la plantilla es obligatorio.', 'error'); return; }
+            if(!titulo.trim())         { showPlantillaToast('El titulo predeterminado es obligatorio.', 'error'); return; }
+
+            const listaIds = getCheckedListaIds('checkboxListasAsociarCrear');
+            const idColumnaDefecto   = parseInt((document.getElementById('selectPlantillaTarjetaColumna') || {}).value || '0', 10) || null;
+            const idPrioridadDefecto = parseInt((document.getElementById('selectPlantillaTarjetaPrioridad') || {}).value || '0', 10) || null;
+
+            btnGuardarPlantillaTarjetaEl.disabled = true;
+            try {
+                const resp = await fetch(`${APP_URL_ROOT}/tablero/create_plantilla_tarjeta`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    credentials: 'same-origin',
+                    body: JSON.stringify({id_tablero: idTableroActual, nombre_plantilla: nombrePlantilla.trim(), titulo: titulo.trim(), descripcion: descripcion.trim(), lista_ids: listaIds, id_columna_defecto: idColumnaDefecto, id_prioridad_defecto: idPrioridadDefecto})
+                });
+                const data = await resp.json();
+                if(data.success){
+                    $('#modalCrearPlantillaTarjeta').modal('hide');
+                    document.getElementById('inputPlantillaTarjetaNombre').value = '';
+                    document.getElementById('inputPlantillaTarjetaTitulo').value = '';
+                    document.getElementById('inputPlantillaTarjetaDescripcion').value = '';
+                    const selCol = document.getElementById('selectPlantillaTarjetaColumna');
+                    const selPri = document.getElementById('selectPlantillaTarjetaPrioridad');
+                    if(selCol) selCol.value = '';
+                    if(selPri) selPri.value = '';
+                    await cargarPlantillas();
+                    renderGestorPlantillasTarjeta();
+                    showPlantillaToast('Plantilla de tarjeta guardada correctamente.', 'success');
+                    setTimeout(() => { $('#modalGestorPlantillasTarjeta').modal('show'); }, 320);
+                } else {
+                    showPlantillaToast(data.error || 'No se pudo guardar la plantilla', 'error');
+                }
+            } catch(e){ showPlantillaToast('Error de conexion al guardar la plantilla.', 'error'); }
+            finally { btnGuardarPlantillaTarjetaEl.disabled = false; }
+        });
+    }
+
+    // -- Agregar tarea al listado de la plantilla de lista (UI local)
+    const btnAgregarTareaPlantillaListaEl = document.getElementById('btnAgregarTareaPlantillaLista');
+    if(btnAgregarTareaPlantillaListaEl){
+        btnAgregarTareaPlantillaListaEl.addEventListener('click', function(){
+            const input = document.getElementById('inputNuevaTareaPlantillaLista');
+            const desc  = (input ? input.value : '').trim();
+            if(!desc) return;
+            const contenedor = document.getElementById('contenedorTareasPlantillaLista');
+            const idx = contenedor.querySelectorAll('.plantilla-tarea-item').length;
+            const item = document.createElement('div');
+            item.className = 'plantilla-tarea-item d-flex align-items-center gap-2 mb-1 border rounded px-2 py-1 bg-light';
+            item.dataset.desc = desc;
+            item.innerHTML = `<span class="flex-grow-1 small">${escapeHtmlPl(desc)}</span>
+                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 btn-rm-plantilla-tarea"><i class="bi bi-x"></i></button>`;
+            contenedor.appendChild(item);
+            if(input) input.value = '';
+            input.focus();
+        });
+        document.getElementById('inputNuevaTareaPlantillaLista').addEventListener('keydown', function(e){
+            if(e.key === 'Enter'){ e.preventDefault(); btnAgregarTareaPlantillaListaEl.click(); }
+        });
+    }
+
+    document.addEventListener('click', function(e){
+        if(e.target.closest('.btn-rm-plantilla-tarea')){
+            e.target.closest('.plantilla-tarea-item').remove();
+        }
+    });
+
+    // -- Guardar plantilla de lista de tareas
+    const btnGuardarPlantillaListaEl = document.getElementById('btnGuardarPlantillaLista');
+    if(btnGuardarPlantillaListaEl){
+        btnGuardarPlantillaListaEl.addEventListener('click', async function(){
+            const nombrePlantilla = (document.getElementById('inputPlantillaListaNombrePlantilla') || {}).value || '';
+            const nombreLista     = (document.getElementById('inputPlantillaListaNombreLista') || {}).value || '';
+            const contenedor      = document.getElementById('contenedorTareasPlantillaLista');
+            const items           = contenedor ? Array.from(contenedor.querySelectorAll('.plantilla-tarea-item')) : [];
+            const tareas          = items.map(el => ({ descripcion: el.dataset.desc || '' })).filter(t => t.descripcion !== '');
+
+            if(!nombrePlantilla.trim()){ showPlantillaToast('El nombre de la plantilla es obligatorio.', 'error'); return; }
+            if(!nombreLista.trim())    { showPlantillaToast('El nombre del listado es obligatorio.', 'error'); return; }
+            if(tareas.length === 0)    { showPlantillaToast('Agregue al menos una tarea al listado.', 'error'); return; }
+
+            btnGuardarPlantillaListaEl.disabled = true;
+            try {
+                const resp = await fetch(`${APP_URL_ROOT}/tablero/create_plantilla_lista`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    credentials: 'same-origin',
+                    body: JSON.stringify({id_tablero: idTableroActual, nombre_plantilla: nombrePlantilla.trim(), nombre_lista: nombreLista.trim(), tareas})
+                });
+                const data = await resp.json();
+                if(data.success){
+                    $('#modalCrearPlantillaLista').modal('hide');
+                    document.getElementById('inputPlantillaListaNombrePlantilla').value = '';
+                    document.getElementById('inputPlantillaListaNombreLista').value = '';
+                    if(contenedor) contenedor.innerHTML = '';
+                    await cargarPlantillas();
+                    renderGestorPlantillasLista();
+                    showPlantillaToast('Plantilla de listado guardada correctamente.', 'success');
+                    setTimeout(() => { $('#modalGestorPlantillasLista').modal('show'); }, 320);
+                } else {
+                    showPlantillaToast(data.error || 'No se pudo guardar la plantilla de lista', 'error');
+                }
+            } catch(e){ showPlantillaToast('Error de conexion al guardar la plantilla.', 'error'); }
+            finally { btnGuardarPlantillaListaEl.disabled = false; }
+        });
+    }
+
+    // -- Modal de confirmacion para eliminar plantilla
+    let _confirmarEliminarCallback = null;
+    function confirmarEliminarPlantilla(nombre, callback){
+        document.getElementById('confirmarEliminarPlantillaNombre').textContent = nombre;
+        _confirmarEliminarCallback = callback;
+        const $m = $('#modalConfirmarEliminarPlantilla');
+        $m.modal('show');
+        // Asegurar que queda por encima de cualquier otro modal abierto
+        $m.on('shown.bs.modal.stacking', function(){
+            const zTop = Math.max(1050, ...Array.from(document.querySelectorAll('.modal.show')).map(el => parseInt(window.getComputedStyle(el).zIndex) || 1050)) + 10;
+            $(this).css('z-index', zTop);
+            $('.modal-backdrop').last().css('z-index', zTop - 1);
+            $m.off('shown.bs.modal.stacking');
+        });
+    }
+    const btnConfirmarEliminarPlantillaEl = document.getElementById('btnConfirmarEliminarPlantilla');
+    if(btnConfirmarEliminarPlantillaEl){
+        btnConfirmarEliminarPlantillaEl.addEventListener('click', async function(){
+            $('#modalConfirmarEliminarPlantilla').modal('hide');
+            if(typeof _confirmarEliminarCallback === 'function'){
+                await _confirmarEliminarCallback();
+                _confirmarEliminarCallback = null;
+            }
+        });
+    }
+    // Limpiar callback si el modal se cierra sin confirmar
+    const modalConfirmarEliminarEl = document.getElementById('modalConfirmarEliminarPlantilla');
+    if(modalConfirmarEliminarEl){
+        modalConfirmarEliminarEl.addEventListener('click', function(e){
+            if(e.target.closest('[data-dismiss="modal"]') && !e.target.closest('#btnConfirmarEliminarPlantilla')){
+                _confirmarEliminarCallback = null;
+            }
+        });
+    }
+
+    // Limpiar listas ids cuando se abre el modal sin plantilla
+    const modalCreateTarjetaEl = document.getElementById('modalCreateTarjeta');
+    if(modalCreateTarjetaEl){
+        modalCreateTarjetaEl.addEventListener('show.bs.modal', function(){
+            // Solo limpiar si NO se acaba de seleccionar una plantilla (lo gestiona el click handler del dropdown)
+            // Se limpia al cerrar para la proxima apertura "en blanco"
+        });
+        modalCreateTarjetaEl.addEventListener('hidden.bs.modal', function(){
+            const h = document.getElementById('hiddenPlantillaListasIds');
+            if(h) h.value = '';
+        });
+    }
+
+    // Cargar plantillas al inicio
+    cargarPlantillas();
+
+    // -- Gestor: editar / eliminar plantillas (delegated) --
+    document.addEventListener('click', async function(e){
+
+        // Editar plantilla de tarjeta
+        const btnEditTarjeta = e.target.closest('.btn-editar-plantilla-tarjeta');
+        if(btnEditTarjeta){
+            const id = parseInt(btnEditTarjeta.dataset.id || '0', 10);
+            const p  = tarjetasPlantillas.find(x => parseInt(x.Id_plantilla_tarjeta, 10) === id);
+            if(!p) return;
+            document.getElementById('inputEditarPlantillaTarjetaId').value        = id;
+            document.getElementById('inputEditarPlantillaTarjetaNombre').value    = p.Nombre_plantilla || '';
+            document.getElementById('inputEditarPlantillaTarjetaTitulo').value    = p.Titulo || '';
+            document.getElementById('inputEditarPlantillaTarjetaDescripcion').value = p.Descripcion || '';
+            const selEditCol = document.getElementById('selectEditarPlantillaTarjetaColumna');
+            const selEditPri = document.getElementById('selectEditarPlantillaTarjetaPrioridad');
+            if(selEditCol) selEditCol.value = p.Id_columna_defecto || '';
+            if(selEditPri) selEditPri.value = p.Id_prioridad_defecto || '';
+            $('#modalGestorPlantillasTarjeta').modal('hide');
+            setTimeout(() => {
+                renderCheckboxListasAsociar('checkboxListasAsociarEditar', p.lista_ids || []);
+                $('#modalEditarPlantillaTarjeta').modal('show');
+            }, 320);
+            return;
+        }
+
+        // Eliminar plantilla de tarjeta
+        const btnDelTarjeta = e.target.closest('.btn-eliminar-plantilla-tarjeta');
+        if(btnDelTarjeta){
+            const id     = parseInt(btnDelTarjeta.dataset.id || '0', 10);
+            const nombre = btnDelTarjeta.dataset.nombre || '';
+            confirmarEliminarPlantilla(nombre, async () => {
+                try {
+                    const resp = await fetch(`${APP_URL_ROOT}/tablero/delete_plantilla_tarjeta`, {
+                        method: 'POST', headers: {'Content-Type':'application/json'},
+                        credentials: 'same-origin',
+                        body: JSON.stringify({id_tablero: idTableroActual, id_plantilla_tarjeta: id})
+                    });
+                    const data = await resp.json();
+                    if(data.success){
+                        await cargarPlantillas();
+                        renderGestorPlantillasTarjeta();
+                        showPlantillaToast('Plantilla eliminada correctamente.', 'success');
+                        setTimeout(() => { $('#modalGestorPlantillasTarjeta').modal('show'); }, 320);
+                    } else { showPlantillaToast(data.error || 'No se pudo eliminar la plantilla.', 'error'); }
+                } catch(ex){ showPlantillaToast('Error de conexion.', 'error'); }
+            });
+            return;
+        }
+
+        // Editar plantilla de listado (carga detalles via API)
+        const btnEditLista = e.target.closest('.btn-editar-plantilla-lista');
+        if(btnEditLista){
+            const id = parseInt(btnEditLista.dataset.id || '0', 10);
+            try {
+                const resp = await fetch(`${APP_URL_ROOT}/tablero/get_plantilla_lista_detalle`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    credentials: 'same-origin',
+                    body: JSON.stringify({id_tablero: idTableroActual, id_plantilla_lista: id})
+                });
+                const data = await resp.json();
+                if(!data.success){ showPlantillaToast(data.error || 'Error al cargar plantilla.', 'error'); return; }
+                const p = data.plantilla;
+                document.getElementById('inputEditarPlantillaListaId').value                  = id;
+                document.getElementById('inputEditarPlantillaListaNombrePlantilla').value     = p.Nombre_plantilla || '';
+                document.getElementById('inputEditarPlantillaListaNombreLista').value         = p.Nombre_lista || '';
+                document.getElementById('inputNuevaTareaEditarPlantillaLista').value          = '';
+                const cont = document.getElementById('contenedorTareasEditarPlantillaLista');
+                cont.innerHTML = '';
+                (p.detalles || []).forEach(det => {
+                    const item = document.createElement('div');
+                    item.className = 'plantilla-tarea-item d-flex align-items-center gap-2 mb-1 border rounded px-2 py-1 bg-light';
+                    item.dataset.desc = det.Descripcion || '';
+                    item.innerHTML = `<span class="flex-grow-1 small">${escapeHtmlPl(det.Descripcion || '')}</span>
+                        <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 btn-rm-plantilla-tarea"><i class="bi bi-x"></i></button>`;
+                    cont.appendChild(item);
+                });
+                $('#modalGestorPlantillasLista').modal('hide');
+                setTimeout(() => { $('#modalEditarPlantillaLista').modal('show'); }, 320);
+            } catch(ex){ showPlantillaToast('Error de conexion.', 'error'); }
+            return;
+        }
+
+        // Eliminar plantilla de listado
+        const btnDelLista = e.target.closest('.btn-eliminar-plantilla-lista');
+        if(btnDelLista){
+            const id     = parseInt(btnDelLista.dataset.id || '0', 10);
+            const nombre = btnDelLista.dataset.nombre || '';
+            confirmarEliminarPlantilla(nombre, async () => {
+                try {
+                    const resp = await fetch(`${APP_URL_ROOT}/tablero/delete_plantilla_lista`, {
+                        method: 'POST', headers: {'Content-Type':'application/json'},
+                        credentials: 'same-origin',
+                        body: JSON.stringify({id_tablero: idTableroActual, id_plantilla_lista: id})
+                    });
+                    const data = await resp.json();
+                    if(data.success){
+                        await cargarPlantillas();
+                        renderGestorPlantillasLista();
+                        showPlantillaToast('Plantilla eliminada correctamente.', 'success');
+                        setTimeout(() => { $('#modalGestorPlantillasLista').modal('show'); }, 320);
+                    } else { showPlantillaToast(data.error || 'No se pudo eliminar la plantilla.', 'error'); }
+                } catch(ex){ showPlantillaToast('Error de conexion.', 'error'); }
+            });
+            return;
+        }
+    });
+
+    // -- Guardar edicion de plantilla de tarjeta
+    const btnGuardarEditarPlantillaTarjetaEl = document.getElementById('btnGuardarEditarPlantillaTarjeta');
+    if(btnGuardarEditarPlantillaTarjetaEl){
+        btnGuardarEditarPlantillaTarjetaEl.addEventListener('click', async function(){
+            const id              = parseInt((document.getElementById('inputEditarPlantillaTarjetaId') || {}).value || '0', 10);
+            const nombrePlantilla = ((document.getElementById('inputEditarPlantillaTarjetaNombre') || {}).value || '').trim();
+            const titulo          = ((document.getElementById('inputEditarPlantillaTarjetaTitulo') || {}).value || '').trim();
+            const descripcion     = ((document.getElementById('inputEditarPlantillaTarjetaDescripcion') || {}).value || '').trim();
+            if(!nombrePlantilla){ showPlantillaToast('El nombre de la plantilla es obligatorio.', 'error'); return; }
+            if(!titulo)          { showPlantillaToast('El titulo predeterminado es obligatorio.', 'error'); return; }
+            const listaIds = getCheckedListaIds('checkboxListasAsociarEditar');
+            const idColumnaDefecto   = parseInt((document.getElementById('selectEditarPlantillaTarjetaColumna') || {}).value || '0', 10) || null;
+            const idPrioridadDefecto = parseInt((document.getElementById('selectEditarPlantillaTarjetaPrioridad') || {}).value || '0', 10) || null;
+            btnGuardarEditarPlantillaTarjetaEl.disabled = true;
+            try {
+                const resp = await fetch(`${APP_URL_ROOT}/tablero/update_plantilla_tarjeta`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    credentials: 'same-origin',
+                    body: JSON.stringify({id_tablero: idTableroActual, id_plantilla_tarjeta: id, nombre_plantilla: nombrePlantilla, titulo, descripcion, lista_ids: listaIds, id_columna_defecto: idColumnaDefecto, id_prioridad_defecto: idPrioridadDefecto})
+                });
+                const data = await resp.json();
+                if(data.success){
+                    $('#modalEditarPlantillaTarjeta').modal('hide');
+                    await cargarPlantillas();
+                    renderGestorPlantillasTarjeta();
+                    showPlantillaToast('Plantilla de tarjeta actualizada correctamente.', 'success');
+                    setTimeout(() => { $('#modalGestorPlantillasTarjeta').modal('show'); }, 320);
+                } else { showPlantillaToast(data.error || 'No se pudo actualizar la plantilla.', 'error'); }
+            } catch(e){ showPlantillaToast('Error de conexion.', 'error'); }
+            finally { btnGuardarEditarPlantillaTarjetaEl.disabled = false; }
+        });
+    }
+
+    // -- Agregar tarea en modal editar lista
+    const btnAgregarTareaEditarListaEl = document.getElementById('btnAgregarTareaEditarPlantillaLista');
+    if(btnAgregarTareaEditarListaEl){
+        btnAgregarTareaEditarListaEl.addEventListener('click', function(){
+            const input = document.getElementById('inputNuevaTareaEditarPlantillaLista');
+            const desc  = (input ? input.value : '').trim();
+            if(!desc) return;
+            const cont = document.getElementById('contenedorTareasEditarPlantillaLista');
+            const item = document.createElement('div');
+            item.className = 'plantilla-tarea-item d-flex align-items-center gap-2 mb-1 border rounded px-2 py-1 bg-light';
+            item.dataset.desc = desc;
+            item.innerHTML = `<span class="flex-grow-1 small">${escapeHtmlPl(desc)}</span>
+                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 btn-rm-plantilla-tarea"><i class="bi bi-x"></i></button>`;
+            cont.appendChild(item);
+            if(input) input.value = '';
+            input.focus();
+        });
+        document.getElementById('inputNuevaTareaEditarPlantillaLista').addEventListener('keydown', function(e){
+            if(e.key === 'Enter'){ e.preventDefault(); btnAgregarTareaEditarListaEl.click(); }
+        });
+    }
+
+    // -- Guardar edicion de plantilla de listado
+    const btnGuardarEditarPlantillaListaEl = document.getElementById('btnGuardarEditarPlantillaLista');
+    if(btnGuardarEditarPlantillaListaEl){
+        btnGuardarEditarPlantillaListaEl.addEventListener('click', async function(){
+            const id              = parseInt((document.getElementById('inputEditarPlantillaListaId') || {}).value || '0', 10);
+            const nombrePlantilla = ((document.getElementById('inputEditarPlantillaListaNombrePlantilla') || {}).value || '').trim();
+            const nombreLista     = ((document.getElementById('inputEditarPlantillaListaNombreLista') || {}).value || '').trim();
+            const cont            = document.getElementById('contenedorTareasEditarPlantillaLista');
+            const tareas          = Array.from(cont ? cont.querySelectorAll('.plantilla-tarea-item') : [])
+                                        .map(el => ({ descripcion: el.dataset.desc || '' }))
+                                        .filter(t => t.descripcion !== '');
+            if(!nombrePlantilla){ showPlantillaToast('El nombre de la plantilla es obligatorio.', 'error'); return; }
+            if(!nombreLista)    { showPlantillaToast('El nombre del listado es obligatorio.', 'error'); return; }
+            if(!tareas.length)  { showPlantillaToast('Agregue al menos una tarea al listado.', 'error'); return; }
+            btnGuardarEditarPlantillaListaEl.disabled = true;
+            try {
+                const resp = await fetch(`${APP_URL_ROOT}/tablero/update_plantilla_lista`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    credentials: 'same-origin',
+                    body: JSON.stringify({id_tablero: idTableroActual, id_plantilla_lista: id, nombre_plantilla: nombrePlantilla, nombre_lista: nombreLista, tareas})
+                });
+                const data = await resp.json();
+                if(data.success){
+                    $('#modalEditarPlantillaLista').modal('hide');
+                    await cargarPlantillas();
+                    renderGestorPlantillasLista();
+                    showPlantillaToast('Plantilla de listado actualizada correctamente.', 'success');
+                    setTimeout(() => { $('#modalGestorPlantillasLista').modal('show'); }, 320);
+                } else { showPlantillaToast(data.error || 'No se pudo actualizar la plantilla.', 'error'); }
+            } catch(e){ showPlantillaToast('Error de conexion.', 'error'); }
+            finally { btnGuardarEditarPlantillaListaEl.disabled = false; }
+        });
+    }
 
     function syncTableroScrollMetrics(){
         if(!tableroViewportEl){
@@ -2588,17 +3684,20 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
         const query = normalizeText(filtroTarjetaNombreEl ? filtroTarjetaNombreEl.value : '');
         const etiquetaId = filtroTarjetaEtiquetaEl ? String(filtroTarjetaEtiquetaEl.value || '') : '';
         const prioridadId = filtroTarjetaPrioridadEl ? String(filtroTarjetaPrioridadEl.value || '') : '';
+        const mostrarArchivadas = switchMostrarArchivadas ? switchMostrarArchivadas.checked : false;
 
         document.querySelectorAll('.tablero-tarjeta').forEach(card => {
             const titleEl = card.querySelector('.card-title');
             const titulo = normalizeText(titleEl ? titleEl.textContent : '');
             const cardPrioridadId = String(card.dataset.prioridadId || '');
             const cardEtiquetas = parseIdList(card.dataset.etiquetaIds || '');
+            const esArchivada = card.dataset.tarjetaArchivada === '1';
 
             const matchNombre = query === '' || titulo.includes(query);
             const matchEtiqueta = etiquetaId === '' || cardEtiquetas.includes(etiquetaId);
             const matchPrioridad = prioridadId === '' || cardPrioridadId === prioridadId;
-            const visible = matchNombre && matchEtiqueta && matchPrioridad;
+            const matchArchivada = mostrarArchivadas || !esArchivada;
+            const visible = matchNombre && matchEtiqueta && matchPrioridad && matchArchivada;
 
             card.classList.toggle('d-none', !visible);
         });
@@ -2814,28 +3913,99 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
         if(btnCancelarEdicionPrioridadEl) btnCancelarEdicionPrioridadEl.classList.add('d-none');
     }
 
-    function renderHistorial(items){
-        if(!contenedorHistorialTarjetaEl) return;
+    let historialData = [];
 
-        if(!items || !items.length){
-            contenedorHistorialTarjetaEl.innerHTML = '<div class="text-muted small">Sin historial registrado.</div>';
+    function getHistorialMeta(tipo){
+        const map = {
+            // --- Tarjeta ---
+            'tarjeta_creada':        { cat:'tarjeta', icon:'bi-plus-circle-fill',   color:'text-primary',  label:'Tarjeta creada' },
+            'tarjeta_editada':       { cat:'tarjeta', icon:'bi-pencil-fill',         color:'text-primary',  label:'Tarjeta editada' },
+            'tarjeta_eliminada':     { cat:'tarjeta', icon:'bi-trash-fill',          color:'text-danger',   label:'Tarjeta eliminada' },
+            'tarjeta_estado':        { cat:'tarjeta', icon:'bi-toggle-on',           color:'text-primary',  label:'Estado de tarjeta' },
+            'tarjeta_movida':        { cat:'tarjeta', icon:'bi-arrows-move',         color:'text-primary',  label:'Tarjeta movida' },
+            'tarjeta_asignacion':    { cat:'tarjeta', icon:'bi-person-fill',         color:'text-primary',  label:'Asignación de tarjeta' },
+            // --- Lista de tareas ---
+            'tarea_creada':          { cat:'lista',   icon:'bi-list-task',           color:'text-info',     label:'Lista creada' },
+            'tarea_lista_editada':   { cat:'lista',   icon:'bi-pencil-fill',         color:'text-info',     label:'Lista editada' },
+            'tarea_lista_eliminada': { cat:'lista',   icon:'bi-trash-fill',          color:'text-danger',   label:'Lista eliminada' },
+            // --- Tarea (ítem) ---
+            'tarea_detalle_creado':      { cat:'tarea', icon:'bi-plus-square-fill',   color:'text-success',  label:'Ítem creado' },
+            'tarea_detalle_editado':     { cat:'tarea', icon:'bi-pencil-square',      color:'text-success',  label:'Ítem editado' },
+            'tarea_detalle_eliminado':   { cat:'tarea', icon:'bi-trash-fill',         color:'text-danger',   label:'Ítem eliminado' },
+            'tarea_detalle_estado':      { cat:'tarea', icon:'bi-check2-square',      color:'text-success',  label:'Estado de ítem' },
+            'tarea_detalle_asignacion':  { cat:'tarea', icon:'bi-person-check-fill',  color:'text-success',  label:'Asignación de ítem' },
+            // --- Tiempo ---
+            'timer_inicio':                  { cat:'tiempo', icon:'bi-play-circle-fill',  color:'text-warning',  label:'Tiempo iniciado' },
+            'timer_fin':                     { cat:'tiempo', icon:'bi-stop-circle-fill',  color:'text-warning',  label:'Tiempo detenido' },
+            'timer_detalle_inicio':          { cat:'tiempo', icon:'bi-play-fill',         color:'text-warning',  label:'Tiempo ítem iniciado' },
+            'timer_detalle_fin':             { cat:'tiempo', icon:'bi-stop-fill',         color:'text-warning',  label:'Tiempo ítem detenido' },
+            'timer_detalle_manual':          { cat:'tiempo', icon:'bi-clock-fill',        color:'text-warning',  label:'Tiempo manual' },
+            'timer_detalle_manual_usuarios': { cat:'tiempo', icon:'bi-clock-history',     color:'text-warning',  label:'Tiempo manual (usuarios)' },
+        };
+        return map[tipo] || { cat:'otro', icon:'bi-info-circle-fill', color:'text-secondary', label: tipo || 'Evento' };
+    }
+
+    function filterAndRenderHistorial(){
+        if(!contenedorHistorialTarjetaEl) return;
+        const query   = (document.getElementById('inputFiltroHistorial')?.value || '').toLowerCase().trim();
+        const catFilt = (document.getElementById('selectFiltroHistorialCategoria')?.value || '');
+        const contadorEl = document.getElementById('historialContador');
+
+        const filtered = historialData.filter(item => {
+            const meta = getHistorialMeta(item.Tipo_evento || '');
+            if(catFilt && meta.cat !== catFilt) return false;
+            if(query){
+                const text = ((item.Mensaje || '') + ' ' + (item.Usuario_email || '') + ' ' + (meta.label || '')).toLowerCase();
+                if(!text.includes(query)) return false;
+            }
+            return true;
+        });
+
+        if(contadorEl){
+            contadorEl.textContent = filtered.length + ' de ' + historialData.length + ' registros';
+        }
+
+        if(!filtered.length){
+            contenedorHistorialTarjetaEl.innerHTML = '<div class="text-muted small p-1">' + (historialData.length ? 'Sin resultados para el filtro aplicado.' : 'Sin historial registrado.') + '</div>';
             return;
         }
 
-        const html = items.map(item => {
+        const html = filtered.map(item => {
+            const meta    = getHistorialMeta(item.Tipo_evento || '');
             const usuario = item.Usuario_email ? escapeHtml(item.Usuario_email) : 'Sistema';
             const mensaje = escapeHtml(item.Mensaje || '');
-            const fecha = formatDateTime(item.Fecha_creacion || '');
+            const fecha   = formatDateTime(item.Fecha_creacion || '');
+            const badgeCat = (meta.cat === 'tiempo')
+                ? 'badge-warning'
+                : (/elimina/i.test(item.Tipo_evento || '') ? 'badge-danger' : {
+                    tarjeta: 'badge-primary',
+                    lista:   'badge-info',
+                    tarea:   'badge-success',
+                    otro:    'badge-secondary',
+                }[meta.cat] || 'badge-secondary');
             return `
-                <div class="border-bottom pb-2 mb-2">
-                    <div class="small"><strong>${usuario}</strong></div>
-                    <div class="small">${mensaje}</div>
-                    <div class="text-muted" style="font-size:0.78rem;">${fecha}</div>
+                <div class="border-bottom pb-2 mb-2 historial-item" data-categoria="${meta.cat}">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi ${meta.icon} ${meta.color} mt-1 flex-shrink-0" style="font-size:1rem;"></i>
+                        <div class="flex-grow-1" style="min-width:0;">
+                            <div class="d-flex align-items-center flex-wrap gap-1 mb-1">
+                                <span class="badge ${badgeCat}" style="font-size:0.72rem;">${escapeHtml(meta.label)}</span>
+                                <span class="small font-weight-bold text-truncate">${escapeHtml(usuario)}</span>
+                            </div>
+                            <div class="small text-break">${mensaje}</div>
+                            <div class="text-muted" style="font-size:0.75rem;">${fecha}</div>
+                        </div>
+                    </div>
                 </div>
             `;
         }).join('');
 
         contenedorHistorialTarjetaEl.innerHTML = html;
+    }
+
+    function renderHistorial(items){
+        historialData = Array.isArray(items) ? items : [];
+        filterAndRenderHistorial();
     }
 
     function buildDetalleUsuarioOptions(selectedId){
@@ -3182,6 +4352,7 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
             if(filtroTarjetaNombreEl) filtroTarjetaNombreEl.value = '';
             if(filtroTarjetaEtiquetaEl) filtroTarjetaEtiquetaEl.value = '';
             if(filtroTarjetaPrioridadEl) filtroTarjetaPrioridadEl.value = '';
+            if(switchMostrarArchivadas) switchMostrarArchivadas.checked = false;
             applyTarjetaFilters();
         });
     }
@@ -3469,6 +4640,7 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                 const fechaInicio = this.dataset.fechaInicio || '';
                 const fechaFin = this.dataset.fechaFin || '';
                 const completado = parseInt(this.dataset.tarjetaCompletado || '0', 10) === 1;
+                const archivada  = parseInt(this.dataset.tarjetaArchivada || '0', 10) === 1;
                 const canDeleteThisCard = parseInt(this.dataset.canDelete || '0', 10) === 1;
                 const etiquetaIds = parseIdList(this.dataset.etiquetaIds || '');
 
@@ -3492,6 +4664,13 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                 if(canDeleteCard && btnDeleteTarjetaModalEl){
                     btnDeleteTarjetaModalEl.classList.toggle('d-none', !canDeleteThisCard);
                 }
+                if(btnArchivarTarjetaModalEl){
+                    btnArchivarTarjetaModalEl.classList.remove('d-none');
+                    btnArchivarTarjetaModalEl.dataset.archivada = archivada ? '1' : '0';
+                    if(lblArchivarTarjetaEl) lblArchivarTarjetaEl.textContent = archivada ? 'Desarchivar Tarjeta' : 'Archivar Tarjeta';
+                    btnArchivarTarjetaModalEl.classList.toggle('btn-outline-warning', !archivada);
+                    btnArchivarTarjetaModalEl.classList.toggle('btn-warning', archivada);
+                }
                 toggleFechaInputs(editTarjetaUsarFechasEl, editTarjetaFechaInicioEl, editTarjetaFechaFinEl);
                 setCheckedValues('.edit-etiqueta-checkbox', etiquetaIds);
             });
@@ -3509,7 +4688,6 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                 if(!tarjetaEditandoId){
                     return;
                 }
-
                 openConfirmActionModal({
                     title: '<i class="bi bi-trash"></i> Eliminar tarjeta',
                     message: '¿Eliminar logicamente esta tarjeta? Dejara de mostrarse en el tablero actual.',
@@ -3520,6 +4698,54 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                 });
             });
         }
+
+        // -- Botón Archivar / Desarchivar tarjeta
+        if(btnArchivarTarjetaModalEl){
+            btnArchivarTarjetaModalEl.addEventListener('click', async function(){
+                if(!tarjetaEditandoId) return;
+                const archivar = this.dataset.archivada !== '1';
+                const label = archivar ? 'Archivar Tarjeta' : 'Desarchivar Tarjeta';
+                openConfirmActionModal({
+                    title: `<i class="bi bi-archive"></i> ${label}`,
+                    message: archivar
+                        ? '¿Archivar esta tarjeta? Se ocultará del tablero hasta que active "Mostrar Archivadas".'
+                        : '¿Desarchivar esta tarjeta? Volverá a mostrarse normalmente en el tablero.',
+                    confirmText: label,
+                    onConfirm: async () => {
+                        try {
+                            const resp = await fetch(`${APP_URL_ROOT}/tablero/archivar_tarjeta`, {
+                                method: 'POST', headers: {'Content-Type':'application/json'},
+                                credentials: 'same-origin',
+                                body: JSON.stringify({id_tablero: idTableroActual, id_tarjeta: parseInt(tarjetaEditandoId, 10), archivar})
+                            });
+                            const data = await resp.json();
+                            if(data.success){
+                                $('#modalEditTarjeta').modal('hide');
+                                const cardEl = document.getElementById(`tarjeta-${tarjetaEditandoId}`);
+                                if(cardEl){
+                                    cardEl.dataset.tarjetaArchivada = archivar ? '1' : '0';
+                                    cardEl.classList.toggle('tablero-tarjeta--archivada', archivar);
+                                    // actualizar data en el botón editar de esta tarjeta
+                                    const btnEdit = cardEl.querySelector('.btn-edit-tarjeta');
+                                    if(btnEdit) btnEdit.dataset.tarjetaArchivada = archivar ? '1' : '0';
+                                }
+                                applyTarjetaFilters();
+                                document.querySelectorAll('.tablero-card-list').forEach(l => {
+                                    syncEmptyColumnState(l); syncColumnCounter(l);
+                                });
+                            } else {
+                                alert(data.error || 'No se pudo completar la acción.');
+                            }
+                        } catch(e){ alert('Error de conexión.'); }
+                    }
+                });
+            });
+        }
+    }
+
+    // Switch "Mostrar Archivadas"
+    if(switchMostrarArchivadas){
+        switchMostrarArchivadas.addEventListener('change', applyTarjetaFilters);
     }
 
     if(btnDeleteTableroModalEl && formDeleteTableroEl){
@@ -4011,6 +5237,25 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
         });
     }
 
+    // -- Historial: búsqueda y filtro por categoría --
+    const inputFiltroHistorialEl         = document.getElementById('inputFiltroHistorial');
+    const selectFiltroHistorialCatEl     = document.getElementById('selectFiltroHistorialCategoria');
+    const btnLimpiarFiltroHistorialEl    = document.getElementById('btnLimpiarFiltroHistorial');
+
+    if(inputFiltroHistorialEl){
+        inputFiltroHistorialEl.addEventListener('input', filterAndRenderHistorial);
+    }
+    if(selectFiltroHistorialCatEl){
+        selectFiltroHistorialCatEl.addEventListener('change', filterAndRenderHistorial);
+    }
+    if(btnLimpiarFiltroHistorialEl){
+        btnLimpiarFiltroHistorialEl.addEventListener('click', function(){
+            if(inputFiltroHistorialEl) inputFiltroHistorialEl.value = '';
+            if(selectFiltroHistorialCatEl) selectFiltroHistorialCatEl.value = '';
+            filterAndRenderHistorial();
+        });
+    }
+
     if(canEditColumn){
         document.querySelectorAll('.btn-rename-columna').forEach(btn => {
             btn.addEventListener('click', function(){
@@ -4099,7 +5344,14 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                 tarea_crear: modal.querySelector('#modal_perm_tarea_crear'),
                 tarea_editar: modal.querySelector('#modal_perm_tarea_editar'),
                 tarea_eliminar: modal.querySelector('#modal_perm_tarea_eliminar'),
-                tarea_tiempo_editar: modal.querySelector('#modal_perm_tarea_tiempo_editar')
+                tarea_tiempo_editar: modal.querySelector('#modal_perm_tarea_tiempo_editar'),
+                plantilla_tarjeta_crear: modal.querySelector('#modal_perm_plantilla_tarjeta_crear'),
+                plantilla_tarjeta_editar: modal.querySelector('#modal_perm_plantilla_tarjeta_editar'),
+                plantilla_tarjeta_eliminar: modal.querySelector('#modal_perm_plantilla_tarjeta_eliminar'),
+                plantilla_tarjeta_asociar: modal.querySelector('#modal_perm_plantilla_tarjeta_asociar'),
+                plantilla_lista_crear: modal.querySelector('#modal_perm_plantilla_lista_crear'),
+                plantilla_lista_editar: modal.querySelector('#modal_perm_plantilla_lista_editar'),
+                plantilla_lista_eliminar: modal.querySelector('#modal_perm_plantilla_lista_eliminar')
             };
 
             const sectionSelectAll = {
@@ -4107,7 +5359,9 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                 columna: modal.querySelector('.js-select-all-section[data-section="columna"]'),
                 tarjeta: modal.querySelector('.js-select-all-section[data-section="tarjeta"]'),
                 lista: modal.querySelector('.js-select-all-section[data-section="lista"]'),
-                tarea: modal.querySelector('.js-select-all-section[data-section="tarea"]')
+                tarea: modal.querySelector('.js-select-all-section[data-section="tarea"]'),
+                plantilla_tarjeta: modal.querySelector('.js-select-all-section[data-section="plantilla_tarjeta"]'),
+                plantilla_lista: modal.querySelector('.js-select-all-section[data-section="plantilla_lista"]')
             };
 
             const sectionPermissionKeys = {
@@ -4115,7 +5369,9 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                 columna: ['columna_crear', 'columna_editar', 'columna_eliminar', 'columna_ordenar'],
                 tarjeta: ['tarjeta_ver', 'tarjeta_crear', 'tarjeta_editar', 'tarjeta_mover', 'tarjeta_eliminar', 'tarjeta_asignar'],
                 lista: ['lista_crear', 'lista_editar', 'lista_eliminar'],
-                tarea: ['tarea_crear', 'tarea_editar', 'tarea_eliminar', 'tarea_tiempo_editar']
+                tarea: ['tarea_crear', 'tarea_editar', 'tarea_eliminar', 'tarea_tiempo_editar'],
+                plantilla_tarjeta: ['plantilla_tarjeta_crear', 'plantilla_tarjeta_editar', 'plantilla_tarjeta_eliminar', 'plantilla_tarjeta_asociar'],
+                plantilla_lista: ['plantilla_lista_crear', 'plantilla_lista_editar', 'plantilla_lista_eliminar']
             };
 
             const globalSelectAllWrap = modal.querySelector('#modalGlobalSelectAllWrap');
@@ -4269,7 +5525,9 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                         'columna_crear', 'columna_editar', 'columna_eliminar', 'columna_ordenar',
                         'tarjeta_ver', 'tarjeta_crear', 'tarjeta_editar', 'tarjeta_mover', 'tarjeta_eliminar', 'tarjeta_asignar',
                         'lista_crear', 'lista_editar', 'lista_eliminar',
-                        'tarea_crear', 'tarea_editar', 'tarea_eliminar', 'tarea_tiempo_editar'
+                        'tarea_crear', 'tarea_editar', 'tarea_eliminar', 'tarea_tiempo_editar',
+                        'plantilla_tarjeta_crear', 'plantilla_tarjeta_editar', 'plantilla_tarjeta_eliminar', 'plantilla_tarjeta_asociar',
+                        'plantilla_lista_crear', 'plantilla_lista_editar', 'plantilla_lista_eliminar'
                     ];
                     const granularSum = granularKeys.reduce((acc, key) => acc + (perms[key] ? 1 : 0), 0);
                     const useLegacyFallback = granularSum === 0 && (perms.legacy_ver || perms.legacy_crear || perms.legacy_editar || perms.legacy_eliminar);
@@ -4296,7 +5554,14 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
                         tarea_crear: !!perms.legacy_editar,
                         tarea_editar: !!perms.legacy_editar,
                         tarea_eliminar: !!perms.legacy_editar,
-                        tarea_tiempo_editar: !!perms.tarea_tiempo_editar
+                        tarea_tiempo_editar: !!perms.tarea_tiempo_editar,
+                        plantilla_tarjeta_crear: false,
+                        plantilla_tarjeta_editar: false,
+                        plantilla_tarjeta_eliminar: false,
+                        plantilla_tarjeta_asociar: false,
+                        plantilla_lista_crear: false,
+                        plantilla_lista_editar: false,
+                        plantilla_lista_eliminar: false
                     } : perms;
 
                     Object.keys(checkboxes).forEach(key => {
@@ -4343,5 +5608,19 @@ $canDeleteBoardFromModal = $canDeleteBoard && $canDeleteTableroData;
     }
 })();
 </script>
+
+<!-- ===== TOAST: Notificaciones plantillas ===== -->
+<div aria-live="polite" aria-atomic="true" style="position:fixed;bottom:1.5rem;right:1.2rem;z-index:9999;min-width:280px;max-width:400px;">
+    <div id="toastPlantilla" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="3500">
+        <div class="toast-header" id="toastPlantillaHeader">
+            <i id="toastPlantillaIcono" class="mr-2"></i>
+            <strong class="mr-auto" id="toastPlantillaTitulo">Plantilla</strong>
+            <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Cerrar">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div class="toast-body" id="toastPlantillaMensaje"></div>
+    </div>
+</div>
 
 <?php require APPROOT . '/views/layouts/footer.php'; ?>
