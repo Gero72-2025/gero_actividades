@@ -7,6 +7,25 @@ $resumenTiempoUsuarios = $data['resumenTiempoUsuarios'] ?? [];
 $tableroParam = $idTableroActual > 0 ? ('?tablero_id=' . $idTableroActual) : '';
 $canDashboardGlobal = tienePermiso('tablero.dashboard');
 $canCalendarioGlobal = tienePermiso('tablero.calendario');
+$filters = $data['filtros'] ?? [];
+$filterParams = ['tablero_id' => $idTableroActual];
+if(!empty($filters['assigned_user'])){
+    $filterParams['assigned_user'] = $filters['assigned_user'];
+}
+if(!empty($filters['etiqueta_id'])){
+    $filterParams['etiqueta_id'] = $filters['etiqueta_id'];
+}
+if(!empty($filters['etapa_id'])){
+    $filterParams['etapa_id'] = $filters['etapa_id'];
+}
+if(!empty($filters['fecha_inicio'])){
+    $filterParams['fecha_inicio'] = $filters['fecha_inicio'];
+}
+if(!empty($filters['fecha_fin'])){
+    $filterParams['fecha_fin'] = $filters['fecha_fin'];
+}
+$filterQuery = http_build_query($filterParams);
+
 $formatSegundos = function($total){
     $sec = max(0, (int)$total);
     $hh = str_pad((string)floor($sec / 3600), 2, '0', STR_PAD_LEFT);
@@ -22,6 +41,15 @@ $formatSegundos = function($total){
 
 <?php echo displayFlashMessage('tablero_message'); ?>
 <?php echo displayFlashMessage('tablero_error'); ?>
+
+<style>
+    .accordion-header { cursor: pointer; }
+    .accordion-header .accordion-toggle-icon { transition: transform .2s ease; }
+    .accordion-header.collapsed .accordion-toggle-icon { transform: rotate(-90deg); }
+    .accordion-header td { vertical-align: middle; }
+    .collapse-row { display: table-row; }
+    .collapse-row.hidden { display: none !important; }
+</style>
 
 <div class="card mb-3">
     <div class="card-body py-2">
@@ -69,6 +97,7 @@ $formatSegundos = function($total){
                     </select>
                 <?php else: ?>
                     <input type="text" class="form-control" value="<?php echo htmlspecialchars($data['tableros'][0]->Nombre ?? 'Tablero'); ?>" readonly>
+                    <input type="hidden" name="tablero_id" value="<?php echo $idTableroActual; ?>">
                 <?php endif; ?>
             </div>
             <div class="col-12 col-md-6">
@@ -79,15 +108,62 @@ $formatSegundos = function($total){
             </div>
             <?php if($tableroActual): ?>
                 <div class="col-12">
+                    <label class="form-label">Filtros</label>
+                </div>
+                <div class="col-12 col-md-2">
+                    <label class="form-label">Asignado</label>
+                    <select name="assigned_user" class="tablero-activo-select" onchange="this.form.submit()">
+                        <option value="">Todos</option>
+                        <?php foreach($data['filtrosUsuariosAsignados'] ?? [] as $assignedEmail): ?>
+                            <option value="<?php echo htmlspecialchars($assignedEmail); ?>" <?php echo (isset($filters['assigned_user']) && $filters['assigned_user'] === $assignedEmail) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($assignedEmail); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-12 col-md-2">
+                    <label class="form-label">Etiqueta</label>
+                    <select name="etiqueta_id" class="tablero-activo-select" onchange="this.form.submit()">
+                        <option value="0">Todas</option>
+                        <?php foreach($data['filtrosEtiquetas'] ?? [] as $etiqueta): ?>
+                            <option value="<?php echo (int)$etiqueta->Id_etiqueta; ?>" <?php echo (isset($filters['etiqueta_id']) && (int)$filters['etiqueta_id'] === (int)$etiqueta->Id_etiqueta) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($etiqueta->Nombre); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-12 col-md-2">
+                    <label class="form-label">Etapa</label>
+                    <select name="etapa_id" class="tablero-activo-select" onchange="this.form.submit()">
+                        <option value="0">Todas</option>
+                        <?php foreach($data['filtrosEtapas'] ?? [] as $etapa): ?>
+                            <option value="<?php echo (int)$etapa->Id_columna; ?>" <?php echo (isset($filters['etapa_id']) && (int)$filters['etapa_id'] === (int)$etapa->Id_columna) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($etapa->Nombre); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label">Rango fechas</label>
+                    <div class="d-flex gap-2">
+                        <input type="date" name="fecha_inicio" class="form-control" value="<?php echo htmlspecialchars($filters['fecha_inicio'] ?? ''); ?>" placeholder="Desde">
+                        <input type="date" name="fecha_fin" class="form-control" value="<?php echo htmlspecialchars($filters['fecha_fin'] ?? ''); ?>" placeholder="Hasta">
+                    </div>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary tablero-action-button">Aplicar filtros</button>
+                    <a href="<?php echo URLROOT; ?>/tablero/reporteria?tablero_id=<?php echo $idTableroActual; ?>" class="btn btn-link tablero-action-button">Limpiar filtros</a>
+                </div>
+                <div class="col-12">
                     <label class="form-label">Descargas</label>
                     <div class="d-flex flex-wrap gap-2">
-                        <a class="btn btn-success" href="<?php echo URLROOT; ?>/tablero/export_reporteria?tablero_id=<?php echo $idTableroActual; ?>&format=xlsx">
+                        <a class="btn btn-success tablero-action-button" href="<?php echo URLROOT; ?>/tablero/export_reporteria?<?php echo $filterQuery; ?>&format=xlsx">
                             <i class="bi bi-file-earmark-excel"></i> Descargar XLSX
                         </a>
-                        <a class="btn btn-danger" href="<?php echo URLROOT; ?>/tablero/export_reporteria?tablero_id=<?php echo $idTableroActual; ?>&format=pdf">
+                        <a class="btn btn-danger tablero-action-button" href="<?php echo URLROOT; ?>/tablero/export_reporteria?<?php echo $filterQuery; ?>&format=pdf">
                             <i class="bi bi-file-earmark-pdf"></i> Descargar PDF
                         </a>
-                        <a class="btn btn-secondary" href="<?php echo URLROOT; ?>/tablero/export_reporteria?tablero_id=<?php echo $idTableroActual; ?>&format=csv">
+                        <a class="btn btn-secondary tablero-action-button" href="<?php echo URLROOT; ?>/tablero/export_reporteria?<?php echo $filterQuery; ?>&format=csv">
                             <i class="bi bi-filetype-csv"></i> Descargar CSV
                         </a>
                     </div>
@@ -142,47 +218,52 @@ $formatSegundos = function($total){
                                 <th style="min-width:260px;">Descripcion</th>
                                 <th style="min-width:130px;">Etapa</th>
                                 <th style="min-width:120px;">Prioridad</th>
-                                <th style="min-width:130px;">Puntos Prioridad</th>
                                 <th style="min-width:180px;">Etiqueta</th>
                                 <th style="min-width:220px;">Listado Tareas</th>
                                 <th style="min-width:320px;">Tareas</th>
                                 <th style="min-width:260px;">Tiempo</th>
-                                <th style="min-width:320px;">Tiempo por Usuario</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <?php foreach($reporteAgrupado as $asignado => $rows): ?>
-                                <?php
-                                    $sumPrioridad = 0;
-                                    $sumTareas = 0;
-                                    $sumTiempoSegundos = 0;
-                                    $sumTiempoEnCursoSegundos = 0;
-                                    foreach($rows as $r){
-                                        $sumPrioridad += isset($r['puntos_prioridad']) ? (int)$r['puntos_prioridad'] : 0;
-                                        $sumTareas += isset($r['total_tareas']) ? (int)$r['total_tareas'] : 0;
-                                        $sumTiempoSegundos += isset($r['total_tiempo_segundos']) ? (int)$r['total_tiempo_segundos'] : 0;
-                                        $sumTiempoEnCursoSegundos += isset($r['total_tiempo_en_curso_segundos']) ? (int)$r['total_tiempo_en_curso_segundos'] : 0;
-                                    }
-                                ?>
-                                <tr class="table-secondary">
+                        <?php foreach($reporteAgrupado as $asignado => $rows): ?>
+                            <?php
+                                $sumPrioridad = 0;
+                                $sumTareas = 0;
+                                $sumTiempoSegundos = 0;
+                                $sumTiempoEnCursoSegundos = 0;
+                                foreach($rows as $r){
+                                    $sumPrioridad += isset($r['puntos_prioridad']) ? (int)$r['puntos_prioridad'] : 0;
+                                    $sumTareas += isset($r['total_tareas']) ? (int)$r['total_tareas'] : 0;
+                                    $sumTiempoSegundos += isset($r['total_tiempo_segundos']) ? (int)$r['total_tiempo_segundos'] : 0;
+                                    $sumTiempoEnCursoSegundos += isset($r['total_tiempo_en_curso_segundos']) ? (int)$r['total_tiempo_en_curso_segundos'] : 0;
+                                }
+                                $groupClass = 'reporte-group-' . md5($asignado);
+                            ?>
+                            <tbody>
+                                <tr class="table-secondary accordion-header" role="button" data-group="<?php echo $groupClass; ?>" aria-expanded="true" tabindex="0">
                                     <td colspan="9">
-                                        <strong>Asignado:</strong> <?php echo htmlspecialchars($asignado); ?>
-                                        <span class="badge bg-light text-dark border border-secondary ms-2"><?php echo count($rows); ?> tarjeta(s)</span>
-                                        <span class="badge bg-primary ms-2">Prioridad: <?php echo (int)$sumPrioridad; ?></span>
-                                        <span class="badge bg-info text-dark ms-2">Tareas: <?php echo (int)$sumTareas; ?></span>
-                                        <span class="badge bg-warning text-dark border ms-2">Tiempo: <?php echo htmlspecialchars($formatSegundos($sumTiempoSegundos)); ?></span>
-                                        <span class="badge bg-danger ms-2">Tiempo en curso: <?php echo htmlspecialchars($formatSegundos($sumTiempoEnCursoSegundos)); ?></span>
+                                        <div class="d-flex justify-content-between align-items-center w-100">
+                                            <div>
+                                                <strong>Asignado:</strong> <?php echo htmlspecialchars($asignado); ?>
+                                                <span class="badge bg-light text-dark border border-secondary ms-2"><?php echo count($rows); ?> tarjeta(s)</span>
+                                                <span class="badge bg-primary ms-2">Prioridad: <?php echo (int)$sumPrioridad; ?></span>
+                                                <span class="badge bg-info text-dark ms-2">Tareas: <?php echo (int)$sumTareas; ?></span>
+                                                <span class="badge bg-warning text-dark border ms-2">Tiempo: <?php echo htmlspecialchars($formatSegundos($sumTiempoSegundos)); ?></span>
+                                                <span class="badge bg-danger ms-2">Tiempo en curso: <?php echo htmlspecialchars($formatSegundos($sumTiempoEnCursoSegundos)); ?></span>
+                                            </div>
+                                            <div class="accordion-toggle-icon">
+                                                <i class="bi bi-chevron-down"></i>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                                 <?php foreach($rows as $row): ?>
-                                    <tr>
+                                    <tr class="collapse-row <?php echo $groupClass; ?>">
                                         <td>
                                             <div class="fw-bold"><?php echo htmlspecialchars($row['descripcion']); ?></div>
                                             <div class="text-muted small"><?php echo $row['descripcion_detalle'] !== '' ? nl2br(htmlspecialchars($row['descripcion_detalle'])) : 'Sin descripcion'; ?></div>
                                         </td>
                                         <td><?php echo htmlspecialchars($row['etapa']); ?></td>
                                         <td><?php echo htmlspecialchars($row['prioridad']); ?></td>
-                                        <td><?php echo (int)$row['puntos_prioridad']; ?></td>
                                         <td>
                                             <?php if(!empty($row['etiquetas'])): ?>
                                                 <?php echo htmlspecialchars(implode(' | ', $row['etiquetas'])); ?>
@@ -219,21 +300,10 @@ $formatSegundos = function($total){
                                                 <span class="text-muted">Sin tiempos</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td>
-                                            <?php if(!empty($row['tiempo_por_usuario'])): ?>
-                                                <ul class="mb-0 ps-3">
-                                                    <?php foreach($row['tiempo_por_usuario'] as $tu): ?>
-                                                        <li class="small"><?php echo htmlspecialchars($tu); ?></li>
-                                                    <?php endforeach; ?>
-                                                </ul>
-                                            <?php else: ?>
-                                                <span class="text-muted">Sin tiempos por usuario</span>
-                                            <?php endif; ?>
-                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
-                            <?php endforeach; ?>
-                        </tbody>
+                            </tbody>
+                        <?php endforeach; ?>
                     </table>
                 </div>
             </div>
@@ -244,5 +314,31 @@ $formatSegundos = function($total){
         No hay tableros asignados para mostrar reportes.
     </div>
 <?php endif; ?>
+
+<script>
+    (function(){
+        function escapeSelector(value){
+            return value.replace(/(["'!#$%&()*+,./:;<=>?@[\\]^`{|}~])/g, '\\$1');
+        }
+
+        var headers = document.querySelectorAll('.accordion-header[data-group]');
+        headers.forEach(function(header){
+            header.addEventListener('click', function(){
+                var group = header.getAttribute('data-group');
+                if(!group){
+                    return;
+                }
+                var selector = 'tr.' + escapeSelector(group) + '.collapse-row';
+                var rows = document.querySelectorAll(selector);
+                var expanded = header.getAttribute('aria-expanded') === 'true';
+                rows.forEach(function(row){
+                    row.classList.toggle('hidden', expanded);
+                });
+                header.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+                header.classList.toggle('collapsed', expanded);
+            });
+        });
+    })();
+</script>
 
 <?php require APPROOT . '/views/layouts/footer.php'; ?>

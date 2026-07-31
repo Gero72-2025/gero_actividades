@@ -473,14 +473,32 @@ $canGestorPlantillaLista     = $canPlantillaListaCrear || $canPlantillaListaEdit
                                         </button>
                                     </div>
 
-                                    <?php if(!empty($tarjeta->AsignadosDetalle)): ?>
+                                    <?php 
+                                        $tieneAsignadoTarjeta = !empty($tarjeta->Id_usuario_asignado) && !empty($tarjeta->Asignado_Email);
+                                        $tieneAsignadosDetalle = !empty($tarjeta->AsignadosDetalle);
+                                    ?>
+                                    <?php if($tieneAsignadoTarjeta || $tieneAsignadosDetalle): ?>
                                     <div class="mb-2">
-                                        <div class="fw-bold small mb-1">Asignados</div>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            <?php foreach($tarjeta->AsignadosDetalle as $asignado): ?>
-                                                <span class="badge bg-secondary-subtle text-secondary border small"><?php echo htmlspecialchars($asignado->Email, ENT_QUOTES, 'UTF-8'); ?></span>
-                                            <?php endforeach; ?>
+                                        <?php if($tieneAsignadoTarjeta): ?>
+                                        <div>
+                                            <div class="fw-bold small mb-1">Asignado a tarjeta</div>
+                                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                                <span class="badge bg-info-subtle text-info border small">
+                                                    <i class="bi bi-person-fill"></i> <?php echo htmlspecialchars($tarjeta->Asignado_Email, ENT_QUOTES, 'UTF-8'); ?>
+                                                </span>
+                                            </div>
                                         </div>
+                                        <?php endif; ?>
+                                        <?php if($tieneAsignadosDetalle): ?>
+                                        <div>
+                                            <div class="fw-bold small mb-1">Asignados a tareas</div>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                <?php foreach($tarjeta->AsignadosDetalle as $asignado): ?>
+                                                    <span class="badge bg-secondary-subtle text-secondary border small"><?php echo htmlspecialchars($asignado->Email, ENT_QUOTES, 'UTF-8'); ?></span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                        <?php endif; ?>
                                     </div>
                                     <?php endif; ?>
 
@@ -1620,6 +1638,21 @@ $canGestorPlantillaLista     = $canPlantillaListaCrear || $canPlantillaListaEdit
                                 <?php endforeach; ?>
                             </select>
                         </div>
+                        <?php if($canAssign): ?>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Asignar Usuario (opcional)</label>
+                            <select name="id_usuario_asignado" id="editTarjetaAsignado" class="form-select tablero-activo-select">
+                                <option value="">Sin asignar</option>
+                                <?php if(!empty($data['usuariosAsignados'])): ?>
+                                    <?php foreach($data['usuariosAsignados'] as $usuario): ?>
+                                        <option value="<?php echo (int)$usuario->Id_usuario; ?>">
+                                            <?php echo htmlspecialchars($usuario->email); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </select>
+                        </div>
+                        <?php endif; ?>
                         <div class="col-12">
                             <label class="form-label">Titulo</label>
                             <input type="text" name="titulo" id="editTarjetaTitulo" class="form-control" maxlength="180" required>

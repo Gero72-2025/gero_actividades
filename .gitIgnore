@@ -19,3 +19,6 @@ info/*
 
 # Ignore config files
 # config/*.php
+
+# Ignore code-workspace files
+*.code-workspace

@@ -312,6 +312,73 @@ body.login {
     transform: translateY(-1px);
 }
 
+.tablero-action-button {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    text-decoration: none;
+}
+
+.tablero-action-button:hover,
+.tablero-action-button:focus {
+    outline: 0;
+    transform: translateY(-1px);
+}
+
+.tablero-action-button.btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+}
+
+.tablero-action-button.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+}
+
+.tablero-action-button.btn-success:hover,
+.tablero-action-button.btn-success:focus {
+    background-color: #218838;
+    border-color: #218838;
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.5);
+}
+
+.tablero-action-button.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+}
+
+.tablero-action-button.btn-danger:hover,
+.tablero-action-button.btn-danger:focus {
+    background-color: #c82333;
+    border-color: #c82333;
+    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.5);
+}
+
+.tablero-action-button.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4);
+}
+
+.tablero-action-button.btn-secondary:hover,
+.tablero-action-button.btn-secondary:focus {
+    background-color: #5a6268;
+    border-color: #5a6268;
+    box-shadow: 0 6px 20px rgba(108, 117, 125, 0.5);
+}
+
+.tablero-action-button.btn-link {
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    color: #0d6efd;
+    padding: 0.375rem 0.75rem;
+}
+
 /* Estilos visuales del tablero (columnas y tarjetas) */
 .tablero-interactive-shell {
     position: relative;

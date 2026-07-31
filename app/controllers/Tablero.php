@@ -212,7 +212,8 @@ class Tablero extends Controller {
                 'tableros' => [],
                 'tableroActual' => null,
                 'permisosTablero' => $this->getEmptyBoardPermissions(),
-                'reporteAgrupado' => []
+                'reporteAgrupado' => [],
+                'filtros' => []
             ];
             return $this->view('tablero/reporteria', $data);
         }
@@ -222,17 +223,108 @@ class Tablero extends Controller {
             redirect('tablero/index');
         }
 
+        $filters = $this->getReporteriaFilters();
+        $tableroActual = $context['tableroActual'];
+        $tarjetas = $this->tableroModel->getTarjetasActivasByTablero($context['id_tablero']);
+        $tarjetaIds = array_map(function($tarjeta){ return (int)$tarjeta->Id_tarjeta; }, $tarjetas);
+
+        $assignedUsers = [];
+        foreach($tarjetas as $tarjeta){
+            $email = trim((string)($tarjeta->Asignado_Email ?? ''));
+            if($email !== ''){
+                $assignedUsers[$email] = $email;
+            }
+        }
+        foreach($this->tableroModel->getAsignadosByTarjetas($tarjetaIds) as $row){
+            $email = trim((string)($row->Usuario_email ?? ''));
+            if($email !== ''){
+                $assignedUsers[$email] = $email;
+            }
+        }
+        asort($assignedUsers);
+
         $data = [
             'title' => 'Reporte de Tablero',
             'tableros' => $context['tableros'],
-            'tableroActual' => $context['tableroActual'],
+            'tableroActual' => $tableroActual,
             'permisosTablero' => $context['permisosTablero'],
-            'reporteAgrupado' => $this->buildReporteAgrupado($context['id_tablero'])
+            'reporteAgrupado' => $this->buildReporteAgrupado($context['id_tablero'], $filters),
+            'filtros' => $filters,
+            'filtrosUsuariosAsignados' => $assignedUsers,
+            'filtrosEtiquetas' => $this->tableroModel->getEtiquetasByTablero($context['id_tablero']),
+            'filtrosEtapas' => $this->tableroModel->getColumnasActivasByTablero($context['id_tablero'])
         ];
 
         $data['resumenTiempoUsuarios'] = $this->buildResumenTiempoUsuarios($data['reporteAgrupado']);
 
         $this->view('tablero/reporteria', $data);
+    }
+
+    public function export_reporteria(){
+        $this->verificarAcceso('tablero', 'reporteria');
+
+        if($_SERVER['REQUEST_METHOD'] !== 'GET'){
+            redirect('tablero/reporteria');
+        }
+
+        $formato = strtolower(trim((string)($_GET['format'] ?? '')));
+        if(!in_array($formato, ['csv', 'xlsx', 'pdf'], true)){
+            flashMessage('tablero_error', 'Formato de exportacion no valido.', 'danger');
+            redirect('tablero/reporteria');
+        }
+
+        $id_usuario = (int)$_SESSION['user_id'];
+        $context = $this->resolveReporteriaContext($id_usuario);
+
+        if(empty($context['tableros'])){
+            flashMessage('tablero_error', 'No hay tableros disponibles para exportar.', 'danger');
+            redirect('tablero/reporteria');
+        }
+
+        if(!$context['permisosTablero']['tablero_ver']){
+            flashMessage('tablero_error', 'No tiene permiso para exportar este tablero.', 'danger');
+            redirect('tablero/index');
+        }
+
+        $filters = $this->getReporteriaFilters();
+        $reporteAgrupado = $this->buildReporteAgrupado($context['id_tablero'], $filters);
+        $rows = $this->flattenReporteAgrupado($reporteAgrupado);
+        $headers = $this->getReporteriaExportHeaders();
+        $filenameBase = $this->buildReporteriaFilenameBase($context['tableroActual']);
+
+        if($formato === 'csv'){
+            $this->downloadReporteriaCsv($filenameBase . '.csv', $headers, $rows);
+        }
+
+        if($formato === 'xlsx'){
+            try {
+                require_once APPROOT . '/libraries/TableroReporteriaXlsx.php';
+                $exporter = new TableroReporteriaXlsx();
+                $exporter->download(
+                    $filenameBase . '.xlsx',
+                    $headers,
+                    $rows,
+                    $context['tableroActual'] ? (string)$context['tableroActual']->Nombre : 'Reporte Tablero'
+                );
+            } catch(Throwable $e) {
+                flashMessage('tablero_error', 'No se pudo generar el archivo XLSX: ' . $e->getMessage(), 'danger');
+                redirect('tablero/reporteria?tablero_id=' . $context['id_tablero']);
+            }
+        }
+
+        try {
+            require_once APPROOT . '/libraries/TableroReporteriaPdf.php';
+            $exporter = new TableroReporteriaPdf();
+            $exporter->download(
+                $filenameBase . '.pdf',
+                $headers,
+                $rows,
+                $context['tableroActual'] ? (string)$context['tableroActual']->Nombre : 'Reporte Tablero'
+            );
+        } catch(Throwable $e) {
+            flashMessage('tablero_error', 'No se pudo generar el archivo PDF: ' . $e->getMessage(), 'danger');
+            redirect('tablero/reporteria?tablero_id=' . $context['id_tablero']);
+        }
     }
 
     public function dashboard(){
@@ -301,78 +393,22 @@ class Tablero extends Controller {
         $this->view('tablero/calendario', $data);
     }
 
-    public function export_reporteria(){
-        $this->verificarAcceso('tablero', 'reporteria');
-
-        if($_SERVER['REQUEST_METHOD'] !== 'GET'){
-            redirect('tablero/reporteria');
-        }
-
-        $formato = strtolower(trim((string)($_GET['format'] ?? '')));
-        if(!in_array($formato, ['csv', 'xlsx', 'pdf'], true)){
-            flashMessage('tablero_error', 'Formato de exportacion no valido.', 'danger');
-            redirect('tablero/reporteria');
-        }
-
-        $id_usuario = (int)$_SESSION['user_id'];
-        $context = $this->resolveReporteriaContext($id_usuario);
-
-        if(empty($context['tableros'])){
-            flashMessage('tablero_error', 'No hay tableros disponibles para exportar.', 'danger');
-            redirect('tablero/reporteria');
-        }
-
-        if(!$context['permisosTablero']['tablero_ver']){
-            flashMessage('tablero_error', 'No tiene permiso para exportar este tablero.', 'danger');
-            redirect('tablero/index');
-        }
-
-        $reporteAgrupado = $this->buildReporteAgrupado($context['id_tablero']);
-        $rows = $this->flattenReporteAgrupado($reporteAgrupado);
-        $headers = $this->getReporteriaExportHeaders();
-        $filenameBase = $this->buildReporteriaFilenameBase($context['tableroActual']);
-
-        if($formato === 'csv'){
-            $this->downloadReporteriaCsv($filenameBase . '.csv', $headers, $rows);
-        }
-
-        if($formato === 'xlsx'){
-            try {
-                require_once APPROOT . '/libraries/TableroReporteriaXlsx.php';
-                $exporter = new TableroReporteriaXlsx();
-                $exporter->download(
-                    $filenameBase . '.xlsx',
-                    $headers,
-                    $rows,
-                    $context['tableroActual'] ? (string)$context['tableroActual']->Nombre : 'Reporte Tablero'
-                );
-            } catch(Throwable $e) {
-                flashMessage('tablero_error', 'No se pudo generar el archivo XLSX: ' . $e->getMessage(), 'danger');
-                redirect('tablero/reporteria?tablero_id=' . $context['id_tablero']);
-            }
-        }
-
-        try {
-            require_once APPROOT . '/libraries/TableroReporteriaPdf.php';
-            $exporter = new TableroReporteriaPdf();
-            $exporter->download(
-                $filenameBase . '.pdf',
-                $headers,
-                $rows,
-                $context['tableroActual'] ? (string)$context['tableroActual']->Nombre : 'Reporte Tablero'
-            );
-        } catch(Throwable $e) {
-            flashMessage('tablero_error', 'No se pudo generar el archivo PDF: ' . $e->getMessage(), 'danger');
-            redirect('tablero/reporteria?tablero_id=' . $context['id_tablero']);
-        }
-    }
-
     private function formatSegundosReporte($total){
         $sec = max(0, (int)$total);
         $hh = str_pad((string)floor($sec / 3600), 2, '0', STR_PAD_LEFT);
         $mm = str_pad((string)floor(($sec % 3600) / 60), 2, '0', STR_PAD_LEFT);
         $ss = str_pad((string)($sec % 60), 2, '0', STR_PAD_LEFT);
         return $hh . ':' . $mm . ':' . $ss;
+    }
+
+    private function getReporteriaFilters(){
+        return [
+            'assigned_user' => trim((string)($_GET['assigned_user'] ?? '')),
+            'etiqueta_id' => isset($_GET['etiqueta_id']) && is_numeric($_GET['etiqueta_id']) ? (int)$_GET['etiqueta_id'] : 0,
+            'etapa_id' => isset($_GET['etapa_id']) && is_numeric($_GET['etapa_id']) ? (int)$_GET['etapa_id'] : 0,
+            'fecha_inicio' => trim((string)($_GET['fecha_inicio'] ?? '')),
+            'fecha_fin' => trim((string)($_GET['fecha_fin'] ?? ''))
+        ];
     }
 
     private function resolveReporteriaContext($id_usuario){
@@ -413,7 +449,7 @@ class Tablero extends Controller {
         ];
     }
 
-    private function buildReporteAgrupado($id_tablero){
+    private function buildReporteAgrupado($id_tablero, array $filters = []){
         $columnas = $this->tableroModel->getColumnasActivasByTablero($id_tablero);
         $columnasMap = [];
         foreach($columnas as $columna){
@@ -426,6 +462,18 @@ class Tablero extends Controller {
             $tarjetaIds[] = (int)$tarjeta->Id_tarjeta;
         }
 
+        $taskAssignedUsersByTarjeta = [];
+        foreach($this->tableroModel->getAsignadosByTarjetas($tarjetaIds) as $asignadoTarjeta){
+            $idTarjeta = (int)$asignadoTarjeta->Id_tarjeta;
+            if(!isset($taskAssignedUsersByTarjeta[$idTarjeta])){
+                $taskAssignedUsersByTarjeta[$idTarjeta] = [];
+            }
+            $email = trim((string)($asignadoTarjeta->Usuario_email ?? ''));
+            if($email !== '' && !in_array($email, $taskAssignedUsersByTarjeta[$idTarjeta], true)){
+                $taskAssignedUsersByTarjeta[$idTarjeta][] = $email;
+            }
+        }
+
         $etiquetasPorTarjeta = [];
         foreach($this->tableroModel->getEtiquetasByTarjetas($tarjetaIds) as $etiquetaTarjeta){
             $idTarjeta = (int)$etiquetaTarjeta->Id_tarjeta;
@@ -435,10 +483,66 @@ class Tablero extends Controller {
             $etiquetasPorTarjeta[$idTarjeta][] = $etiquetaTarjeta;
         }
 
+        $filters = array_merge([
+            'assigned_user' => '',
+            'etiqueta_id' => 0,
+            'etapa_id' => 0,
+            'fecha_inicio' => '',
+            'fecha_fin' => ''
+        ], $filters);
+
         $reporteAgrupado = [];
         foreach($tarjetas as $tarjeta){
             $idTarjeta = (int)$tarjeta->Id_tarjeta;
             $idColumna = (int)$tarjeta->Id_columna;
+
+            $assignedFilter = trim((string)$filters['assigned_user']);
+            $tagFilter = isset($filters['etiqueta_id']) ? (int)$filters['etiqueta_id'] : 0;
+            $etapaFilter = isset($filters['etapa_id']) ? (int)$filters['etapa_id'] : 0;
+            $fechaInicio = trim((string)$filters['fecha_inicio']);
+            $fechaFin = trim((string)$filters['fecha_fin']);
+            $fechaCreacion = trim((string)($tarjeta->Fecha_creacion ?? ''));
+
+            if($assignedFilter !== ''){
+                $assignedEmail = !empty($tarjeta->Asignado_Email) ? trim((string)$tarjeta->Asignado_Email) : '';
+                $taskUsers = $taskAssignedUsersByTarjeta[$idTarjeta] ?? [];
+                if($assignedEmail !== $assignedFilter && !in_array($assignedFilter, $taskUsers, true)){
+                    continue;
+                }
+            }
+            if($tagFilter > 0){
+                $hasTag = false;
+                foreach($etiquetasPorTarjeta[$idTarjeta] ?? [] as $etq){
+                    if((int)($etq->Id_etiqueta ?? 0) === $tagFilter){
+                        $hasTag = true;
+                        break;
+                    }
+                }
+                if(!$hasTag){
+                    continue;
+                }
+            }
+            if($etapaFilter > 0 && $idColumna !== $etapaFilter){
+                continue;
+            }
+            if($fechaInicio !== '' || $fechaFin !== ''){
+                $timestamp = $fechaCreacion !== '' ? strtotime($fechaCreacion) : false;
+                if($timestamp === false){
+                    continue;
+                }
+                if($fechaInicio !== ''){
+                    $startTs = strtotime($fechaInicio . ' 00:00:00');
+                    if($startTs !== false && $timestamp < $startTs){
+                        continue;
+                    }
+                }
+                if($fechaFin !== ''){
+                    $endTs = strtotime($fechaFin . ' 23:59:59');
+                    if($endTs !== false && $timestamp > $endTs){
+                        continue;
+                    }
+                }
+            }
 
             $etiquetasTarjeta = $etiquetasPorTarjeta[$idTarjeta] ?? [];
             $etiquetasTexto = [];
@@ -472,12 +576,12 @@ class Tablero extends Controller {
                     }
 
                     $isDone = isset($detalle->Completado) && (int)$detalle->Completado === 1;
-                    $tareasTexto[] = '[' . $nombreLista . '] ' . $descripcionDetalle . ($isDone ? ' (Completada)' : '');
+                    $tareasTexto[] = $descripcionDetalle . ($isDone ? ' (Completada)' : '');
                     $totalTareasTarjeta++;
 
                     $segundos = isset($detalle->Tiempo_Total_Segundos) ? (int)$detalle->Tiempo_Total_Segundos : 0;
                     $totalTiempoTarjetaSegundos += $segundos;
-                    $tiempoTexto[] = '[' . $nombreLista . '] ' . $descripcionDetalle . ': ' . $this->formatSegundosReporte($segundos);
+                    $tiempoTexto[] = $descripcionDetalle . ': ' . $this->formatSegundosReporte($segundos);
 
                     $tiempoUsuariosDetalle = $this->tableroModel->getTiempoDetallePorUsuario((int)$detalle->Id_tarea_detalle);
                     foreach($tiempoUsuariosDetalle as $tiempoUsuario){
@@ -492,7 +596,7 @@ class Tablero extends Controller {
                             continue;
                         }
 
-                        $tiempoPorUsuarioTexto[] = '[' . $nombreLista . '] ' . $descripcionDetalle . ' / ' . $labelUsuario . ': ' . $this->formatSegundosReporte($segTotalUsuario);
+                        $tiempoPorUsuarioTexto[] = $descripcionDetalle . ' / ' . $labelUsuario . ': ' . $this->formatSegundosReporte($segTotalUsuario);
                         if(!isset($tiempoPorUsuarioSegundos[$labelUsuario])){
                             $tiempoPorUsuarioSegundos[$labelUsuario] = 0;
                         }
@@ -501,12 +605,20 @@ class Tablero extends Controller {
                 }
             }
 
-            $asignado = !empty($tarjeta->Asignado_Email) ? (string)$tarjeta->Asignado_Email : 'Sin asignar';
+            $asignado = !empty($tarjeta->Asignado_Email) ? (string)$tarjeta->Asignado_Email : null;
+            if($asignado === null && !empty($taskAssignedUsersByTarjeta[$idTarjeta])){
+                $asignado = implode(', ', $taskAssignedUsersByTarjeta[$idTarjeta]);
+            }
+            if($asignado === null || trim($asignado) === ''){
+                $asignado = 'Sin asignar';
+            }
+
             if(!isset($reporteAgrupado[$asignado])){
                 $reporteAgrupado[$asignado] = [];
             }
 
             $reporteAgrupado[$asignado][] = [
+                'asignado' => $asignado,
                 'descripcion' => trim((string)$tarjeta->Titulo),
                 'descripcion_detalle' => trim((string)($tarjeta->Descripcion ?? '')),
                 'etapa' => $columnasMap[$idColumna] ?? ('Columna #' . $idColumna),
@@ -602,6 +714,18 @@ class Tablero extends Controller {
             $tarjetaIds[] = (int)$tarjeta->Id_tarjeta;
         }
 
+        $taskAssignedUsersByTarjeta = [];
+        foreach($this->tableroModel->getAsignadosByTarjetas($tarjetaIds) as $asignadoTarjeta){
+            $idTarjeta = (int)$asignadoTarjeta->Id_tarjeta;
+            if(!isset($taskAssignedUsersByTarjeta[$idTarjeta])){
+                $taskAssignedUsersByTarjeta[$idTarjeta] = [];
+            }
+            $email = trim((string)($asignadoTarjeta->Usuario_email ?? ''));
+            if($email !== '' && !in_array($email, $taskAssignedUsersByTarjeta[$idTarjeta], true)){
+                $taskAssignedUsersByTarjeta[$idTarjeta][] = $email;
+            }
+        }
+
         $etiquetasPorTarjeta = [];
         foreach($this->tableroModel->getEtiquetasByTarjetas($tarjetaIds) as $etiquetaTarjeta){
             $idTarjeta = (int)$etiquetaTarjeta->Id_tarjeta;
@@ -670,7 +794,15 @@ class Tablero extends Controller {
             $priorityValue = isset($tarjeta->Prioridad_Valor) ? (int)$tarjeta->Prioridad_Valor : 0;
             $priorityName = trim((string)($tarjeta->Prioridad_Nombre ?? 'Sin prioridad'));
             $priorityColor = (string)($tarjeta->Prioridad_Color ?? '#6c757d');
-            $assignedName = !empty($tarjeta->Asignado_Email) ? (string)$tarjeta->Asignado_Email : 'Sin asignar';
+            $assignedName = !empty($tarjeta->Asignado_Email)
+                ? (string)$tarjeta->Asignado_Email
+                : null;
+            if($assignedName === null && !empty($taskAssignedUsersByTarjeta[$idTarjeta])){
+                $assignedName = $taskAssignedUsersByTarjeta[$idTarjeta][0];
+            }
+            if($assignedName === null){
+                $assignedName = 'Sin asignar';
+            }
             $columnName = isset($columnStats[$idColumna]) ? (string)$columnStats[$idColumna]['nombre'] : ('Columna #' . $idColumna);
             $columnColor = isset($columnStats[$idColumna]) ? (string)$columnStats[$idColumna]['color'] : '#6c757d';
             $completionRate = $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100, 1) : 0;
@@ -1058,18 +1190,22 @@ class Tablero extends Controller {
         $rows = [];
         foreach($reporteAgrupado as $asignado => $items){
             foreach($items as $row){
+                $tiempoUsuarioValues = [];
+                foreach((array)($row['tiempo_por_usuario'] ?? []) as $tiempoUsuarioText){
+                    $parts = explode(': ', (string)$tiempoUsuarioText);
+                    $tiempoUsuarioValues[] = trim((string)array_pop($parts));
+                }
+
                 $rows[] = [
                     'Asignado' => $asignado,
                     'Descripcion' => (string)($row['descripcion'] ?? ''),
                     'Descripcion detalle' => (string)($row['descripcion_detalle'] ?? ''),
                     'Etapa' => (string)($row['etapa'] ?? ''),
                     'Prioridad' => (string)($row['prioridad'] ?? ''),
-                    'Puntos prioridad' => (int)($row['puntos_prioridad'] ?? 0),
                     'Etiquetas' => implode(' | ', (array)($row['etiquetas'] ?? [])),
                     'Listado tareas' => implode(' | ', (array)($row['listas_tareas'] ?? [])),
                     'Tareas' => implode(' | ', (array)($row['tareas'] ?? [])),
                     'Tiempo detalle' => implode(' | ', (array)($row['tiempos'] ?? [])),
-                    'Tiempo por usuario' => implode(' | ', (array)($row['tiempo_por_usuario'] ?? [])),
                     'Tiempo total' => $this->formatSegundosReporte((int)($row['total_tiempo_segundos'] ?? 0)),
                     'Tiempo en curso' => $this->formatSegundosReporte((int)($row['total_tiempo_en_curso_segundos'] ?? 0))
                 ];
@@ -1086,12 +1222,10 @@ class Tablero extends Controller {
             'Descripcion detalle',
             'Etapa',
             'Prioridad',
-            'Puntos prioridad',
             'Etiquetas',
             'Listado tareas',
             'Tareas',
             'Tiempo detalle',
-            'Tiempo por usuario',
             'Tiempo total',
             'Tiempo en curso'
         ];
